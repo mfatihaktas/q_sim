@@ -23,7 +23,7 @@ def sim_log(dlevel, env, caller, action, affected):
   affected= any -- whatever component being acted on/with e.g., packet
   """
   if DEBUG_LEVEL <= dlevel:
-    print("{} t: {}] {} {}\n\t{}".format(debug_level__string_map[dlevel], env.now, caller, action, affected) )
+    print("{} t: {:.2f}] {} {}\n\t{}".format(debug_level__string_map[dlevel], env.now, caller, action, affected) )
 
 def log(dlevel, log):
   """

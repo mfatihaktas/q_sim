@@ -18,17 +18,17 @@ class Packet(object):
       the time the packet arrives at the output queue.
     size : float
       the size of the packet in bytes
-    id : int
+    _id : int
       an identifier for the packet
     src, dst : int
       identifiers for source and destination
     flow_id : int
       small integer that can be used to identify a flow
   """
-  def __init__(self, time, size, id, src="a", dst="z", flow_id=0):
+  def __init__(self, time, size, _id, src="a", dst="z", flow_id=0):
     self.time = time
     self.size = size
-    self.id = id
+    self._id = _id
     self.src = src
     self.dst = dst
     self.flow_id = flow_id
@@ -37,8 +37,8 @@ class Packet(object):
     self.entrance_time = 0
   
   def __repr__(self):
-    return "id: {}, src: {}, time: {}, size: {}".\
-      format(self.id, self.src, self.time, self.size)
+    return "_id: {}, src: {}, size: {}".\
+      format(self._id, self.src, self.size)
 
 
 class PacketGenerator(object):
@@ -58,8 +58,8 @@ class PacketGenerator(object):
     finish : number
       Stops generation at the finish time. Default is infinite
   """
-  def __init__(self, env, id, adist, sdist, initial_delay=0, finish=float("inf"), flow_id=0):
-    self.id = id
+  def __init__(self, env, _id, adist, sdist, initial_delay=0, finish=float("inf"), flow_id=0):
+    self._id = _id
     self.env = env
     self.adist = adist
     self.sdist = sdist
@@ -79,7 +79,7 @@ class PacketGenerator(object):
       # wait for next transmission
       yield self.env.timeout(self.adist() )
       self.n_sent += 1
-      p = Packet(time=self.env.now, size=self.sdist(), id=self.n_sent, src=self.id, flow_id=self.flow_id)
+      p = Packet(time=self.env.now, size=self.sdist(), _id=self.n_sent, src=self._id, flow_id=self.flow_id)
       self.out.put(p)
   
 class PacketSink(object):
@@ -139,8 +139,8 @@ class PacketSink(object):
     self.store.put(pkt)
 
 class S1_Q(object): # Memoryless service, 1 server
-  def __init__(self, id, env, serv_dist=None, rate=None, qlimit_n=None, qlimit_B=None, debug=False):
-    self.id = id
+  def __init__(self, _id, env, serv_dist=None, rate=None, qlimit_n=None, qlimit_B=None, debug=False):
+    self._id = _id
     self.env = env
     self.serv_dist = serv_dist
     self.rate = rate
@@ -161,8 +161,8 @@ class S1_Q(object): # Memoryless service, 1 server
     self.action = env.process(self.run() )  # starts the run() method as a SimPy process
   
   def __repr__(self):
-    # return "S1_Q[id= {}, rate= {}, qlimit_n= {}, qlimit_B= {}]".format(id, self.rate, self.qlimit_n, self.qlimit_B)
-    return "S1_Q[id= {}]".format(id)
+    # return "S1_Q[_id= {}, rate= {}, qlimit_n= {}, qlimit_B= {}]".format(_id, self.rate, self.qlimit_n, self.qlimit_B)
+    return "S1_Q[_id= {}]".format(self._id)
     
   def run(self):
     while True:
@@ -181,7 +181,7 @@ class S1_Q(object): # Memoryless service, 1 server
       sim_log(DEBUG, self.env, self, "forwarding", packet)
       self.qt_list.append(self.env.now - packet.ref_time)
       if self.out is not None:
-        packet.prev_hop_id = self.id
+        packet.prev_hop_id = self._id
         self.out.put(packet)
       self.busy = 0
   
@@ -218,6 +218,7 @@ class QMonitor(object):
       self.t_list.append(self.env.now)
       self.n_list.append(len(self.q.store.items) + self.q.busy)
 
+# *******************************************  FJ  *********************************************** #
 class JQ(object): # JoinQ for FJ
   def __init__(self, env, input_qid_list):
     self.env = env
@@ -240,7 +241,7 @@ class JQ(object): # JoinQ for FJ
     for i in range(num_completions):
       ref_p = None
       for j, pq in self.input_id__pq_map.items():
-        p = pq.pop()
+        p = pq.pop(0)
         if ref_p is None:
           ref_p = p
         else:
@@ -258,9 +259,9 @@ class JQ(object): # JoinQ for FJ
     while True:
       packet = (yield self.store.get() )
       if packet.prev_hop_id not in self.input_qid_list:
-        log(ERROR, "can NOT go {}; packet.prev_hop_id= {}".format(self, packet.prev_hop_id) )
+        log(ERROR, "packet can NOT continue {}; packet.prev_hop_id= {}".format(self, packet.prev_hop_id) )
         return 1
-      self.input_id__pq_map[packet.prev_hop_id].insert(0, packet)
+      self.input_id__pq_map[packet.prev_hop_id].append(packet)
       self.check_for_completion()
   
   def put(self, packet):
@@ -269,8 +270,8 @@ class JQ(object): # JoinQ for FJ
     return self.store.put(packet)
   
 class JSink(object): # JoinSink for FJ
-  def __init__(self, id, env):
-    self.id = id
+  def __init__(self, _id, env):
+    self._id = _id
     self.env = env
     
     self.fjt_list = [] # total time in FJ system
@@ -280,7 +281,7 @@ class JSink(object): # JoinSink for FJ
     self.action = env.process(self.run() )  # starts the run() method as a SimPy process
   
   def __repr__(self):
-    return "JSink[id= {}]".format(self.id)
+    return "JSink[_id= {}]".format(self._id)
   
   def run(self):
     while True:
@@ -294,20 +295,20 @@ class JSink(object): # JoinSink for FJ
     return self.store.put(packet)
   
 class FJQ(object):
-  def __init__(self, id, env, qid_list, qserv_dist_list):
-    self.id = id
+  def __init__(self, _id, env, qid_list, qserv_dist_list):
+    self._id = _id
     self.env = env
     self.qid_list = qid_list
     self.qserv_dist_list = qserv_dist_list
     
     self.num_q = len(qid_list)
-    self.join_sink = JSink(id, env)
+    self.join_sink = JSink(_id, env)
     self.join_q = JQ(env, qid_list)
     self.join_q.out = self.join_sink
     self.id_q_map = {}
     for i in range(self.num_q):
       qid = qid_list[i]
-      m1_q = S1_Q(id=qid, env=env, serv_dist=qserv_dist_list[i] )
+      m1_q = S1_Q(_id=qid, env=env, serv_dist=qserv_dist_list[i] )
       m1_q.out = self.join_q
       self.id_q_map[qid] = m1_q
     
@@ -328,7 +329,9 @@ class FJQ(object):
     sim_log(DEBUG, self.env, self, "recved", packet)
     packet.entrance_time = self.env.now
     return self.store.put(packet)
-  
+
+# *******************************************  MDS  ********************************************** #
+
 # ##################################################################################  
 class RandomBrancher(object):
   """ A demultiplexing element that chooses the output port at random.

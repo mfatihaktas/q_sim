@@ -1,3 +1,4 @@
+*.log
 *.png
 .zed*
 # Byte-compiled / optimized / DLL files

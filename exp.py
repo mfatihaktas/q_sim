@@ -8,8 +8,8 @@ from sim_components import *
 def eg_pgen_psink():
   env = simpy.Environment()
   ps = PacketSink(env, debug=True)  # debugging enable for simple output
-  pg1 = PacketGenerator(env, id="pg1", adist=lambda: 1.5, sdist=lambda: expovariate(0.01) )
-  pg2 = PacketGenerator(env, id="pg2", adist=lambda: 2, sdist=lambda: expovariate(0.01) )
+  pg1 = PacketGenerator(env, _id="pg1", adist=lambda: 1.5, sdist=lambda: expovariate(0.01) )
+  pg2 = PacketGenerator(env, _id="pg2", adist=lambda: 2, sdist=lambda: expovariate(0.01) )
   
   pg1.out = ps
   pg2.out = ps
@@ -20,8 +20,8 @@ def eg_overloaded_m1_q():
   env = simpy.Environment()
   
   ps = PacketSink(env, debug=True)
-  pg = PacketGenerator(env, id="pg", adist=lambda: 1.5, sdist=lambda: 100)
-  m1_q = S1_Q(id=0, env=env, rate=200.0, qlimit_B=300, debug=True)
+  pg = PacketGenerator(env, _id="pg", adist=lambda: 1.5, sdist=lambda: 100)
+  m1_q = S1_Q(_id=0, env=env, rate=200.0, qlimit_B=300, debug=True)
   
   pg.out = m1_q
   m1_q.out = ps
@@ -37,12 +37,12 @@ def test_m_m_1():
   # ps = PacketSink(env, debug=False, rec_arrivals=True)
   arr_rate = 0.9
   serv_rate = 1.0
-  pg = PacketGenerator(env, id="pg",
+  pg = PacketGenerator(env, _id="pg",
                        adist=lambda: random.expovariate(arr_rate),
                        sdist=lambda: 1.0)
                       # sdist=lambda: random.expovariate(serv_rate) )
-  # m1_q = S1_Q(id=0, env=env, rate=1.0) # rate (Bps)
-  m1_q = S1_Q(id=0, env=env, serv_dist=lambda: random.expovariate(serv_rate) ) # rate (Bps)
+  # m1_q = S1_Q(_id=0, env=env, rate=1.0) # rate (Bps)
+  m1_q = S1_Q(_id=0, env=env, serv_dist=lambda: random.expovariate(serv_rate) ) # rate (Bps)
   # qm = QMonitor(env, q=m1_q, dist=lambda: 0.5)
   qm = QMonitor(env, q=m1_q, dist=lambda: 500)
   
@@ -74,31 +74,39 @@ def test_m_m_1():
   plot.savefig("m_m_1_q.png")
 
 def test_fj():
-  env = simpy.Environment()
-  arr_rate = 0.9
-  serv_rate = 1.0
-  pg = PacketGenerator(env, id="p_gen",
-                       adist=lambda: random.expovariate(arr_rate),
-                       sdist=lambda: 1)
-  num_q = 2
-  qid_list = ['m1_q_%s' % i for i in range(1, num_q) ]
-  qserv_dist_list = [lambda: random.expovariate(serv_rate) for i in range(num_q) ]
-  fj_q = FJQ('fj_q', env, qid_list, qserv_dist_list)
-  # qm = QMonitor(env, q=m1_q, dist=lambda: 500)
-  
-  pg.out = fj_q
-  
-  env.run(until=100)
-  # env.run(until=50000)
-  
-  # for num_q= 2
-  if num_q == 2:
-    print("arr_rate= {}, serv_rate= {}".format(arr_rate, serv_rate) )
-    ro = arr_rate/serv_rate
-    E_T = (12 - ro)/(8*serv_rate*(1 - ro) )
-    fjt_list = fj_q.join_sink.fjt_list
-    print("E[T]= {}, sim_E[T]= {:.3f}".format(E_T, float(sum(fjt_list) )/len(fjt_list) ) )
+  diff_list = []
+  for c in range(10):
+    env = simpy.Environment()
+    arr_rate = 0.5
+    serv_rate = 1.0
+    pg = PacketGenerator(env, _id="p_gen",
+                         adist=lambda: random.expovariate(arr_rate),
+                         sdist=lambda: 1)
+    num_q = 2
+    # qid_list = ["m1_q_%s" % i for i in range(1, num_q) ]
+    qid_list = ["{}".format(i) for i in range(1, num_q + 1) ]
+    qserv_dist_list = [lambda: random.expovariate(serv_rate) for i in range(num_q) ]
+    fj_q = FJQ("fj_q", env, qid_list, qserv_dist_list)
+    # qm = QMonitor(env, q=m1_q, dist=lambda: 500)
     
+    pg.out = fj_q
+    
+    # env.run(until=5)
+    # env.run(until=100)
+    # env.run(until=50000)
+    env.run(until=200000)
+    
+    # for num_q= 2
+    if num_q == 2:
+      print("arr_rate= {}, serv_rate= {}".format(arr_rate, serv_rate) )
+      ro = arr_rate/serv_rate
+      E_T = (12 - ro)/(8*(serv_rate - arr_rate) )
+      fjt_list = fj_q.join_sink.fjt_list
+      if len(fjt_list) > 0:
+        sim_E_T = float(sum(fjt_list) )/len(fjt_list)
+        print("E[T]= {}, sim_E[T]= {:.3f}".format(E_T,sim_E_T) )
+        diff_list.append(abs(E_T - sim_E_T) )
+  print("diff_list= {}".format("".join("%s, " % d for d in diff_list) ) )
 
 if __name__ == "__main__":
   # eg_pgen_psink()
