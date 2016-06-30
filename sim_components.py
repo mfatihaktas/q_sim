@@ -32,14 +32,23 @@ class Packet(object):
     self.src = src
     self.dst = dst
     self.flow_id = flow_id
-    self.ref_time = 0
+    self.ref_time = 0 # for casual use
+    # for FJ and MDS Q implementation
     self.prev_hop_id = None
     self.entrance_time = 0
+    self.job_id = None
+  
+  def deep_copy(self):
+    p = Packet(time=self.time, size=self.size, _id=self._id, src=self.src, dst=self.dst, flow_id=self.flow_id)
+    p.ref_time = self.ref_time
+    p.prev_hop_id = self.prev_hop_id
+    p.entrance_time = self.entrance_time
+    p.job_id = self.job_id
+    return p
   
   def __repr__(self):
-    return "_id: {}, src: {}, size: {}".\
-      format(self._id, self.src, self.size)
-
+    return "Packet[_id: {}, prev_hop_id: {}, job_id: {}]".\
+      format(self._id, self.prev_hop_id, self.job_id)
 
 class PacketGenerator(object):
   """ Generates packets with given inter-arrival time distribution.
@@ -218,63 +227,13 @@ class QMonitor(object):
       self.t_list.append(self.env.now)
       self.n_list.append(len(self.q.store.items) + self.q.busy)
 
-# *******************************************  FJ  *********************************************** #
-class JQ(object): # JoinQ for FJ
-  def __init__(self, env, input_qid_list):
-    self.env = env
-    self.input_qid_list = input_qid_list
-    
-    self.input_id__pq_map = {i: [] for i in input_qid_list}
-    self.qt_list = []
-    self.length = 0 # maximum of the lengths of all pq's
-    
-    self.store = simpy.Store(env)
-    self.out = None
-    self.action = env.process(self.run() )  # starts the run() method as a SimPy process
-  
-  def __repr__(self):
-    return "JQ[input_qid_list= [{}]]".format(", ".join(self.input_qid_list) )
-    
-  def check_for_completion(self):
-    now = self.env.now
-    num_completions = min([len(pq) for i, pq in self.input_id__pq_map.items() ] )
-    for i in range(num_completions):
-      ref_p = None
-      for j, pq in self.input_id__pq_map.items():
-        p = pq.pop(0)
-        if ref_p is None:
-          ref_p = p
-        else:
-          if p.prev_hop_id != ref_p.prev_hop_id:
-            log(ERROR, "p.prev_hop_id= {} != ref_p.prev_hop_id= {}".format(p.prev_hop_id, ref_p.prev_hop_id) )
-            return 1
-          elif p.entrance_time != ref_p.entrance_time: # time of entrance to the forker e.g., FJQ
-            log(ERROR, "p.entrance_time= {} != ref_p.entrance_time= {}".format(p.entrance_time, ref_p.entrance_time) )
-            return 1
-        self.qt_list.append(now - p.ref_time)
-      self.out.put(ref_p)
-    self.length = max([len(pq) for i, pq in self.input_id__pq_map.items() ] )
-  
-  def run(self):
-    while True:
-      packet = (yield self.store.get() )
-      if packet.prev_hop_id not in self.input_qid_list:
-        log(ERROR, "packet can NOT continue {}; packet.prev_hop_id= {}".format(self, packet.prev_hop_id) )
-        return 1
-      self.input_id__pq_map[packet.prev_hop_id].append(packet)
-      self.check_for_completion()
-  
-  def put(self, packet):
-    sim_log(DEBUG, self.env, self, "recved", packet)
-    packet.ref_time = self.env.now
-    return self.store.put(packet)
-  
-class JSink(object): # JoinSink for FJ
+# *******************************************  MDS  ********************************************** #
+class JSink(object): # Join
   def __init__(self, _id, env):
     self._id = _id
     self.env = env
     
-    self.fjt_list = [] # total time in FJ system
+    self.st_list = [] # total time in system
     
     self.store = simpy.Store(env)
     self.out = None
@@ -286,7 +245,7 @@ class JSink(object): # JoinSink for FJ
   def run(self):
     while True:
       packet = (yield self.store.get() )
-      self.fjt_list.append(self.env.now - packet.entrance_time)
+      self.st_list.append(self.env.now - packet.entrance_time)
       if self.out is not None:
         self.out.put(packet)
   
@@ -294,8 +253,67 @@ class JSink(object): # JoinSink for FJ
     sim_log(DEBUG, self.env, self, "recved", packet)
     return self.store.put(packet)
   
-class FJQ(object):
-  def __init__(self, _id, env, qid_list, qserv_dist_list):
+class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job comletion
+  def __init__(self, env, k, input_qid_list):
+    self.env = env
+    self.k = k
+    self.input_qid_list = input_qid_list
+    
+    self.input_id__pq_map = {i: [] for i in input_qid_list}
+    self.qt_list = []
+    self.length = 0 # maximum of the lengths of all pq's
+    
+    self.store = simpy.Store(env)
+    self.out = None
+    self.fb_out = None # feedback
+    self.action = env.process(self.run() )  # starts the run() method as a SimPy process
+  
+  def __repr__(self):
+    return "JQ[k= {}, input_qid_list= [{}]]".format(self.k, ", ".join(self.input_qid_list) )
+    
+  def check_for_job_completion(self):
+    now = self.env.now
+    len_list = [len(pq) for i, pq in self.input_id__pq_map.items() ]
+    num_non_zero = len([l for l in len_list if l > 0] )
+    if num_non_zero > self.k:
+      log(ERROR, "num_non_zero= {} > k= {}".format(num_non_zero, self.k) )
+    elif num_non_zero < self.k:
+      return 0
+    
+    ref_p = None
+    for j, pq in self.input_id__pq_map.items():
+      if len(pq) == 0:
+        continue
+      p = pq.pop(0)
+      if ref_p is None:
+        ref_p = p
+      else:
+        if p.prev_hop_id == ref_p.prev_hop_id:
+          log(ERROR, "p.prev_hop_id= {} == ref_p.prev_hop_id= {}".format(p.prev_hop_id, ref_p.prev_hop_id) )
+          return 1
+        elif p.entrance_time != ref_p.entrance_time: # time of entrance to the forker e.g., MDSQ
+          log(ERROR, "p.entrance_time= {} != ref_p.entrance_time= {}".format(p.entrance_time, ref_p.entrance_time) )
+          return 1
+      self.qt_list.append(now - p.ref_time)
+    self.out.put(ref_p)
+    self.length = max([len(pq) for i, pq in self.input_id__pq_map.items() ] )
+  
+  def run(self):
+    while True:
+      packet = (yield self.store.get() )
+      if packet.prev_hop_id not in self.input_qid_list:
+        log(ERROR, "packet can NOT continue {}; packet.prev_hop_id= {}".format(self, packet.prev_hop_id) )
+        return 1
+      self.input_id__pq_map[packet.prev_hop_id].append(packet)
+      self.check_for_job_completion()
+  
+  def put(self, packet):
+    sim_log(DEBUG, self.env, self, "recved", packet)
+    packet.ref_time = self.env.now
+    return self.store.put(packet)
+
+class MDSQ(object):
+  def __init__(self, _id, env, k, qid_list, qserv_dist_list):
     self._id = _id
     self.env = env
     self.qid_list = qid_list
@@ -303,7 +321,7 @@ class FJQ(object):
     
     self.num_q = len(qid_list)
     self.join_sink = JSink(_id, env)
-    self.join_q = JQ(env, qid_list)
+    self.join_q = JQ(env, k, qid_list)
     self.join_q.out = self.join_sink
     self.id_q_map = {}
     for i in range(self.num_q):
@@ -315,24 +333,26 @@ class FJQ(object):
     self.store = simpy.Store(env)
     self.out = None
     self.action = env.process(self.run() )  # starts the run() method as a SimPy process
+    
+    self.job_id_counter = 0
   
   def __repr__(self):
-    return "FJQ[qid_list= [{}] ]".format(", ".join(self.qid_list) )
+    return "MDSQ[k= {}, qid_list= [{}] ]".format(self.k, ", ".join(self.qid_list) )
   
   def run(self):
     while True:
       packet = (yield self.store.get() )
       for i, q in self.id_q_map.items():
-        q.put(packet)
+        q.put(packet.deep_copy() )
       
   def put(self, packet):
     sim_log(DEBUG, self.env, self, "recved", packet)
     packet.entrance_time = self.env.now
+    self.job_id_counter += 1
+    packet.job_id = self.job_id_counter
     return self.store.put(packet)
-
-# *******************************************  MDS  ********************************************** #
-
-# ##################################################################################  
+  
+# ################################################################################################ #
 class RandomBrancher(object):
   """ A demultiplexing element that chooses the output port at random.
 

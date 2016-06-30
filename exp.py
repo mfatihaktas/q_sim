@@ -75,7 +75,7 @@ def test_m_m_1():
 
 def test_fj():
   diff_list = []
-  for c in range(10):
+  for c in range(1):
     env = simpy.Environment()
     arr_rate = 0.5
     serv_rate = 1.0
@@ -86,27 +86,32 @@ def test_fj():
     # qid_list = ["m1_q_%s" % i for i in range(1, num_q) ]
     qid_list = ["{}".format(i) for i in range(1, num_q + 1) ]
     qserv_dist_list = [lambda: random.expovariate(serv_rate) for i in range(num_q) ]
-    fj_q = FJQ("fj_q", env, qid_list, qserv_dist_list)
+    fj_q = MDSQ("fj_q", env, num_q, qid_list, qserv_dist_list)
+    # mds_1_q = MDSQ("fj_q", env, 1, qid_list, qserv_dist_list)
     # qm = QMonitor(env, q=m1_q, dist=lambda: 500)
     
     pg.out = fj_q
     
     # env.run(until=5)
     # env.run(until=100)
-    # env.run(until=50000)
-    env.run(until=200000)
+    env.run(until=50000)
+    # env.run(until=200000)
     
     # for num_q= 2
     if num_q == 2:
       print("arr_rate= {}, serv_rate= {}".format(arr_rate, serv_rate) )
       ro = arr_rate/serv_rate
       E_T = (12 - ro)/(8*(serv_rate - arr_rate) )
-      fjt_list = fj_q.join_sink.fjt_list
-      if len(fjt_list) > 0:
-        sim_E_T = float(sum(fjt_list) )/len(fjt_list)
+      st_list = fj_q.join_sink.st_list
+      if len(st_list) > 0:
+        sim_E_T = float(sum(st_list) )/len(st_list)
         print("E[T]= {}, sim_E[T]= {:.3f}".format(E_T,sim_E_T) )
         diff_list.append(abs(E_T - sim_E_T) )
-  print("diff_list= {}".format("".join("%s, " % d for d in diff_list) ) )
+  print("diff_list= [{}]".format("".join("%s, " % d for d in diff_list) ) )
+
+def get_harmonic(k):
+  pass
+  
 
 if __name__ == "__main__":
   # eg_pgen_psink()
