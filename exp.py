@@ -63,9 +63,9 @@ def test_m_m_1():
   E_N = arr_rate/(serv_rate - arr_rate)
   print("E[N]= {}, sim_E[N]= {:.3f}".format(E_N, float(sum(qm.n_list) )/len(qm.n_list) ) )
   E_T = E_N/arr_rate
-  print("E[T]= {}, sim_E[T]= {:.3f}".format(E_T, float(sum(m1_q.qt_list) )/len(m1_q.qt_list) ) )
+  print("E[T]= {:.3f}, sim_E[T]= {:.3f}".format(E_T, float(sum(m1_q.qt_list) )/len(m1_q.qt_list) ) )
   E_W = E_T - 1/serv_rate
-  print("E[W]= {}, sim_E[W]= {:.3f}".format(E_W, float(sum(m1_q.wt_list) )/len(m1_q.wt_list) ) )
+  print("E[W]= {:.3f}, sim_E[W]= {:.3f}".format(E_W, float(sum(m1_q.wt_list) )/len(m1_q.wt_list) ) )
   
   # plot.plot(qm.t_list, qm.n_list, 'r-')
   plot.step(qm.t_list, qm.n_list, 'r-', where='mid', label='mid')
@@ -105,8 +105,41 @@ def test_fj():
       st_list = fj_q.join_sink.st_list
       if len(st_list) > 0:
         sim_E_T = float(sum(st_list) )/len(st_list)
-        print("E[T]= {}, sim_E[T]= {:.3f}".format(E_T,sim_E_T) )
+        print("E[T]= {:.3f}, sim_E[T]= {:.3f}".format(E_T, sim_E_T) )
         diff_list.append(abs(E_T - sim_E_T) )
+  print("diff_list= [{}]".format("".join("%s, " % d for d in diff_list) ) )
+
+def test_mds_n_1():
+  diff_list = []
+  for c in range(1):
+    env = simpy.Environment()
+    arr_rate = 0.5
+    serv_rate = 1.0
+    pg = PacketGenerator(env, _id="p_gen",
+                         adist=lambda: random.expovariate(arr_rate),
+                         sdist=lambda: 1)
+    num_q = 5
+    qid_list = ["{}".format(i) for i in range(1, num_q + 1) ]
+    qserv_dist_list = [lambda: random.expovariate(serv_rate) for i in range(num_q) ]
+    mds_q = MDSQ("mds_q", env, 1, qid_list, qserv_dist_list)
+    # qm = QMonitor(env, q=m1_q, dist=lambda: 500)
+    
+    pg.out = mds_q
+    
+    # env.run(until=5)
+    # env.run(until=100)
+    env.run(until=50000)
+    # env.run(until=200000)
+    
+    # for num_q= 2
+    print("num_q= {}, arr_rate= {}, serv_rate= {}".format(num_q, arr_rate, serv_rate) )
+    # ro = arr_rate/serv_rate
+    E_T = 1.0/(num_q*serv_rate - arr_rate)
+    st_list = mds_q.join_sink.st_list
+    if len(st_list) > 0:
+      sim_E_T = float(sum(st_list) )/len(st_list)
+      print("E[T]= {:.3f}, sim_E[T]= {:.3f}".format(E_T, sim_E_T) )
+      diff_list.append(abs(E_T - sim_E_T) )
   print("diff_list= [{}]".format("".join("%s, " % d for d in diff_list) ) )
 
 def get_harmonic(k):
@@ -117,6 +150,6 @@ if __name__ == "__main__":
   # eg_pgen_psink()
   # eg_overloaded_m1_q()
   # test_m_m_1()
-  test_fj()
-  
+  # test_fj()
+  test_mds_n_1()
   

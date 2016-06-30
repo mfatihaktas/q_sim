@@ -7,24 +7,6 @@ from heapq import heappush, heappop
 from patch import *
 
 class Packet(object):
-  """ A very simple class that represents a packet.
-    This packet will run through a queue at a switch output port.
-    We use a float to represent the size of the packet in bytes so that
-    we can compare to ideal M/M/1 queues.
-
-    Parameters
-    ----------
-    time : float
-      the time the packet arrives at the output queue.
-    size : float
-      the size of the packet in bytes
-    _id : int
-      an identifier for the packet
-    src, dst : int
-      identifiers for source and destination
-    flow_id : int
-      small integer that can be used to identify a flow
-  """
   def __init__(self, time, size, _id, src="a", dst="z", flow_id=0):
     self.time = time
     self.size = size
@@ -50,23 +32,14 @@ class Packet(object):
     return "Packet[_id: {}, prev_hop_id: {}, job_id: {}]".\
       format(self._id, self.prev_hop_id, self.job_id)
 
-class PacketGenerator(object):
-  """ Generates packets with given inter-arrival time distribution.
-    Set the "out" member variable to the entity to receive the packet.
+class CPacket(object): # Control
+  def __init__(self, _id):
+    self._id = _id
+  
+  def __repr__(self):
+    return "CPacket[_id= {}]".format(self._id)
 
-    Parameters
-    ----------
-    env : simpy.Environment
-      the simulation environment
-    adist : function
-      a no parameter function that returns the successive inter-arrival times of the packets
-    sdist : function
-      a no parameter function that returns the successive sizes of the packets
-    initial_delay : number
-      Starts generation after an initial delay. Default = 0
-    finish : number
-      Stops generation at the finish time. Default is infinite
-  """
+class PacketGenerator(object):
   def __init__(self, env, _id, adist, sdist, initial_delay=0, finish=float("inf"), flow_id=0):
     self._id = _id
     self.env = env
@@ -81,8 +54,6 @@ class PacketGenerator(object):
     self.action = env.process(self.run())  # starts the run() method as a SimPy process
 
   def run(self):
-    """The generator function used in simulations.
-    """
     yield self.env.timeout(self.initial_delay)
     while self.env.now < self.finish:
       # wait for next transmission
@@ -90,62 +61,6 @@ class PacketGenerator(object):
       self.n_sent += 1
       p = Packet(time=self.env.now, size=self.sdist(), _id=self.n_sent, src=self._id, flow_id=self.flow_id)
       self.out.put(p)
-  
-class PacketSink(object):
-  """ Receives packets and collects delay information into the
-    waits list. You can then use this list to look at delay statistics.
-
-    Parameters
-    ----------
-    env : simpy.Environment
-      the simulation environment
-    debug : boolean
-      if true then the contents of each packet will be printed as it is received.
-    rec_arrivals : boolean
-      if true then arrivals will be recorded
-    absolute_arrivals : boolean
-      if true absolute arrival times will be recorded, otherwise the time between consecutive arrivals
-      is recorded.
-    rec_waits : boolean
-      if true waiting time experienced by each packet is recorded
-    selector: a function that takes a packet and returns a boolean
-      used for selective statistics. Default none.
-  """
-  def __init__(self, env, rec_arrivals=False, absolute_arrivals=False, rec_waits=True, debug=False, selector=None):
-    self.env = env
-    self.rec_waits = rec_waits
-    self.rec_arrivals = rec_arrivals
-    self.absolute_arrivals = absolute_arrivals
-    self.waits = []
-    self.arrivals = []
-    self.debug = debug
-    self.n_recved = 0
-    self.B_recved = 0
-    self.selector = selector
-    
-    self.store = simpy.Store(env)
-    self.action = env.process(self.run() )  # starts the run() method as a SimPy process
-
-  def run(self):
-    last_arrival = 0.0
-    while True:
-      msg = (yield self.store.get() )
-      if not self.selector or self.selector(msg):
-        now = self.env.now
-        sim_log(DEBUG, self.env, "psink", "recved", msg)
-        if self.rec_waits:
-          self.waits.append(self.env.now - msg.time)
-        if self.rec_arrivals:
-          if self.absolute_arrivals:
-            self.arrivals.append(now)
-          else:
-            self.arrivals.append(now - last_arrival)
-          last_arrival = now
-        self.n_recved += 1
-        self.B_recved += msg.size
-
-  def put(self, pkt):
-    self.store.put(pkt)
 
 class S1_Q(object): # Memoryless service, 1 server
   def __init__(self, _id, env, serv_dist=None, rate=None, qlimit_n=None, qlimit_B=None, debug=False):
@@ -157,6 +72,9 @@ class S1_Q(object): # Memoryless service, 1 server
     self.qlimit_B = qlimit_B
     self.debug = debug
     
+    self.p_list = []
+    self.p_in_serv = None
+    self.cancel = None
     self.n_recved = 0
     self.n_dropped = 0
     self.size_n = 0  # Current size of the queue in n
@@ -166,50 +84,86 @@ class S1_Q(object): # Memoryless service, 1 server
     self.qt_list = []
     
     self.store = simpy.Store(env)
+    self.store_c = simpy.Store(env)
+    self.syncer = simpy.Store(env) # simpy.Resource(env, capacity=1)
     self.out = None
     self.action = env.process(self.run() )  # starts the run() method as a SimPy process
+    self.action = env.process(self.run_c() )
+    self.action = env.process(self.run_helper() )
   
   def __repr__(self):
     # return "S1_Q[_id= {}, rate= {}, qlimit_n= {}, qlimit_B= {}]".format(_id, self.rate, self.qlimit_n, self.qlimit_B)
     return "S1_Q[_id= {}]".format(self._id)
-    
+  
   def run(self):
     while True:
-      packet = (yield self.store.get() )
-      self.wt_list.append(self.env.now - packet.ref_time)
+      p = (yield self.store.get() )
+      self.p_list.append(p)
+      self.syncer.put(1)
+  
+  def run_helper(self): # To implement del from self.store
+    while True:
+      (yield self.syncer.get() )
+      if len(self.p_list) == 0:
+        continue # log(ERROR, "self.p_list is empty!") # May happen because of task cancellations
+      self.p_in_serv = self.p_list.pop(0)
+      self.wt_list.append(self.env.now - self.p_in_serv.ref_time)
       self.size_n -= 1
-      self.size_B -= packet.size
+      self.size_B -= self.p_in_serv.size
       self.busy = 1
+      if self.cancel is None:
+        self.cancel = self.env.event()
       if self.serv_dist is None:
         if self.rate is None:
           log(ERROR, "self.serv_dist is None but self.rate is None too!")
           return 1
-        yield self.env.timeout(packet.size/self.rate) # service
+        yield (self.cancel | self.env.timeout(self.p_in_serv.size/self.rate) ) # service
       else:
-        yield self.env.timeout(self.serv_dist() ) # service
-      sim_log(DEBUG, self.env, self, "forwarding", packet)
-      self.qt_list.append(self.env.now - packet.ref_time)
-      if self.out is not None:
-        packet.prev_hop_id = self._id
-        self.out.put(packet)
+        yield (self.cancel | self.env.timeout(self.serv_dist() ) ) # service
+      if self.cancel is None: # task got cancelled
+        sim_log(DEBUG, self.env, self, "cancelling", self.p_in_serv)
+      else:
+        self.qt_list.append(self.env.now - self.p_in_serv.ref_time)
+        if self.out is not None:
+          sim_log(DEBUG, self.env, self, "finished serv, forwarding", self.p_in_serv)
+          self.p_in_serv.prev_hop_id = self._id
+          self.out.put(self.p_in_serv)
       self.busy = 0
   
-  def put(self, packet):
+  def put(self, p):
     self.n_recved += 1
-    packet.ref_time = self.env.now
-    sim_log(DEBUG, self.env, self, "recved", packet)
+    p.ref_time = self.env.now
+    sim_log(DEBUG, self.env, self, "recved", p)
     t_size_n = self.size_n + 1
-    t_size_B = self.size_B + packet.size
+    t_size_B = self.size_B + p.size
     if (self.qlimit_n is not None and t_size_n > self.qlimit_n) or \
        (self.qlimit_B is not None and t_size_B > self.qlimit_B):
-      sim_log(DEBUG, self.env, self, "dropping", packet)
+      sim_log(DEBUG, self.env, self, "dropping", p)
       self.n_dropped += 1
       return
     else:
       self.size_n = t_size_n
       self.size_B = t_size_B
-      return self.store.put(packet)
-
+      return self.store.put(p)
+  
+  def run_c(self):
+    while True:
+      cp = (yield self.store_c.get() )
+      if self.p_in_serv.job_id == cp._id:
+        if self.cancel is None:
+          log(ERROR, "self.cancel is None!")
+          return 1
+        self.cancel.succeed()
+        self.cancel = None
+      
+      for p in self.p_list:
+        if p.job_id == cp._id:
+          self.p_list.remove(p)
+  
+  def put_c(self, cp):
+    sim_log(DEBUG, self.env, self, "recved", cp)
+    return self.store_c.put(cp)
+    
 class QMonitor(object):
   def __init__(self, env, q, dist):
     self.q = q
@@ -244,15 +198,15 @@ class JSink(object): # Join
   
   def run(self):
     while True:
-      packet = (yield self.store.get() )
-      self.st_list.append(self.env.now - packet.entrance_time)
+      p = (yield self.store.get() )
+      self.st_list.append(self.env.now - p.entrance_time)
       if self.out is not None:
-        self.out.put(packet)
+        self.out.put(p)
   
-  def put(self, packet):
-    sim_log(DEBUG, self.env, self, "recved", packet)
-    return self.store.put(packet)
-  
+  def put(self, p):
+    sim_log(DEBUG, self.env, self, "recved", p)
+    return self.store.put(p)
+
 class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job comletion
   def __init__(self, env, k, input_qid_list):
     self.env = env
@@ -265,7 +219,7 @@ class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job 
     
     self.store = simpy.Store(env)
     self.out = None
-    self.fb_out = None # feedback
+    self.out_c = None
     self.action = env.process(self.run() )  # starts the run() method as a SimPy process
   
   def __repr__(self):
@@ -288,34 +242,37 @@ class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job 
       if ref_p is None:
         ref_p = p
       else:
-        if p.prev_hop_id == ref_p.prev_hop_id:
-          log(ERROR, "p.prev_hop_id= {} == ref_p.prev_hop_id= {}".format(p.prev_hop_id, ref_p.prev_hop_id) )
-          return 1
-        elif p.entrance_time != ref_p.entrance_time: # time of entrance to the forker e.g., MDSQ
-          log(ERROR, "p.entrance_time= {} != ref_p.entrance_time= {}".format(p.entrance_time, ref_p.entrance_time) )
+        if (p.prev_hop_id == ref_p.prev_hop_id) or \
+           (p.entrance_time != ref_p.entrance_time) or \
+           (p.job_id != ref_p.job_id):
+          log(ERROR, "supposed to be tasks of the same job;\np= {}\nref_p= {}".format(p, ref_p) )
           return 1
       self.qt_list.append(now - p.ref_time)
+    # signal cancellation of the remaining tasks of the completed job
+    self.out_c.put_c(CPacket(ref_p.job_id) )
+    
     self.out.put(ref_p)
     self.length = max([len(pq) for i, pq in self.input_id__pq_map.items() ] )
   
   def run(self):
     while True:
-      packet = (yield self.store.get() )
-      if packet.prev_hop_id not in self.input_qid_list:
-        log(ERROR, "packet can NOT continue {}; packet.prev_hop_id= {}".format(self, packet.prev_hop_id) )
+      p = (yield self.store.get() )
+      if p.prev_hop_id not in self.input_qid_list:
+        log(ERROR, "packet can NOT continue {}; packet= {}".format(self, p) )
         return 1
-      self.input_id__pq_map[packet.prev_hop_id].append(packet)
+      self.input_id__pq_map[p.prev_hop_id].append(p)
       self.check_for_job_completion()
   
-  def put(self, packet):
-    sim_log(DEBUG, self.env, self, "recved", packet)
-    packet.ref_time = self.env.now
-    return self.store.put(packet)
+  def put(self, p):
+    sim_log(DEBUG, self.env, self, "recved", p)
+    p.ref_time = self.env.now
+    return self.store.put(p)
 
 class MDSQ(object):
   def __init__(self, _id, env, k, qid_list, qserv_dist_list):
     self._id = _id
     self.env = env
+    self.k = k
     self.qid_list = qid_list
     self.qserv_dist_list = qserv_dist_list
     
@@ -323,6 +280,7 @@ class MDSQ(object):
     self.join_sink = JSink(_id, env)
     self.join_q = JQ(env, k, qid_list)
     self.join_q.out = self.join_sink
+    self.join_q.out_c = self
     self.id_q_map = {}
     for i in range(self.num_q):
       qid = qid_list[i]
@@ -331,8 +289,10 @@ class MDSQ(object):
       self.id_q_map[qid] = m1_q
     
     self.store = simpy.Store(env)
+    self.store_c = simpy.Store(env)
     self.out = None
-    self.action = env.process(self.run() )  # starts the run() method as a SimPy process
+    self.action = env.process(self.run() ) # starts the run() method as a SimPy process
+    self.action = env.process(self.run_c() )
     
     self.job_id_counter = 0
   
@@ -341,16 +301,26 @@ class MDSQ(object):
   
   def run(self):
     while True:
-      packet = (yield self.store.get() )
+      p = (yield self.store.get() )
       for i, q in self.id_q_map.items():
-        q.put(packet.deep_copy() )
+        q.put(p.deep_copy() )
       
-  def put(self, packet):
-    sim_log(DEBUG, self.env, self, "recved", packet)
-    packet.entrance_time = self.env.now
+  def put(self, p):
+    sim_log(DEBUG, self.env, self, "recved", p)
+    p.entrance_time = self.env.now
     self.job_id_counter += 1
-    packet.job_id = self.job_id_counter
-    return self.store.put(packet)
+    p.job_id = self.job_id_counter
+    return self.store.put(p)
+  
+  def run_c(self):
+    while True:
+      cp = (yield self.store_c.get() )
+      for i, q in self.id_q_map.items():
+        q.put_c(cp)
+  
+  def put_c(self, cp):
+    sim_log(DEBUG, self.env, self, "recved", cp)
+    return self.store_c.put(cp)
   
 # ################################################################################################ #
 class RandomBrancher(object):
