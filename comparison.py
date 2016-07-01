@@ -17,7 +17,7 @@ class Packet(object):
     self.ref_time = 0 # for casual use
     # for FJ and MDS Q implementation
     self.prev_hop_id = None
-    self.entrance_time = None
+    self.entrance_time = 0
     self.job_id = None
   
   def deep_copy(self):
@@ -226,7 +226,7 @@ class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job 
     self.action = env.process(self.run() )  # starts the run() method as a SimPy process
   
   def __repr__(self):
-    return "JQ[k= {}, input_qid_list= [{}]]".format(self.k, ",".join(self.input_qid_list) )
+    return "JQ[k= {}, input_qid_list= [{}]]".format(self.k, ", ".join(self.input_qid_list) )
     
   def check_for_job_completion(self):
     now = self.env.now
@@ -272,17 +272,15 @@ class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job 
     return self.store.put(p)
 
 class MDSQ(object):
-  def __init__(self, _id, env, k, qid_list, qserv_dist_list, out=None):
+  def __init__(self, _id, env, k, qid_list, qserv_dist_list):
     self._id = _id
     self.env = env
     self.k = k
     self.qid_list = qid_list
     self.qserv_dist_list = qserv_dist_list
-    # self.out = out
     
     self.num_q = len(qid_list)
     self.join_sink = JSink(_id, env)
-    self.join_sink.out = out
     self.join_q = JQ(env, k, qid_list)
     self.join_q.out = self.join_sink
     self.join_q.out_c = self
@@ -295,82 +293,6 @@ class MDSQ(object):
     
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
-    self.action = env.process(self.run() ) # starts the run() method as a SimPy process
-    self.action = env.process(self.run_c() )
-    
-    self.job_id_counter = 0
-  
-  def __repr__(self):
-    return "MDSQ[k= {}, qid_list= [{}] ]".format(self.k, ",".join(self.qid_list) )
-  
-  def run(self):
-    while True:
-      p = (yield self.store.get() )
-      for i, q in self.id_q_map.items():
-        q.put(p.deep_copy() )
-      
-  def put(self, p):
-    sim_log(DEBUG, self.env, self, "recved", p)
-    if p.entrance_time is None:
-      p.entrance_time = self.env.now
-    if p.job_id is None:
-      self.job_id_counter += 1
-      p.job_id = self.job_id_counter
-    return self.store.put(p)
-  
-  def run_c(self):
-    while True:
-      cp = (yield self.store_c.get() )
-      for i, q in self.id_q_map.items():
-        q.put_c(cp)
-  
-  def put_c(self, cp):
-    sim_log(DEBUG, self.env, self, "recved", cp)
-    return self.store_c.put(cp)
-
-# **************************************  Availability Q  **************************************** #
-"""
-  Implements (n, k, r, t)-LRC Q
-  A file consists of k-pieces and mapped to n code-words with an MDS code.
-  The (r, t)-availability ensures that each systematic node can be regenerated using one of the t 
-  disjoint repair groups of other storage nodes, each of size at most r (typically << k)
-  Ref: When do the Availability Codes Make the Stored Data More Available?
-"""
-class AQ(object): # Availability
-  def __init__(self, _id, env, k, r, t, qid_list, qserv_dist_list, out=None):
-    self._id = _id
-    self.env = env
-    self.k = k
-    self.r = r
-    self.t = t
-    self.qid_list = qid_list
-    self.qserv_dist_list = qserv_dist_list
-    # self.out = out
-    
-    self.num_q = len(qid_list)
-    if self.num_q != (1 + t*r):
-      log(ERROR, "self.num_q= {} != (1 + t*r)= {}".format(self.num_q, (1 + t*r) ) )
-      return 1
-    self.join_sink = JSink(_id, env)
-    self.join_sink.out = out
-    self.join_q = JQ(env=env, k=1, input_qid_list=qid_list)
-    self.join_q.out = self.join_sink
-    self.join_q.out_c = self
-    self.group_id__q_map = {}
-    for g in range(1, t + 1):
-      q = None
-      if g == 1:
-        q = S1_Q(_id=qid_list[0], env=env, serv_dist=qserv_dist_list[g] )
-        q.out = self.join_q
-      else:
-        li = 1+(g-2)*r
-        ri = li + r
-        q = MDSQ(_id="".join(["%s," % i for i in qid_list[li:ri] ] ),
-                 env=env, k=k, qid_list=qid_list[li:ri], qserv_dist_list=qserv_dist_list[li:ri], out=self.join_q)
-      self.group_id__q_map[g] = q
-    
-    self.store = simpy.Store(env)
-    self.store_c = simpy.Store(env)
     self.out = None
     self.action = env.process(self.run() ) # starts the run() method as a SimPy process
     self.action = env.process(self.run_c() )
@@ -378,13 +300,12 @@ class AQ(object): # Availability
     self.job_id_counter = 0
   
   def __repr__(self):
-    return "AQ[k= {}, r= {}, t= {}]".format(self.k, self.r, self.t)
-    # return "AQ[k= {}, r= {}, t= {}, qid_list= [{}] ]".format(self.k, self.r, ",".join(self.qid_list) )
+    return "MDSQ[k= {}, qid_list= [{}] ]".format(self.k, ", ".join(self.qid_list) )
   
   def run(self):
     while True:
       p = (yield self.store.get() )
-      for g, q in self.group_id__q_map.items():
+      for i, q in self.id_q_map.items():
         q.put(p.deep_copy() )
       
   def put(self, p):
@@ -397,12 +318,14 @@ class AQ(object): # Availability
   def run_c(self):
     while True:
       cp = (yield self.store_c.get() )
-      for g, q in self.group_id__q_map.items():
+      for i, q in self.id_q_map.items():
         q.put_c(cp)
   
   def put_c(self, cp):
     sim_log(DEBUG, self.env, self, "recved", cp)
     return self.store_c.put(cp)
+
+# *******************************************  Availability  ********************************************** #
 
 # ################################################################################################ #
 class RandomBrancher(object):
