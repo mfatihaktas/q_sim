@@ -74,6 +74,8 @@ def test_m_m_1():
   plot.savefig("m_m_1_q.png")
 
 def test_fj():
+  def H_k(k):
+    return float(sum([1/float(i) for i in range(1, k + 1) ] ) )
   diff_list = []
   for c in range(1):
     env = simpy.Environment()
@@ -98,15 +100,21 @@ def test_fj():
     # env.run(until=200000)
     
     # for num_q= 2
+    E_T = None
+    ro = arr_rate/serv_rate
+    E_T_2 = (12 - ro)/(8*(serv_rate - arr_rate) )
     if num_q == 2:
-      print("arr_rate= {}, serv_rate= {}".format(arr_rate, serv_rate) )
-      ro = arr_rate/serv_rate
-      E_T = (12 - ro)/(8*(serv_rate - arr_rate) )
-      st_list = fj_q.join_sink.st_list
-      if len(st_list) > 0:
-        sim_E_T = float(sum(st_list) )/len(st_list)
-        print("E[T]= {:.3f}, sim_E[T]= {:.3f}".format(E_T, sim_E_T) )
-        diff_list.append(abs(E_T - sim_E_T) )
+      E_T = E_T_2
+    else:
+      x = H_k(num_q)/H_k(2)
+      # Approximate Analysis of Fork/Join Synchronization in Parallel Queues
+      E_T = (x + (4.0/11.0)*(1-x)*ro)*E_T_2
+    print("num_q= {}, arr_rate= {}, serv_rate= {}".format(num_q, arr_rate, serv_rate) )
+    st_list = fj_q.join_sink.st_list
+    if len(st_list) > 0:
+      sim_E_T = float(sum(st_list) )/len(st_list)
+      print("E[T]= {:.3f}, sim_E[T]= {:.3f}".format(E_T, sim_E_T) )
+      diff_list.append(abs(E_T - sim_E_T) )
   print("diff_list= [{}]".format("".join("%s, " % d for d in diff_list) ) )
 
 def test_mds_n_1():
@@ -142,14 +150,10 @@ def test_mds_n_1():
       diff_list.append(abs(E_T - sim_E_T) )
   print("diff_list= [{}]".format("".join("%s, " % d for d in diff_list) ) )
 
-def get_harmonic(k):
-  pass
-  
-
 if __name__ == "__main__":
   # eg_pgen_psink()
   # eg_overloaded_m1_q()
   # test_m_m_1()
-  # test_fj()
-  test_mds_n_1()
+  test_fj()
+  # test_mds_n_1()
   
