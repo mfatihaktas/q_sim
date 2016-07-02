@@ -2,7 +2,9 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plot
 from random import expovariate
+import pprint
 import simpy
+
 from sim_components import *
 
 def eg_pgen_psink():
@@ -116,6 +118,12 @@ def test_fj():
       print("E[T]= {:.3f}, sim_E[T]= {:.3f}".format(E_T, sim_E_T) )
       diff_list.append(abs(E_T - sim_E_T) )
   print("diff_list= [{}]".format("".join("%s, " % d for d in diff_list) ) )
+  
+  print("fj_q.join_sink.qid__num_win_map= {}".format(pprint.pformat(fj_q.join_sink.qid__num_win_map) ) )
+  total_num_wins = sum([n for i, n in fj_q.join_sink.qid__num_win_map.items() ] )
+  print("pg.n_sent= {}, total_num_wins= {}".format(pg.n_sent, total_num_wins) )
+  qid__win_freq_map = {i:float(n)/total_num_wins for i, n in fj_q.join_sink.qid__num_win_map.items() }
+  print("qid__win_freq_map= {}".format(pprint.pformat(qid__win_freq_map) ) )
 
 def test_mds_n_1():
   diff_list = []
@@ -150,10 +158,90 @@ def test_mds_n_1():
       diff_list.append(abs(E_T - sim_E_T) )
   print("diff_list= [{}]".format("".join("%s, " % d for d in diff_list) ) )
 
+"""
+def test_mds_n_k():
+  diff_list = []
+  for c in range(1):
+    env = simpy.Environment()
+    arr_rate = 0.5
+    serv_rate = 1.0
+    pg = PacketGenerator(env, _id="p_gen",
+                         adist=lambda: random.expovariate(arr_rate),
+                         sdist=lambda: 1)
+    num_q = 5
+    qid_list = ["{}".format(i) for i in range(1, num_q + 1) ]
+    qserv_dist_list = [lambda: random.expovariate(serv_rate) for i in range(num_q) ]
+    mds_q = MDSQ("mds_q", env, 1, qid_list, qserv_dist_list)
+    # qm = QMonitor(env, q=m1_q, dist=lambda: 500)
+    
+    pg.out = mds_q
+    
+    # env.run(until=5)
+    # env.run(until=100)
+    env.run(until=50000)
+    # env.run(until=200000)
+    
+    # for num_q= 2
+    print("num_q= {}, arr_rate= {}, serv_rate= {}".format(num_q, arr_rate, serv_rate) )
+    # ro = arr_rate/serv_rate
+    E_T = 1.0/(num_q*serv_rate - arr_rate)
+    st_list = mds_q.join_sink.st_list
+    if len(st_list) > 0:
+      sim_E_T = float(sum(st_list) )/len(st_list)
+      print("E[T]= {:.3f}, sim_E[T]= {:.3f}".format(E_T, sim_E_T) )
+      diff_list.append(abs(E_T - sim_E_T) )
+  print("diff_list= [{}]".format("".join("%s, " % d for d in diff_list) ) )
+"""
+
+def test_simplex_q():
+  diff_list = []
+  for c in range(1):
+    env = simpy.Environment()
+    arr_rate = 0.9 # 0.5
+    serv_rate = 1.0
+    pg = PacketGenerator(env, _id="p_gen",
+                         adist=lambda: random.expovariate(arr_rate),
+                         sdist=lambda: 1)
+    k, r, t = 2, 2, 1
+    num_q = 1 + t*r
+    qid_list = ["{}".format(i) for i in range(1, num_q + 1) ]
+    qserv_dist_list = [lambda: random.expovariate(serv_rate) for i in range(num_q) ]
+    a_q = AQ("a_q", env, k, r, t, qid_list, qserv_dist_list)
+    
+    pg.out = a_q
+    
+    # env.run(until=5)
+    env.run(until=50000)
+    # env.run(until=200000)
+    
+    # for num_q= 2
+    print("num_q= {}, arr_rate= {}, serv_rate= {}".format(num_q, arr_rate, serv_rate) )
+    print("a_q= {}".format(a_q) )
+    ro = arr_rate/serv_rate
+    E_T_m_m_1 = 1.0/(serv_rate-arr_rate)
+    E_T_f_j_2 = (12-ro)/8*E_T_m_m_1
+    st_list = a_q.join_sink.st_list
+    E_T = 7/9*E_T_m_m_1 + 2/9*E_T_f_j_2
+    if len(st_list) > 0:
+      sim_E_T = float(sum(st_list) )/len(st_list)
+      print("E_T_m_m_1= {:.3f}, E_T_f_j_2= {:.3f}".format(E_T_m_m_1, E_T_f_j_2) )
+      print("E[T]= {:.3f}, sim_E[T]= {:.3f}".format(E_T, sim_E_T) )
+      diff_list.append(abs(E_T - sim_E_T) )
+  print("diff_list= [{}]".format("".join("%s, " % d for d in diff_list) ) )
+  
+  print("a_q.join_sink.qid__num_win_map= {}".format(pprint.pformat(a_q.join_sink.qid__num_win_map) ) )
+  total_num_wins = sum([n for i, n in a_q.join_sink.qid__num_win_map.items() ] )
+  print("pg.n_sent= {}, total_num_wins= {}".format(pg.n_sent, total_num_wins) )
+  qid__win_freq_map = {i:float(n)/total_num_wins for i, n in a_q.join_sink.qid__num_win_map.items() }
+  print("qid__win_freq_map= {}".format(pprint.pformat(qid__win_freq_map) ) )
+  
+  print("a_q.group_id__q_map= {}".format(pprint.pformat(a_q.group_id__q_map) ) )
+
 if __name__ == "__main__":
   # eg_pgen_psink()
   # eg_overloaded_m1_q()
   # test_m_m_1()
-  test_fj()
+  # test_fj()
   # test_mds_n_1()
+  test_simplex_q()
   

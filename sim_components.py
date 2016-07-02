@@ -33,11 +33,12 @@ class Packet(object):
       format(self._id, self.prev_hop_id, self.job_id)
 
 class CPacket(object): # Control
-  def __init__(self, _id):
+  def __init__(self, _id, prev_hop_id=None):
     self._id = _id
+    self.prev_hop_id = prev_hop_id
   
   def __repr__(self):
-    return "CPacket[_id= {}]".format(self._id)
+    return "CPacket[_id= {}, prev_hop_id= {}]".format(self._id, self.prev_hop_id)
 
 class PacketGenerator(object):
   def __init__(self, env, _id, adist, sdist, initial_delay=0, finish=float("inf"), flow_id=0):
@@ -188,6 +189,7 @@ class JSink(object): # Join
     self.env = env
     
     self.st_list = [] # total time in system
+    self.qid__num_win_map = {}
     
     self.store = simpy.Store(env)
     self.out = None
@@ -200,6 +202,10 @@ class JSink(object): # Join
     while True:
       p = (yield self.store.get() )
       self.st_list.append(self.env.now - p.entrance_time)
+      if p.prev_hop_id not in self.qid__num_win_map:
+        self.qid__num_win_map[p.prev_hop_id] = 0
+      self.qid__num_win_map[p.prev_hop_id] += 1
+      
       if self.out is not None:
         self.out.put(p)
   
@@ -208,7 +214,8 @@ class JSink(object): # Join
     return self.store.put(p)
 
 class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job comletion
-  def __init__(self, env, k, input_qid_list):
+  def __init__(self, _id, env, k, input_qid_list):
+    self._id = _id
     self.env = env
     self.k = k
     self.input_qid_list = input_qid_list
@@ -221,14 +228,16 @@ class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job 
     self.length = 0 # maximum of the lengths of all pq's
     
     self.store = simpy.Store(env)
+    self.store_c = simpy.Store(env)
     self.out = None
     self.out_c = None
     self.action = env.process(self.run() )  # starts the run() method as a SimPy process
+    self.action = env.process(self.run_c() )
   
   def __repr__(self):
-    return "JQ[k= {}, input_qid_list= [{}]]".format(self.k, ",".join(self.input_qid_list) )
+    return "JQ[_id= {}, k= {}, input_qid_list= [{}]]".format(self._id, self.k, ",".join(self.input_qid_list) )
     
-  def check_for_job_completion(self):
+  def check_for_job_completion(self, possible_winner_id):
     now = self.env.now
     len_list = [len(pq) for i, pq in self.input_id__pq_map.items() ]
     num_non_zero = len([l for l in len_list if l > 0] )
@@ -248,12 +257,13 @@ class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job 
         if (p.prev_hop_id == ref_p.prev_hop_id) or \
            (p.entrance_time != ref_p.entrance_time) or \
            (p.job_id != ref_p.job_id):
-          log(ERROR, "supposed to be tasks of the same job;\np= {}\nref_p= {}".format(p, ref_p) )
+          log(ERROR, "supposed to be tasks of the same job;\n\tp= {}\n\tref_p= {}".format(p, ref_p) )
           return 1
       self.qt_list.append(now - p.ref_time)
     if not self.fj:
-      self.out_c.put_c(CPacket(ref_p.job_id) )
+      self.out_c.put_c(CPacket(_id=ref_p.job_id, prev_hop_id=self._id) )
     
+    ref_p.prev_hop_id = possible_winner_id
     self.out.put(ref_p)
     self.length = max([len(pq) for i, pq in self.input_id__pq_map.items() ] )
   
@@ -264,13 +274,25 @@ class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job 
         log(ERROR, "packet can NOT continue {}; packet= {}".format(self, p) )
         return 1
       self.input_id__pq_map[p.prev_hop_id].append(p)
-      self.check_for_job_completion()
+      self.check_for_job_completion(p.prev_hop_id)
   
   def put(self, p):
     sim_log(DEBUG, self.env, self, "recved", p)
     p.ref_time = self.env.now
     return self.store.put(p)
-
+  
+  def run_c(self):
+    while True:
+      cp = (yield self.store_c.get() )
+      for j, pq in self.input_id__pq_map.items():
+        for p in pq:
+          if p.job_id == cp._id:
+            pq.remove(p)
+  
+  def put_c(self, cp):
+    sim_log(DEBUG, self.env, self, "recved", cp)
+    return self.store_c.put(cp)
+    
 class MDSQ(object):
   def __init__(self, _id, env, k, qid_list, qserv_dist_list, out=None):
     self._id = _id
@@ -283,7 +305,7 @@ class MDSQ(object):
     self.num_q = len(qid_list)
     self.join_sink = JSink(_id, env)
     self.join_sink.out = out
-    self.join_q = JQ(env, k, qid_list)
+    self.join_q = JQ(_id, env, k, qid_list)
     self.join_q.out = self.join_sink
     self.join_q.out_c = self
     self.id_q_map = {}
@@ -308,7 +330,7 @@ class MDSQ(object):
       p = (yield self.store.get() )
       for i, q in self.id_q_map.items():
         q.put(p.deep_copy() )
-      
+  
   def put(self, p):
     sim_log(DEBUG, self.env, self, "recved", p)
     if p.entrance_time is None:
@@ -323,6 +345,8 @@ class MDSQ(object):
       cp = (yield self.store_c.get() )
       for i, q in self.id_q_map.items():
         q.put_c(cp)
+      if cp.prev_hop_id != self._id: # to avoid inifinite loops in case cp came from a different jq then self.join_q
+        self.join_q.put_c(cp)
   
   def put_c(self, cp):
     sim_log(DEBUG, self.env, self, "recved", cp)
@@ -353,11 +377,11 @@ class AQ(object): # Availability
       return 1
     self.join_sink = JSink(_id, env)
     self.join_sink.out = out
-    self.join_q = JQ(env=env, k=1, input_qid_list=qid_list)
+    self.join_q = JQ(_id=_id, env=env, k=1, input_qid_list=qid_list)
     self.join_q.out = self.join_sink
     self.join_q.out_c = self
     self.group_id__q_map = {}
-    for g in range(1, t + 1):
+    for g in range(1, t + 1 + 1):
       q = None
       if g == 1:
         q = S1_Q(_id=qid_list[0], env=env, serv_dist=qserv_dist_list[g] )
@@ -367,6 +391,7 @@ class AQ(object): # Availability
         ri = li + r
         q = MDSQ(_id="".join(["%s," % i for i in qid_list[li:ri] ] ),
                  env=env, k=k, qid_list=qid_list[li:ri], qserv_dist_list=qserv_dist_list[li:ri], out=self.join_q)
+        # print("g= {}, q= {}".format(g, q) )
       self.group_id__q_map[g] = q
     
     self.store = simpy.Store(env)
