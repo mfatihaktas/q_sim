@@ -34,4 +34,6 @@ def log(dlevel, log):
   """
   if DEBUG_LEVEL <= dlevel:
     print("{}] {}".format(debug_level__string_map[dlevel], log) )
-  
+
+def list_to_str(l):
+  return ",".join("%s" % e for e in l)
