@@ -20,8 +20,10 @@ if [ $1 = 'e' ]; then
   # LOG_F="$1.log"
   # rm -r __pycache__; $PYTHON exp.py < /dev/null 2>&1 | tee $LOG_F
   rm -r __pycache__; rm *.png; $PYTHON exp.py --num_q=3
-elif [ $1 = 'f' ]; then
-  $PYTHON fun.py
+elif [ $1 = 's' ]; then
+  $PYTHON simplex_models.py
+elif [ $1 = 'd' ]; then
+  rm -r __pycache__; rm *.png; $PYTHON deprecated.py
 elif [ $1 = 'me' ]; then
   rm -r __pycache__; rm *.log *.png
   NUM_Q_MIN=3

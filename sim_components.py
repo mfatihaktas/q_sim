@@ -3,6 +3,7 @@ from simpy.core import BoundClass
 from simpy.resources import base
 from heapq import heappush, heappop
 from patch import *
+from deprecated import *
 
 class Packet(object):
   def __init__(self, time, size, _id, src="a", dst="z", flow_id=0):
@@ -83,11 +84,12 @@ class Q(object):
     self.num_s = num_s
 
 class S1_Q(Q): # Memoryless service, 1 server
-  def __init__(self, _id, env, serv_dist=None, rate=None, qlimit_n=None, qlimit_B=None, debug=False):
+  def __init__(self, _id, env, serv_rate, serv_dist=None, rate=None, qlimit_n=None, qlimit_B=None, debug=False):
     super().__init__(_id, env, 1)
     # self._id = _id
     # self.env = env
-    self.serv_dist = serv_dist
+    self.serv_rate = serv_rate
+    self.serv_dist = lambda: random.expovariate(serv_rate)
     self.rate = rate
     self.qlimit_n = qlimit_n
     self.qlimit_B = qlimit_B
@@ -114,7 +116,7 @@ class S1_Q(Q): # Memoryless service, 1 server
   
   def __repr__(self):
     # return "S1_Q[_id= {}, rate= {}, qlimit_n= {}, qlimit_B= {}]".format(_id, self.rate, self.qlimit_n, self.qlimit_B)
-    return "S1_Q[_id= {}]".format(self._id)
+    return "S1_Q[_id= {}, mu= {}]".format(self._id, self.serv_rate)
   
   def length(self):
     return len(self.p_list) + self.busy
@@ -128,7 +130,7 @@ class S1_Q(Q): # Memoryless service, 1 server
       if p.job_id not in job_id_to_exclude:
         p_list.append(p)
     state = len(p_list)
-    if self.p_in_serv.job_id not in job_id_to_exclude:
+    if self.p_in_serv != None and (self.p_in_serv.job_id not in job_id_to_exclude):
       state += 1
     return [state]
   
@@ -150,16 +152,23 @@ class S1_Q(Q): # Memoryless service, 1 server
       self.busy = 1
       if self.cancel is None:
         self.cancel = self.env.event()
+      exp_clock_start_time = None
       if self.serv_dist is None:
         if self.rate is None:
           log(ERROR, "self.serv_dist is None but self.rate is None too!")
           return 1
+        log(WARNING, "self.serv_dist is None!")
+        sim_log(WARNING, self.env, self, "starting D-clock! on ", self.p_in_serv)
         yield (self.cancel | self.env.timeout(self.p_in_serv.size/self.rate) ) # service
       else:
+        exp_clock_start_time = self.env.now
+        sim_log(DEBUG, self.env, self, "starting Exp-clock on ", self.p_in_serv)
         yield (self.cancel | self.env.timeout(self.serv_dist() ) ) # service
       if self.cancel is None: # task got cancelled
         sim_log(DEBUG, self.env, self, "cancelling", self.p_in_serv)
+        sim_log(DEBUG, self.env, self, "cancelled Exp-clock on ", self.p_in_serv)
       else:
+        sim_log(DEBUG, self.env, self, "done with Exp-clock in {}s on ".format(self.env.now-exp_clock_start_time), self.p_in_serv)
         self.qt_list.append(self.env.now - self.p_in_serv.ref_time)
         if self.out is not None:
           sim_log(DEBUG, self.env, self, "finished serv, forwarding", self.p_in_serv)
@@ -349,12 +358,12 @@ class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job 
 Fork incoming job to all sub-q's, wait for any k task to complete, cancel the remainings.
 """
 class MDSQ(object):
-  def __init__(self, _id, env, k, qid_list, qserv_dist_list, out=None):
+  def __init__(self, _id, env, k, qid_list, qserv_rate_list, out=None):
     self._id = _id
     self.env = env
     self.k = k
     self.qid_list = qid_list
-    self.qserv_dist_list = qserv_dist_list
+    self.qserv_rate_list = qserv_rate_list
     # self.out = out
     
     self.num_q = len(qid_list)
@@ -366,7 +375,7 @@ class MDSQ(object):
     self.id_q_map = {}
     for i in range(self.num_q):
       qid = qid_list[i]
-      m1_q = S1_Q(_id=qid, env=env, serv_dist=qserv_dist_list[i] )
+      m1_q = S1_Q(_id=qid, env=env, serv_rate=qserv_rate_list[i] )
       m1_q.out = self.join_q
       self.id_q_map[qid] = m1_q
     
@@ -452,14 +461,13 @@ class MDSQMonitor(object):
   Ref: When do the Availability Codes Make the Stored Data More Available?
 """
 class AVQ(object): # Availability
-  def __init__(self, _id, env, k, r, t, qid_list, qserv_dist_list, out=None):
+  def __init__(self, _id, env, k, r, t, qid_list, qserv_rate_list, out=None):
     self._id = _id
     self.env = env
     self.k = k
     self.r = r
     self.t = t
     self.qid_list = qid_list
-    self.qserv_dist_list = qserv_dist_list
     # self.out = out
     
     self.num_q = len(qid_list)
@@ -476,14 +484,16 @@ class AVQ(object): # Availability
     for g in range(1, t + 1 + 1):
       q = None
       if g == 1:
-        q = S1_Q(_id=qid_list[0], env=env, serv_dist=qserv_dist_list[g] )
+        q = S1_Q(_id=qid_list[0], env=env, serv_rate=qserv_rate_list[0] )
+        # plot_exp_dist("q1", lambda: random.expovariate(qserv_rate_list[0] ) )
+        log(DEBUG, "g= {}, q= {}, qserv_rate_list[0]= {}".format(g, q, qserv_rate_list[0]) )
         q.out = self.join_q
       else:
         li = 1+(g-2)*r
         ri = li + r
         q = MDSQ(_id="".join(["%s," % i for i in qid_list[li:ri] ] ),
-                 env=env, k=k, qid_list=qid_list[li:ri], qserv_dist_list=qserv_dist_list[li:ri], out=self.join_q)
-        # print("g= {}, q= {}".format(g, q) )
+                 env=env, k=k, qid_list=qid_list[li:ri], qserv_rate_list=qserv_rate_list[li:ri], out=self.join_q)
+        log(DEBUG, "g= {}, q= {}, qserv_rate_list[li:ri]= {}".format(g, q, qserv_rate_list[li:ri] ) )
       self.group_id__q_map[g] = q
     
     self.store = simpy.Store(env)
@@ -509,7 +519,8 @@ class AVQ(object): # Availability
     while True:
       p = (yield self.store.get() )
       for g, q in self.group_id__q_map.items():
-        q.put(p.deep_copy() )
+        if g != -1:
+          q.put(p.deep_copy() )
       
   def put(self, p):
     sim_log(DEBUG, self.env, self, "recved", p)
@@ -522,7 +533,8 @@ class AVQ(object): # Availability
     while True:
       cp = (yield self.store_c.get() )
       for g, q in self.group_id__q_map.items():
-        q.put_c(cp.deep_copy() )
+        if g != -1:
+          q.put_c(cp.deep_copy() )
   
   def put_c(self, cp):
     sim_log(DEBUG, self.env, self, "recved", cp)
