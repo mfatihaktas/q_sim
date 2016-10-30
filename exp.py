@@ -11,6 +11,19 @@ from simplex_models import *
 
 plot_color_list = ["indigo", "darkorange", "yellowgreen", "cyan", "darkmagenta", "darkred", "black", "slateblue", "goldenrod", "darksalmon", "forestgreen", "saddlebrown", "grey"]
 
+"""
+1.02, 0.1
+1.05, 0.2
+1.07, 0.3
+1.09, 0.4
+1.13, 0.5
+1.15, 0.6
+1.18, 0.7
+1.22, 0.8
+1.26, 0.9
+1.3,  1
+1.36, 1.1
+"""
 def test_mds_n_k(num_f_run, arr_rate, mu, n, k):
   sim_E_T_f_sum = 0
   for f in range(num_f_run):
@@ -238,10 +251,9 @@ def plot_simplex(num_q):
       mu_ = C/2/(c+1)
       gamma = c*2*mu_
       return [gamma, mu_, mu_]
-    hetero_simplex_c = 0.001
-    sim_hetero_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_list(hetero_simplex_c) )
-    # sim_hetero_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, [0, C/2, C/2] )
-    sim_hetero_simplex_E_T_list.append(sim_hetero_simplex_E_T)
+    # hetero_simplex_c = 0.001
+    # sim_hetero_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_list(hetero_simplex_c) )
+    # sim_hetero_simplex_E_T_list.append(sim_hetero_simplex_E_T)
     # hetero2_simplex_c = 0.3
     # sim_hetero2_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_list(hetero2_simplex_c) )
     # sim_hetero2_simplex_E_T_list.append(sim_hetero2_simplex_E_T)
@@ -260,7 +272,7 @@ def plot_simplex(num_q):
     simplex_sm_E_T_list.append(simplex_split_merge_sys_time(t, arr_rate, mu) )
     
     if t == 1:
-      simplex_E_T_list.append(simplex_w_one_repair__sys_time(arr_rate, mu) )
+      simplex_E_T_list.append(simplex_w_one_repair__sys_time(arr_rate, mu, c=1) )
     elif t == 2:
       simplex_E_T_list.append(simplex_w_two_repair__sys_time(arr_rate, mu) )
     # simplex_trial_E_T_list.append(simplex_w_one_repair__sys_time_trial(1, t, arr_rate, mu) )
@@ -277,8 +289,8 @@ def plot_simplex(num_q):
   plot.plot(arr_list, simplex_E_T_list, 'go', label="model_simplex_t_{}".format(t) )
   plot.legend()
   color = iter(cm.rainbow(numpy.linspace(0, 2, 4) ) )
-  plot.plot(arr_list, sim_hetero_simplex_E_T_list, 'o', color=next(color), label="hetero_simplex_c_{}".format(hetero_simplex_c) )
-  plot.legend()
+  # plot.plot(arr_list, sim_hetero_simplex_E_T_list, 'o', color=next(color), label="hetero_simplex_c_{}".format(hetero_simplex_c) )
+  # plot.legend()
   # plot.plot(arr_list, sim_hetero2_simplex_E_T_list, 'o', color=next(color), label="hetero_simplex_c_{}".format(hetero2_simplex_c) )
   # plot.legend()
   # plot.plot(arr_list, sim_hetero3_simplex_E_T_list, 'o', color=next(color), label="hetero_simplex_c_{}".format(hetero3_simplex_c) )
@@ -308,33 +320,40 @@ def plot_simplex_w_varying_serv_rate_alloc(num_q):
   k, r, t = 2, 2, 1 # 2
   mu = 1.0
   arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu)
-  arr_rate = 0.9*mu
+  arr_rate = mu
   log(WARNING, "k= {}, r= {}, t= {}, mu= {}, arr_rate_ub={}".format(k, r, t, mu, arr_rate_ub) )
   
-  c_list = []
-  sim_hetero_simplex_E_T_list = []
-  hetero_simplex_E_T_list = []
-  
-  C = num_q*mu
+  Cap = num_q*mu
   def qmu_list(c):
-    mu_ = C/2/(c+1)
-    gamma = c*2*mu_
+    mu_ = Cap/(c+2)
+    gamma = c*mu_
     return [gamma, mu_, mu_]
-  for c in numpy.arange(0.05, 1, 0.1):
-    c_list.append(c)
-    # sim
-    num_f_run = 1
-    sim_hetero_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_list(c) )
-    sim_hetero_simplex_E_T_list.append(sim_hetero_simplex_E_T)
+  color = iter(cm.rainbow(numpy.linspace(0, 1, 10) ) )
+  # for c in numpy.arange(0.05, 1, 0.1):
+  for arr_rate in numpy.linspace(0.2, mu, 3):
+    c_list = []
+    simplex_sm_E_T_list, sim_hetero_simplex_E_T_list = [], []
+    hetero_simplex_E_T_list = []
+    for c in numpy.linspace(0.25, 5, 10):
+      c_list.append(c)
+      # sim
+      simplex_sm_E_T_list.append(simplex_split_merge_sys_time(t, arr_rate, mu, c) )
+      
+      num_f_run = 3
+      sim_hetero_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_list(c) )
+      sim_hetero_simplex_E_T_list.append(sim_hetero_simplex_E_T)
+      
+      hetero_simplex_E_T_list.append(simplex_w_one_repair__sys_time(arr_rate, mu, c) )
+    plot.plot(c_list, simplex_sm_E_T_list, 'o', color=next(color), label="sm_simplex $\lambda={0:0.2f}$".format(arr_rate) )
+    plot.legend()
+    plot.plot(c_list, sim_hetero_simplex_E_T_list, 'o', color=next(color), label=r'simplex $\lambda={0:0.2f}$'.format(arr_rate) )
+    plot.legend()
+    plot.plot(c_list, hetero_simplex_E_T_list, 'o', color=next(color), label=r'model_simplex $\lambda={0:0.2f}$'.format(arr_rate) )
+    plot.legend()
     
-    hetero_simplex_E_T_list.append(simplex_w_one_repair__sys_time(arr_rate, mu, c) )
-  
-  plot.plot(c_list, sim_hetero_simplex_E_T_list, 'ko', label="sim_hetero_simplex_t_{}".format(t) )
-  plot.plot(c_list, hetero_simplex_E_T_list, 'go', label="model_hetero_simplex_t_{}".format(t) )
-  plot.legend()
   plot.xlabel("c")
   plot.ylabel("E[T] (s)")
-  plot.title(r'n= {}, k= {}, t= {}, $\lambda$= {}, identical servers $\mu$= {}'.format(num_q, k, t, arr_rate, mu) )
+  plot.title(r'Simplex(t={}), heterogeneous servers; $c=\gamma/\mu$'.format(t) )
   plot.savefig("plot_simplex_w_varying_serv_rate_alloc__t_{}.png".format(t) )
   log(WARNING, "done; n= {} k= {} t= {}".format(num_q, k, t) )
   

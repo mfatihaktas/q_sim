@@ -563,12 +563,14 @@ class AVQMonitor(object):
       aq_state = self.aq.state()
       # print("aq_state= {}".format(pprint.pformat(aq_state) ) )
       sub_qs_state = [max(aq_state) for i in range(len(aq_state) ) ]
+      num_jobs = max(sub_qs_state)
       for i, s in enumerate(sub_qs_state):
         sub_qs_state[i] -= aq_state[i]
       
       # num_job = max(state)
       # self.n_list.append(num_job)
-      rel_state = list_to_str(sub_qs_state)
+      # rel_state = list_to_str(sub_qs_state)
+      rel_state = "{},({},{})".format(num_jobs, sub_qs_state[1], sub_qs_state[2] )
       if rel_state not in self.polled_state__counter_map:
         self.polled_state__counter_map[rel_state] = 0
       self.polled_state__counter_map[rel_state] += 1

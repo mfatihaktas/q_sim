@@ -194,14 +194,14 @@ def plot_split_merge_approx_error(arr_rate, mu, n):
   # ax.grid(True)
   plot.savefig("plot_split_merge_approx_error__n_{}.png".format(n) )
 
-def test_simplex():
+def test_simplex(arr_rate=None):
   k, r, t = 2, 2, 1
-  arr_rate = 0.9
+  if arr_rate == None:
+    arr_rate = 1.1
   num_q = int(1 + t*r)
   qid_list = ["{}".format(i) for i in range(1, num_q + 1) ]
-  # qmu_list = [0.01, 1, 1]
-  # qmu_list = [0.001, 1, 1]
-  qmu_list = [0.00001, 1.0, 1.0]
+  qmu_list = [0.5, 1, 1]
+  # qmu_list = [1, 1, 1]
   log(WARNING, "arr_rate= {}, k= {}, r= {}, t= {}, qmu_list= {}".format(arr_rate, k, r, t, pprint.pformat(qmu_list) ) )
   
   env = simpy.Environment()
@@ -222,12 +222,13 @@ def test_simplex():
   st_list = a_q.join_sink.st_list
   if len(st_list) > 0:
     print("sim_E_T= {}".format(float(sum(st_list) )/len(st_list)) )
-  """
+  # """
   print("\n")
   # print("aq_monitor.polled_state__counter_map= {}".format(pprint.pformat(aq_monitor.polled_state__counter_map) ) ) 
   total_counter = sum([c for rs, c in aq_monitor.polled_state__counter_map.items() ] )
   polled_state__counter_map = {rs:float(c)/total_counter for rs, c in aq_monitor.polled_state__counter_map.items() }
   print("polled_state__counter_map= {}".format(pprint.pformat(polled_state__counter_map) ) )
+  return polled_state__counter_map['0,(0,0)']
   
   print("\n")
   # print("aq_monitor.state__num_found_by_job_departed_map= {}".format(pprint.pformat(aq_monitor.state__num_found_by_job_departed_map) ) ) 
@@ -240,7 +241,13 @@ def test_simplex():
   total_counter = sum([c for rs, c in aq_monitor.start_setup__num_found_by_job_departed_map.items() ] )
   start_setup__freq_found_by_job_departed_map = {rs:float(c)/total_counter for rs, c in aq_monitor.start_setup__num_found_by_job_departed_map.items() }
   print("start_setup__freq_found_by_job_departed_map= {}".format(pprint.pformat(start_setup__freq_found_by_job_departed_map) ) )
-  """
+  # """
+
+def simplex_t_1__zero_state():
+  arr_rate__zero_state_prob_map = {}
+  for arr_rate in numpy.arange(0.1, 1.3, 0.1):
+    arr_rate__zero_state_prob_map[arr_rate] = test_simplex(arr_rate)
+  log(WARNING, "arr_rate__zero_state_prob_map= {}".format(pprint.pformat(arr_rate__zero_state_prob_map) ) )
 
 def plot_exp_dist(mu_arg, func = None):
   # for mu in [2.0, 1.0, 0.00001]:
@@ -275,50 +282,9 @@ def plot_exp_dist(mu_arg, func = None):
   # plot.ylabel("F(x)")
   # plot.savefig("plot_exp_dist_mu_{}.png".format(mu_arg) )
 
-def prob_comp_start():
-  mu = 1.0
-  simplex_E_S_p = 0.5/mu
-  simplex_E_S_c = 0.665/mu
-  simplex_E_S = 0.4*simplex_E_S_p + 0.6*simplex_E_S_c
-  simplex_E_S_p_2 = 0.5/(mu**2)
-  simplex_E_S_c_2 = 7/(9*(mu**2) )
-  simplex_E_S_2 = 0.4*simplex_E_S_p_2 + 0.6*simplex_E_S_c_2
-  for arr_rate in numpy.arange(0.1, 1.2, 0.05):
-    E_X = 1/arr_rate
-    """
-    a = simplex_E_S_c - simplex_E_S_p
-    b = 2*simplex_E_S_p - simplex_E_S_c - E_X
-    c = E_X*(E_X-simplex_E_S_p)/(simplex_E_S_c-simplex_E_S_p) - simplex_E_S_p
-    print("a= {}, b= {}, c= {}".format(a, b, c) )
-    delta = b**2 - 4*a*c
-    if delta < 0:
-      r_1_real = -b/(2*a)
-      r_1_complex = math.sqrt(abs(delta) )/(2*a)
-      print("r_1= {} + i{}".format(r_1_real, r_1_complex) )
-    else:
-      r_1 = (-b + math.sqrt(delta) )/(2*a)
-      print("r_1= {}".format(r_1) )
-    """
-    """
-    a = 1
-    b = simplex_E_S_c - E_X
-    c = E_X**2
-    delta = b**2 - 4*a*c
-    print("b**2= {}, 4*a*c= {}, delta= {}".format(b**2, 4*a*c, delta) )
-    """
-    E_S = E_X
-    p_c = (E_S - simplex_E_S_p)/(simplex_E_S_c - simplex_E_S_p)
-    print("arr_rate= {}, p_c= {}".format(arr_rate, p_c) )
-
 if __name__ == "__main__":
-  random.seed(33)
-  test_simplex()
+  # random.seed(33)
+  # test_simplex()
   # plot_exp_dist(0)
-  # plot_exp_dist(1)
-  # plot_exp_dist(0.1)
-  # plot_exp_dist(0.01)
-  # plot_exp_dist(0.001)
-  # plot_exp_dist(0.0001)
-  # plot_exp_dist(0.00001)
-  # plot_exp_dist(0.000001)
+  simplex_t_1__zero_state()
   

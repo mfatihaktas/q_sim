@@ -21,7 +21,9 @@ if [ $1 = 'e' ]; then
   # rm -r __pycache__; $PYTHON exp.py < /dev/null 2>&1 | tee $LOG_F
   rm -r __pycache__; rm *.png; $PYTHON exp.py --num_q=3
 elif [ $1 = 's' ]; then
-  $PYTHON simplex_models.py
+  rm -r __pycache__; rm *.png; $PYTHON simplex_models.py
+elif [ $1 = 'f' ]; then
+  rm -r __pycache__; rm *.png; $PYTHON fun.py
 elif [ $1 = 'd' ]; then
   rm -r __pycache__; rm *.png; $PYTHON deprecated.py
 elif [ $1 = 'me' ]; then

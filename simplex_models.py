@@ -125,13 +125,16 @@ def simplex_w_one_repair__sys_time(arr_rate, mu, c=None):
     E_T = E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S) # w/ M/G/1 assumption
     return E_T
   else:
-    C = 3*mu
-    f_c = 1/(1 + c/2/(1+c) )
-    mu = C/2/(c+1)
-    m = 0.165
-    E_S = 1/mu * (m*f_c + 0.5)
-    n = 5/18
-    E_S_2 = 1/(mu**2) * (n*f_c + 0.5)
+    Cap = 3*mu
+    f_c = 1/(1 + 2/c/(c+2) )
+    # mu = Cap/(c+2)
+    E_S_c = 2*(c+2)/Cap/(c+1) - 1/Cap
+    E_S_c_2 = (2*(c+2)/Cap/(c+1) )**2 - 2/(Cap**2)
+    E_S_p = (c+2)/Cap/(c+1)
+    E_S_p_2 = 2*((c+2)/Cap/(c+1) )**2
+    
+    E_S = f_c*E_S_c + (1-f_c)*E_S_p
+    E_S_2 = f_c*E_S_c_2 + (1-f_c)*E_S_p_2
     return E_S + arr_rate*E_S_2/2/(1-arr_rate*E_S)
 
 def simplex_w_one_repair__sys_time_trial(c, t, arr_rate, mu):
@@ -290,30 +293,43 @@ def simplex_w_two_repair__sys_time(arr_rate, mu):
   E_T = E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S)
   return E_T
 
-def simplex_split_merge_sys_time(t, arr_rate, mu):
-  E_S = avq_low_traff_serv_time_first_moment(2, t, mu)
-  E_S_2 = avq_low_traff_serv_time_second_moment(2, t, mu)
-  return E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S)
-
+def simplex_split_merge_sys_time(t, arr_rate, mu, c=None):
+  if c == None:
+    E_S = avq_low_traff_serv_time_first_moment(2, t, mu)
+    E_S_2 = avq_low_traff_serv_time_second_moment(2, t, mu)
+    return E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S)
+  else:
+    if t == 1:
+      Cap = 3*mu
+      E_S_c = 2*(c+2)/Cap/(c+1) - 1/Cap
+      E_S_c_2 = (2*(c+2)/Cap/(c+1) )**2 - 2/(Cap**2)
+      return E_S_c + (arr_rate/2)*E_S_c_2/(1 - arr_rate*E_S_c)
+    else:
+      log(ERROR, "NOT ready!; t= {}".format(t) )
+      return 1
+  
 def simplex_w_one_repair__parametric_sys_time():
-  C = 3
-  def parametric_sys_time(arr_rate, r):
-    f_c = 1/(1 + r/2/(1+r) )
-    mu = C/2/(r+1)
-    m = 0.165
-    E_S = 1/mu * (m*f_c + 0.5)
-    n = 5/18
-    E_S_2 = 1/(mu**2) * (n*f_c + 0.5)
+  Cap = 3
+  def parametric_sys_time(arr_rate, c):
+    f_c = 1/(1 + 2/c/(c+2) )
+    # mu = Cap/(c+2)
+    E_S_c = 2*(c+2)/Cap/(c+1) - 1/Cap
+    E_S_c_2 = (2*(c+2)/Cap/(c+1) )**2 - 2/(Cap**2)
+    E_S_p = (c+2)/Cap/(c+1)
+    E_S_p_2 = 2*((c+2)/Cap/(c+1) )**2
+    
+    E_S = f_c*E_S_c + (1-f_c)*E_S_p
+    E_S_2 = f_c*E_S_c_2 + (1-f_c)*E_S_p_2
     return E_S + arr_rate*E_S_2/2/(1-arr_rate*E_S)
   color = iter(cm.rainbow(numpy.linspace(0, 1, 20) ) )
   for arr_rate in numpy.arange(0.05, 1.0, 0.1):
-    c_list = numpy.arange(0, 1, 0.05)
-    E_T_list = [parametric_sys_time(arr_rate, r) for r in c_list]
-    plot.plot(c_list, E_T_list, 'o', color=next(color), label=r'$\lambda$={0:0.2f}'.format(arr_rate) )
+    c_list = numpy.arange(0.05, 5, 0.05)
+    E_T_list = [parametric_sys_time(arr_rate, c) for c in c_list]
+    plot.plot(c_list, E_T_list, '.', color=next(color), label=r'$\lambda$={0:0.2f}'.format(arr_rate) )
     plot.legend()
-  plot.xlabel("r")
+  plot.xlabel("c")
   plot.ylabel("E[T]")
-  plot.title(r'C= {}'.format(C) )
+  plot.title(r'Total service rate= {}'.format(Cap) )
   plot.savefig("simplex_w_one_repair__parametric_sys_time.png")
 
 if __name__ == "__main__":
