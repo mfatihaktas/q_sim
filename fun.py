@@ -88,7 +88,7 @@ def simplex_t_1_mc():
 
 def simplex_t_q__steady_state_dist():
   """
-  mu, gamma= 1
+  # mu, gamma= 1
   arr_rate__zero_state_prob_map= {
     0.10000000000000001: 0.932628,
     0.20000000000000001: 0.867572,
@@ -101,12 +101,23 @@ def simplex_t_q__steady_state_dist():
     0.90000000000000002: 0.426464,
     1.0: 0.36783,
     1.1000000000000001: 0.302002}
-  mu= 1, gamma= 0.5
-  
+  # mu= 1, gamma= 0.5
+  arr_rate__zero_state_prob_map= {
+  0.10000000000000001: 0.904448,
+  0.20000000000000001: 0.817524,
+  0.30000000000000004: 0.724832,
+  0.40000000000000002: 0.6379,
+  0.5: 0.555546,
+  0.59999999999999998: 0.479598,
+  0.70000000000000007: 0.397546,
+  0.80000000000000004: 0.324622,
+  0.90000000000000002: 0.25593,
+  1.0: 0.18136,
+  1.1000000000000001: 0.123022,
+  1.2000000000000002: 0.062016}
   """
-  lambda_ = 0.3 # 0.9 # 0.9 # 1.1 # 0.5
-  mu = 1
-  gamma = 1
+  mu, gamma = 1, 0.5
+  lambda_ = 0.9 # 0.9 # 0.9 # 1.1 # 0.5
   log(WARNING, "lambda_= {}, mu= {}, gamma= {}".format(lambda_, mu, gamma) )
   ro = lambda_/mu
   # tau = lambda_/(2*mu+gamma)
@@ -134,7 +145,9 @@ def simplex_t_q__steady_state_dist():
   # x = 0.84 # for lambda_=0.6
   # x = 0.81 # for lambda_=0.7
   # tau = lambda_/(x*(2*mu+gamma) + (1-x)*lambda_) # _tau
-  tau = _tau*(1+0.3*lambda_)
+  # tau = _tau*(1+0.3*lambda_)
+  d = _tau/2 # 0.15
+  tau = (lambda_+d)/(2*mu+gamma-d)
   s = lambda_+2*mu+gamma
   # tau_ = _tau/(1-_tau*(mu+gamma)*mu/s*(1/s+1/(s-mu) ) )
   k = mu*(mu+gamma)/s*(1/s+1/(s-mu))
@@ -143,7 +156,10 @@ def simplex_t_q__steady_state_dist():
   # tau = tau_
   # tau_0 = _tau/(1-_tau*2*mu*(mu+gamma)/s**2)
   k_ = 2*mu*(mu+gamma)/s**2
-  tau_0 = tau # _tau/(1-_tau*k_/(1-k_*lambda_/(lambda_+2*mu+gamma) ) )
+  tau_0 = tau # lambda_/(lambda_+2*mu+gamma) # _tau # _tau/(1-_tau*k_/(1-k_*lambda_/(lambda_+2*mu+gamma) ) )
+  # final_tau = (-gamma*tau_0**2 + (lambda_+2*mu+2*gamma)*tau_0)/lambda_ - 1
+  # tau = final_tau
+  # print("final_tau= {}".format(final_tau) )
   print("__tau= {}, tau= {}, tau_0= {}".format(__tau, tau, tau_0) )
   
   r = 1/(1+gamma/mu)
