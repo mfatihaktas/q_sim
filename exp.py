@@ -19,8 +19,8 @@ def test_mds_n_k(num_f_run, arr_rate, mu, n, k):
                          adist=lambda: random.expovariate(arr_rate),
                          sdist=lambda: 1)
     qid_l = ["{}".format(i) for i in range(1, n + 1) ]
-    qserv_dist_l = [lambda: random.expovariate(mu) for i in range(n) ]
-    mdsq = MDSQ("mdsq", env, k, qid_l, qserv_dist_l=[mu for i in range(n) ] )
+    # qserv_dist_l = [lambda: random.expovariate(mu) for i in range(n) ]
+    mdsq = MDSQ("mdsq", env, k, qid_l, qserv_rate_l=[mu for i in range(n) ] )
     mdsq_monitor = MDSQMonitor(env, q=mdsq, poll_dist=lambda: 1)
     pg.out = mdsq
     env.run(until=50000) # env.run(until=5000)
@@ -60,13 +60,12 @@ def test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l=[], w_sys=True):
     aq_monitor = AVQMonitor(env, aq=a_q, poll_dist=lambda: 0.1)
     a_q.join_q.out_m = aq_monitor
     pg.out = a_q
-    env.run(until=50000) # env.run(until=50000) # env.run(until=500)
+    env.run(until=50000) # env.run(until=500)
     
     st_l = a_q.join_sink.st_l
     if len(st_l) > 0:
       sim_E_T_f_sum += float(sum(st_l) )/len(st_l)
-      continue
-    print("\n")
+      # continue
     # print("a_q.join_sink.qid__num_win_map= {}".format(pprint.pformat(a_q.join_sink.qid__num_win_map) ) )
     total_num_wins = sum([n for i, n in a_q.join_sink.qid__num_win_map.items() ] )
     print("pg.n_sent= {}, total_num_wins= {}".format(pg.n_sent, total_num_wins) )
@@ -189,19 +188,19 @@ def plot_mds(num_q):
     
     sim_mds_n_1_E_T = 0 # test_mds_n_k(num_f_run, arr_rate, mu, num_q, 1)
     sim_mds_n_1_E_T_l.append(sim_mds_n_1_E_T)
-  plot.plot(arr_l, sm_mds_n_k_E_T_l, 'ro', label="sm_mds_{}_{}".format(num_q, k) )
+  plot.plot(arr_l, sm_mds_n_k_E_T_l, 'ro', label="SM-MDS({},{})".format(num_q, k) )
   plot.legend()
-  # plot.plot(arr_l, adj_sm_mds_n_k_E_T_l, 'bo', label="adj_sm_mds_{}_{}".format(num_q, k) )
+  # plot.plot(arr_l, adj_sm_mds_n_k_E_T_l, 'bo', label="adj_sm_MDS({},{})".format(num_q, k) )
   # plot.legend()
-  # plot.plot(arr_l, adj_2_sm_mds_n_k_E_T_l, 'co', label="adj_2_sm_mds_{}_{}".format(num_q, k) )
+  # plot.plot(arr_l, adj_2_sm_mds_n_k_E_T_l, 'co', label="adj_2_sm_MDS({},{})".format(num_q, k) )
   # plot.legend()
-  # plot.plot(arr_l, recur_sm_mds_n_k_E_T_l, 'yo', label="recur_sm_mds_{}_{}".format(num_q, k) )
+  # plot.plot(arr_l, recur_sm_mds_n_k_E_T_l, 'yo', label="recur_sm_MDS({},{})".format(num_q, k) )
   # plot.legend()
-  plot.plot(arr_l, sim_mds_n_k_E_T_l, 'ko', label="mds_{}_{}".format(num_q, k) )
+  plot.plot(arr_l, sim_mds_n_k_E_T_l, 'ko', label="MDS({},{})".format(num_q, k) )
   plot.legend()
-  plot.plot(arr_l, adj_mds_n_k_E_T_l, 'go', label="model_mds_{}_{}".format(num_q, k) )
+  plot.plot(arr_l, adj_mds_n_k_E_T_l, 'go', label="LB-MDS({},{})".format(num_q, k) )
   plot.legend()
-  plot.plot(arr_l, varki_mds_n_k_E_T_l, 'mo', label="varki_mds_{}_{}".format(num_q, k) )
+  plot.plot(arr_l, varki_mds_n_k_E_T_l, 'mo', label="Varki-MDS({},{})".format(num_q, k) )
   plot.legend()
   
   plot.xlabel(r'$\lambda$')
@@ -211,10 +210,11 @@ def plot_mds(num_q):
   log(WARNING, "done; n= {}, k= {}".format(n, k) )
 
 def plot_simplex(num_q):
-  w_sys = True
-  t, r, k = 1, 2, 2
-  mu = 1.0
-  arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu)
+  w_sys = False # True
+  t, r, k = 2, 2, 2
+  mu = 1
+  gamma = mu
+  arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu, w_sys)
   log(WARNING, "w_sys= {}, t= {}, r= {}, k= {}, mu= {}, arr_rate_ub={}".format(w_sys, t, r, k, mu, arr_rate_ub) )
   
   arr_l = []
@@ -222,20 +222,40 @@ def plot_simplex(num_q):
   sim_hetero_simplex_E_T_l, sim_hetero2_simplex_E_T_l, sim_hetero3_simplex_E_T_l = [], [], []
   fj_2_2_E_T_l, sim_fj_2_E_T_l = [], []
   
-  simplex_sm_E_T_l, sim_simplex_E_T_l, simplex_E_T_l = [], [], []
+  simplex_sm_E_T_l, sim_simplex_E_T_l, simplex_E_T_l, simplex_E_T_alt_l, E_T_simplex_lb_l = [], [], [], [], []
   simplex_trial_E_T_l, simplex_trial2_E_T_l, simplex_trial3_E_T_l, simplex_trial4_E_T_l = [], [], [], []
   
   simplex_wo_sys_sm_E_T_l = []
-  # for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/10):
-  for arr_rate in numpy.arange(0.05, 1.0, 0.2):
+  for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/7):
+  # for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/15):
+  # for arr_rate in numpy.arange(0.05, 1.26, 0.2):
     arr_l.append(arr_rate)
     # sim
-    num_f_run = 1
-    sim_mds_n_k_E_T = 0 # test_mds_n_k(num_f_run, arr_rate, mu, num_q, k)
-    sim_mds_n_k_E_T_l.append(sim_mds_n_k_E_T)
-    
-    sim_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, w_sys=w_sys)
-    sim_simplex_E_T_l.append(sim_simplex_E_T)
+    num_f_run = 3
+    # sim_mds_n_k_E_T_l.append(test_mds_n_k(num_f_run, arr_rate, mu, num_q, k) )
+    # t= 3, gamma=mu= 1, for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/7)
+    if w_sys and t == 2:
+      sim_simplex_E_T_l= [
+        0.5459378743387618,
+        0.6087927595208366,
+        0.6980928159474239,
+        0.8202851866715352,
+        0.9993734298285143,
+        1.3230863471098744,
+        1.9999289020072679]
+        # 1.9679289020072679]
+    elif w_sys and t == 3:
+      sim_simplex_E_T_l= [
+        0.4692185744911441,
+        0.5214332293554798,
+       	0.5905958611717899,
+      	0.6859006122530505,
+      	0.8446347683684426,
+      	1.0891266908697737,
+      	1.6007724635530007]
+    else:
+      sim_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, w_sys=w_sys)
+      sim_simplex_E_T_l.append(sim_simplex_E_T)
     
     # C = num_q*mu
     # def qmu_l(c):
@@ -257,31 +277,40 @@ def plot_simplex(num_q):
     # sim_fj_2_E_T = test_mds_n_k(num_f_run, arr_rate, C/2, n=2, k=2)
     # sim_fj_2_E_T_l.append(sim_fj_2_E_T)
     
-    # sim_mds_n_1_E_T = 0 # test_mds_n_k(arr_rate, mu, num_q, 1)
-    # sim_mds_n_1_E_T_l.append(sim_mds_n_1_E_T)
+    # sim_mds_n_1_E_T_l.append(test_mds_n_k(num_f_run, arr_rate, mu, num_q, 1) )
     
-    # simplex_sm_E_T_l.append(simplex_sm_sys_time(t, arr_rate, mu) )
-    # simplex_wo_sys_sm_E_T_l.append(simplex_wo_sys_sm_sys_time(t, arr_rate, mu) )
+    simplex_sm_E_T_l.append(simplex_sm_E_T(t, arr_rate, mu) )
+    # simplex_wo_sys_sm_E_T_l.append(simplex_wo_sys_sm_E_T(t, arr_rate, mu) )
     
     if t == 1:
-      simplex_E_T_l.append(simplex_w_one_repair__sys_time(arr_rate, mu, c=1) )
+      simplex_E_T_l.append(simplex_w_one_repair__E_T(arr_rate, mu) )
     elif t == 2:
-      simplex_E_T_l.append(simplex_w_two_repair__sys_time(arr_rate, mu) )
-    # simplex_trial_E_T_l.append(simplex_w_one_repair__sys_time_trial(1, t, arr_rate, mu) )
-    # simplex_trial2_E_T_l.append(simplex_w_one_repair__sys_time_trial(1.2, t, arr_rate, mu) )
-    # simplex_trial3_E_T_l.append(simplex_w_one_repair__sys_time_trial(1.5, t, arr_rate, mu) )
-    # simplex_trial4_E_T_l.append(simplex_w_one_repair__sys_time_trial(1.8, t, arr_rate, mu) )
+      if w_sys:
+        simplex_E_T_l.append(simplex_w_two_repair__E_T(arr_rate, mu, M=5) )
+        # simplex_E_T_alt_l.append(simplex_w_two_repair__E_T(arr_rate, mu, M=2) )
+      else:
+        simplex_E_T_l.append(simplex_wo_sys_w_two_repair__E_T(arr_rate, mu) )
+    # E_T_simplex_lb_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu) )
+    # simplex_trial_E_T_l.append(simplex_w_one_repair__E_T_trial(1, t, arr_rate, mu) )
+    # simplex_trial2_E_T_l.append(simplex_w_one_repair__E_T_trial(1.2, t, arr_rate, mu) )
+    # simplex_trial3_E_T_l.append(simplex_w_one_repair__E_T_trial(1.5, t, arr_rate, mu) )
+    # simplex_trial4_E_T_l.append(simplex_w_one_repair__E_T_trial(1.8, t, arr_rate, mu) )
     
-  # plot.plot(arr_l, sim_mds_n_k_E_T_l, 'ro', label="mds_{}_{}".format(num_q, k) )
+  # plot.plot(arr_l, sim_mds_n_k_E_T_l, 'ro', label="MDS({},{})".format(num_q, k) )
   # plot.legend()
-  # plot.plot(arr_l, simplex_sm_E_T_l, 'ro', label="simplex_sm_t_{}".format(t) )
-  # plot.legend()
+  plot.plot(arr_l, simplex_sm_E_T_l, 'ro', label="SM-Simplex(t:{})".format(t) )
+  plot.legend()
   # plot.plot(arr_l, simplex_wo_sys_sm_E_T_l, 'ro', label="simplex_wo_sys_sm_t_{}".format(t) )
   # plot.legend()
-  plot.plot(arr_l, sim_simplex_E_T_l, 'ko', label="simplex_t_{}".format(t) )
+  # plot.plot(arr_l, simplex_E_T_alt_l, 'bo', label="UB-Simplex(t:{},M:2)".format(t) )
+  # plot.legend()
+  log(WARNING, "sim_simplex_E_T_l= {}".format(pprint.pformat(sim_simplex_E_T_l) ) )
+  plot.plot(arr_l, sim_simplex_E_T_l, 'ko', label="Simplex(t:{})".format(t) )
   plot.legend()
-  plot.plot(arr_l, simplex_E_T_l, 'go', label="model_simplex_t_{}".format(t) )
+  plot.plot(arr_l, simplex_E_T_l, 'go', label="LB-Simplex(t:{},M:5)".format(t) )
   plot.legend()
+  # plot.plot(arr_l, E_T_simplex_lb_l, 'bo', label="LB-Simplex(t:{})".format(t) )
+  # plot.legend()
   color = iter(cm.rainbow(numpy.linspace(0, 2, 4) ) )
   # plot.plot(arr_l, sim_hetero_simplex_E_T_l, 'o', color=next(color), label="hetero_simplex_c_{}".format(hetero_simplex_c) )
   # plot.legend()
@@ -293,7 +322,7 @@ def plot_simplex(num_q):
   # plot.legend()
   # plot.plot(arr_l, fj_2_2_E_T_l, 'o', color=next(color), label="model_fj_2")
   # plot.legend()
-  # plot.plot(arr_l, simplex_trial_E_T_l, 'bo', label="trial_simplex_t_{}".format(t) )
+  # plot.plot(arr_l, simplex_trial_E_T_l, 'bo', label="trial_Simplex(t:{})".format(t) )
   # plot.legend()
   # color = iter(cm.rainbow(numpy.linspace(0, 1, 4) ) )
   # plot.plot(arr_l, simplex_trial2_E_T_l, 'o', color=next(color), label="trial_simplex2_t_{}".format(t) )
@@ -302,11 +331,11 @@ def plot_simplex(num_q):
   # plot.legend()
   # plot.plot(arr_l, simplex_trial4_E_T_l, 'bo', color=next(color), label="trial_simplex4_t_{}".format(t) )
   # plot.legend()
-  # plot.plot(arr_l, sim_mds_n_1_E_T_l, 'bo', label="mds_{}_1".format(num_q) )
+  # plot.plot(arr_l, sim_mds_n_1_E_T_l, 'bo', label="MDS({},1)".format(num_q) )
   # plot.legend()
   plot.xlabel(r'$\lambda$')
   plot.ylabel("E[T] (s)")
-  plot.title(r't= {}, r= {}, k= {}, identical servers $\mu$= {}'.format(t, r, k, mu) )
+  plot.title(r't= {}, r= {}, k= {}, $\gamma$= {}, $\mu$= {}, w/ sys= {}'.format(t, r, k, gamma, mu, w_sys) )
   plot.savefig("plot_simplex__t_{}.png".format(t) )
   log(WARNING, "done; t= {}, r= {}, k= {}".format(t, r, k) )
 
@@ -331,29 +360,30 @@ def plot_simplex_w_varying_serv_rate_alloc(num_q):
     for c in numpy.linspace(0.25, 5, 10):
       c_l.append(c)
       # sim
-      simplex_sm_E_T_l.append(simplex_sm_sys_time(t, arr_rate, mu, c) )
+      simplex_sm_E_T_l.append(simplex_sm_E_T(t, arr_rate, mu, c) )
       
       num_f_run = 3
       sim_hetero_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l(c) )
       sim_hetero_simplex_E_T_l.append(sim_hetero_simplex_E_T)
       
-      hetero_simplex_E_T_l.append(simplex_w_one_repair__sys_time(arr_rate, mu, c) )
-    plot.plot(c_l, simplex_sm_E_T_l, 'o', color=next(color), label="sm_simplex $\lambda={0:0.2f}$".format(arr_rate) )
+      hetero_simplex_E_T_l.append(simplex_w_one_repair__E_T(arr_rate, mu, c) )
+    plot.plot(c_l, simplex_sm_E_T_l, 'o', color=next(color), label="SM-Simplex $\lambda={0:0.2f}$".format(arr_rate) )
     plot.legend()
-    plot.plot(c_l, sim_hetero_simplex_E_T_l, 'o', color=next(color), label=r'simplex $\lambda={0:0.2f}$'.format(arr_rate) )
+    plot.plot(c_l, sim_hetero_simplex_E_T_l, 'o', color=next(color), label=r'Simplex $\lambda={0:0.2f}$'.format(arr_rate) )
     plot.legend()
-    plot.plot(c_l, hetero_simplex_E_T_l, 'o', color=next(color), label=r'model_simplex $\lambda={0:0.2f}$'.format(arr_rate) )
+    plot.plot(c_l, hetero_simplex_E_T_l, 'o', color=next(color), label=r'LB-Simplex $\lambda={0:0.2f}$'.format(arr_rate) )
     plot.legend()
     
   plot.xlabel("c")
   plot.ylabel("E[T] (s)")
-  plot.title(r'Simplex(t={}), heterogeneous servers; $c=\gamma/\mu$'.format(t) )
+  plot.title(r'Simplex(t:{}), heterogeneous servers; $c=\gamma/\mu$'.format(t) )
   plot.savefig("plot_simplex_w_varying_serv_rate_alloc__t_{}.png".format(t) )
   log(WARNING, "done; n= {} k= {} t= {}".format(num_q, k, t) )
 
 def plot_avq():
   w_sys = True
-  t, r, k = 1, 3, 2
+  simplex_t, simplex_r, simplex_k = 3, 2, 2
+  t, r, k = 1, simplex_t*simplex_r, simplex_k
   mu = 1.0
   gamma = mu
   arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu)
@@ -361,23 +391,31 @@ def plot_avq():
   
   arr_l = []
   sim_E_T_avq_l, E_T_avq_l = [], []
+  sim_E_T_simplex_l, E_T_simplex_sm_l= [], []
   # for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/10):
-  for arr_rate in numpy.arange(0.05, 1.0, 0.2):
+  for arr_rate in numpy.arange(0.05, 1.26, 0.2):
+  # for arr_rate in numpy.arange(0.05, 1.0, 0.2):
     arr_l.append(arr_rate)
     # sim
     num_f_run = 1
-    sim_E_T_avq_l.append(test_simplex_q(num_f_run, arr_rate, mu, k, r, t, w_sys=w_sys) )
+    # sim_E_T_avq_l.append(test_simplex_q(num_f_run, arr_rate, mu, k, r, t, w_sys=w_sys) )
+    sim_E_T_simplex_l.append(test_simplex_q(num_f_run, arr_rate, mu, simplex_k, simplex_r, simplex_t, w_sys=w_sys) )
     
+    E_T_simplex_sm_l.append(simplex_sm_E_T(simplex_t, arr_rate, mu) )
     E_T_avq_l.append(E_T_avq_sys__mds_r_2(arr_rate, gamma, mu, r) )
-    
-  plot.plot(arr_l, sim_E_T_avq_l, 'ko', label="avq t={} r={} k={}".format(t, r, k) )
+  
+  plot.plot(arr_l, E_T_simplex_sm_l, 'ro', label="SM-Simplex(t:{},r:{},k:{})".format(simplex_t, simplex_r, simplex_k) )
   plot.legend()
-  plot.plot(arr_l, E_T_avq_l, 'go', label="lb_avq t={} r={} k={}".format(t, r, k) )
+  plot.plot(arr_l, sim_E_T_simplex_l, 'ko', label="Simplex(t:{},r:{},k:{})".format(simplex_t, simplex_r, simplex_k) )
   plot.legend()
+  plot.plot(arr_l, E_T_avq_l, 'go', label="UB-AVQ(t:{},r:{},k:{})".format(t, r, k) )
+  plot.legend()
+  # plot.plot(arr_l, sim_E_T_avq_l, 'ko', label="avq [t:{},r:{},k:{}]".format(t, r, k) )
+  # plot.legend()
   plot.xlabel(r'$\lambda$')
   plot.ylabel("E[T] (s)")
-  plot.title(r't= {}, r= {}, k= {}, $\mu$= {}'.format(t, r, k, mu) )
-  plot.savefig("plot_avq__t_{}_r_{}_.png".format(t, r) )
+  plot.title(r't= {}, r= {}, k= {}, $\gamma$= {}, $\mu$= {}'.format(t, r, k, gamma, mu) )
+  plot.savefig("plot_avq__t_{}_r_{}.png".format(t, r) )
   log(WARNING, "done; t= {}, r= {}, k= {}".format(t, r, k) )
 
 def get_opts(argv):
@@ -397,7 +435,6 @@ if __name__ == "__main__":
   log(WARNING, "opt_map= {}".format(pprint.pformat(opt_map) ) )
   num_q = int(opt_map["--num_q"] )
   # plot_winning_freqs()
-  # plot_simplex(num_q)
-  plot_avq()
+  plot_simplex(num_q)
+  # plot_avq()
   # plot_simplex_w_varying_serv_rate_alloc(num_q)
-  

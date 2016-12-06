@@ -28,7 +28,7 @@ def gen_harmonic_sum(n, k):
     sum_ += float(1/(i*(i - k) ) )
   return sum_
 
-def fj_2_2_E_T(arr_rate, mu):
+def fj_2_E_T(arr_rate, mu):
   ro = arr_rate/mu
   return (12 - ro)/(8*(mu - arr_rate) )
 
@@ -107,14 +107,19 @@ def mds_inner_bound_on_arr_rate(n, k, mu):
   sm_mds_n_k_E_S = 1/mu * (harmonic_sum(n) - harmonic_sum(n-k) )
   return 1/sm_mds_n_k_E_S
   
-def simplex_inner_bound_on_arr_rate(r, t, mu):
-  def beta(x, y):
-    return math.gamma(x)*math.gamma(y)/math.gamma(x+y)
-  sm_simplex_E_S = 1/(mu*r)*beta(t+1, 1/r)
-  return 1/sm_simplex_E_S
+def simplex_inner_bound_on_arr_rate(r, t, mu, w_sys=True):
+  E_S = 1
+  if w_sys:
+    def beta(x, y):
+      return math.gamma(x)*math.gamma(y)/math.gamma(x+y)
+    E_S = 1/(mu*r)*beta(t+1, 1/r)
+  else:
+    E_S = 1/mu * sum([binomial(t,i) * 2**i*(-1)**(t-i)/(2*t-i) for i in range(t+1) ] )
+  
+  return 1/E_S
   
 # -----------------------------------------  Simplex 1 repair  ----------------------------------- #
-def simplex_w_one_repair__sys_time(arr_rate, mu, c=None):
+def simplex_w_one_repair__E_T(arr_rate, mu, c=None):
   if c == None:
     E_S_c = 0.665/mu
     E_S_c_2 = 7/(9*(mu**2) )
@@ -138,7 +143,7 @@ def simplex_w_one_repair__sys_time(arr_rate, mu, c=None):
     E_S_2 = f_c*E_S_c_2 + (1-f_c)*E_S_p_2
     return E_S + arr_rate*E_S_2/2/(1-arr_rate*E_S)
 
-def simplex_w_one_repair__sys_time_trial(c, t, arr_rate, mu):
+def simplex_w_one_repair__E_T_trial(c, t, arr_rate, mu):
   # mu_1 = mu - arr_rate
   # mu_2 = 2*mu - arr_rate
   gamma = mu
@@ -148,7 +153,7 @@ def simplex_w_one_repair__sys_time_trial(c, t, arr_rate, mu):
 # -----------------------------------------  Simplex 2 repair  ----------------------------------- #
 def simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu):
   gamma = mu
-  nu = 4*mu + gamma
+  nu = gamma + 4*mu
   P = []
   state_l = []
   state_index_map = {}
@@ -158,8 +163,8 @@ def simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu):
       s = str(x)+"_"+str(y)
       state_l.append(s)
       state_index_map[s] = len(state_l)-1
-  log(WARNING, "state_l=\n {}".format(pprint.pformat(state_l) ) )
-  log(WARNING, "state_index_map=\n {}".format(pprint.pformat(state_index_map) ) )
+  # log(WARNING, "state_l=\n {}".format(pprint.pformat(state_l) ) )
+  # log(WARNING, "state_index_map=\n {}".format(pprint.pformat(state_index_map) ) )
   for i in range(len(state_l) ):
     P.append(len(state_l)*[0] )
   for y in range(mc_truncation_state_id+1):
@@ -194,11 +199,11 @@ def simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu):
         else:
           P[state_index_map[s] ][state_index_map[str(x)+"_"+str(y+1)] ] += mu/nu
   
-  log(WARNING, "P= \n{}".format(numpy.matrix(P) ) )
+  # log(WARNING, "P= \n{}".format(numpy.matrix(P) ) )
   pi_v = linalg.matrix_power(P, 100)[0]
-  log(WARNING, "pi_v= {}".format(pprint.pformat(pi_v) ) )
+  # log(WARNING, "pi_v= {}".format(pprint.pformat(pi_v) ) )
   state_prob_map = {state_l[i]:pi for i,pi in enumerate(pi_v) }
-  log(WARNING, "state_prob_map= {}".format(pprint.pformat(state_prob_map) ) )
+  # log(WARNING, "state_prob_map= {}".format(pprint.pformat(state_prob_map) ) )
   """
   for i in range(len(state_l) ):
     P[i] = len(state_l)*[0]
@@ -261,20 +266,20 @@ def avq_low_traff_serv_time_second_moment(r, t, mu):
     second_moment += binomial(t, j) * (-1)**j * inner_term
   return second_moment
 
-def simplex_w_two_repair__sys_time(arr_rate, mu):
+def simplex_w_two_repair__E_T(arr_rate, mu, M):
   E_S_c = avq_low_traff_serv_time_first_moment(2, 2, mu)
   E_S_c_2 = avq_low_traff_serv_time_second_moment(2, 2, mu)
-  E_S_p_1st_kind = 5/(12*mu)
-  E_S_p_1st_kind_2 = 23/(72*mu**2)
-  E_S_p_2nd_kind = 1/(3*mu)
-  E_S_p_2nd_kind_2 = 2/(9*mu**2)
+  E_S_p_1st = 5/(12*mu)
+  E_S_p_1st_2 = 23/(72*mu**2)
+  E_S_p_2nd = 1/(3*mu)
+  E_S_p_2nd_2 = 2/(9*mu**2)
   
-  mc_truncation_state_id = 5
+  mc_truncation_state_id = M # 5
   state_prob_map = simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu)
   log(WARNING, "state_prob_map=\n {}".format(pprint.pformat(state_prob_map) ) )
   
   gamma = mu
-  nu = 4*mu + gamma
+  nu = gamma + 4*mu
   state_sum = sum([state_prob_map["0_"+str(i)] + state_prob_map[str(i)+"_0"] for i in range(1, mc_truncation_state_id+1, 1) ] )
   f_jd = state_prob_map["0_0"]*gamma/nu \
        + (mu+gamma)/nu * state_sum \
@@ -282,19 +287,34 @@ def simplex_w_two_repair__sys_time(arr_rate, mu):
   f_jc = gamma/nu * state_prob_map["0_0"] \
        + (mu+gamma)/nu * (state_prob_map["0_1"] + state_prob_map["1_0"] ) \
        + (2*mu+gamma)/nu * state_prob_map["1_1"]
-  f_jp1 = (2*mu+gamma)/nu * sum([state_prob_map[str(i)+"_1"] for i in range(2, mc_truncation_state_id+1, 1) ] ) \
-        + (2*mu+gamma)/nu * sum([state_prob_map["1_"+str(i)] for i in range(2, mc_truncation_state_id+1, 1) ] )
+  f_jp1 = (mu+gamma)/nu * sum([state_prob_map[str(i)+"_0"]+state_prob_map["0_"+str(i)] for i in range(2, mc_truncation_state_id+1, 1) ] ) \
+        + (2*mu+gamma)/nu * sum([state_prob_map[str(i)+"_1"]+state_prob_map["1_"+str(i)] for i in range(2, mc_truncation_state_id+1, 1) ] )
   f_c = f_jc/f_jd
   f_p1 = f_jp1/f_jd
   f_p2 = 1 - f_c - f_p1
   log(WARNING, "f_c= {}, f_p1= {}, f_p2= {}".format(f_c, f_p1, f_p2) )
   
-  E_S = f_c*E_S_c + f_p1*E_S_p_1st_kind + f_p2*E_S_p_2nd_kind
-  E_S_2 = f_c*E_S_c_2 + f_p1*E_S_p_1st_kind_2 + f_p2*E_S_p_2nd_kind_2
+  E_S = f_c*E_S_c + f_p1*E_S_p_1st + f_p2*E_S_p_2nd
+  E_S_2 = f_c*E_S_c_2 + f_p1*E_S_p_1st_2 + f_p2*E_S_p_2nd_2
   E_T = E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S)
   return E_T
 
-def simplex_sm_sys_time(t, arr_rate, mu, c=None):
+def simplex_w_two_repair__E_T_LB_UB(arr_rate, mu):
+  gamma = mu
+  nu = gamma + 4*mu
+  ro_max, ro_min = (gamma+2*mu)/nu, (gamma+mu)/nu
+  
+  pi_0_0_min = 1 - 1/ro_min
+  pi_B1_min = 1/ro_max * pi_0_0_min
+  f_jc_min = pi_0_0_min*gamma/nu + pi_B1_min*(gamma+mu)/nu
+  pi_0_0_max = 1 - 1/ro_max
+  pi_B1_max = 1/ro_max * pi_0_0_max
+  f_jc_max = pi_0_0_max*gamma/nu + pi_B1_max*(gamma+2*mu)/nu
+  
+def simplex_wo_sys_w_two_repair__E_T(arr_rate, mu):
+  return 1/(4*mu-arr_rate) + 1/(3*mu-arr_rate) + 2/3/(2*mu-arr_rate)
+
+def simplex_sm_E_T(t, arr_rate, mu, c=None):
   if c == None:
     E_S = avq_low_traff_serv_time_first_moment(2, t, mu)
     E_S_2 = avq_low_traff_serv_time_second_moment(2, t, mu)
@@ -309,14 +329,14 @@ def simplex_sm_sys_time(t, arr_rate, mu, c=None):
       log(ERROR, "NOT ready!; t= {}".format(t) )
       return 1
 
-def simplex_wo_sys_sm_sys_time(t, arr_rate, mu, c=None):
+def simplex_wo_sys_sm_E_T(t, arr_rate, mu, c=None):
   E_S = 1/mu * sum([binomial(t,i) * 2**i*(-1)**(t-i)/(2*t-i) for i in range(t+1) ] )
   E_S_2 = 2/mu**2 * sum([binomial(t,i) * 2**i*(-1)**(t-i)/(2*t-i) for i in range(t+1) ] )
   return E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S)
   
-def simplex_w_one_repair__parametric_sys_time():
+def simplex_w_one_repair__parametric_E_T():
   Cap = 3
-  def parametric_sys_time(arr_rate, c):
+  def parametric_E_T(arr_rate, c):
     f_c = 1/(1 + 2/c/(c+2) )
     # mu = Cap/(c+2)
     E_S_c = 2*(c+2)/Cap/(c+1) - 1/Cap
@@ -330,13 +350,13 @@ def simplex_w_one_repair__parametric_sys_time():
   color = iter(cm.rainbow(numpy.linspace(0, 1, 20) ) )
   for arr_rate in numpy.arange(0.05, 1.0, 0.1):
     c_l = numpy.arange(0.05, 5, 0.05)
-    E_T_l = [parametric_sys_time(arr_rate, c) for c in c_l]
+    E_T_l = [parametric_E_T(arr_rate, c) for c in c_l]
     plot.plot(c_l, E_T_l, '.', color=next(color), label=r'$\lambda$={0:0.2f}'.format(arr_rate) )
     plot.legend()
   plot.xlabel("c")
   plot.ylabel("E[T]")
   plot.title(r'Total service rate= {}'.format(Cap) )
-  plot.savefig("simplex_w_one_repair__parametric_sys_time.png")
+  plot.savefig("simplex_w_one_repair__parametric_E_T.png")
 
 def simplex_steady_state_prob_hist():
   k, r, t = 2, 2, 1
@@ -402,7 +422,7 @@ def simplex_steady_state_prob_hist():
     plot.savefig("simplex_steady_state_prob_hist_ar_{0:.2f}.png".format(arr_rate) )
     plot.clf()
 
-# ##############################  LB; Simplex(t=2:[sys, MDS(r,2)])  ############################# #
+# ##############################  UB; Simplex(t=2:[sys, MDS(r,2)])  ############################# #
 def E_S_c_avq_sys__mds_r_2(gamma, mu, r):
   return r/(gamma+(r-1)*mu) - (r-1)/(gamma+r*mu)
 
@@ -410,27 +430,181 @@ def E_S_c_2_avq_sys__mds_r_2(gamma, mu, r):
   return 2*r/(gamma+(r-1)*mu)**2 - 2*(r-1)/(gamma+r*mu)**2
 
 def E_T_avq_sys__mds_r_2(arr_rate, gamma, mu, r):
+  # This turns out to be a worse upper bound than split-merge
+  """
   f_c = mu*(gamma+(r-2)*mu)/(r*(r-1)*mu**2 + gamma*(gamma+2*(r-1)*mu) )
   
   E_S_c = E_S_c_avq_sys__mds_r_2(gamma, mu, r)
   E_S_c_2 = E_S_c_2_avq_sys__mds_r_2(gamma, mu, r)
   E_S_p = E_S_c_avq_sys__mds_r_2(gamma, mu, r-1)
   E_S_p_2 = E_S_c_2_avq_sys__mds_r_2(gamma, mu, r-1)
+  log(WARNING, "E_S_c= {}, E_S_c_2= {}, E_S_p= {}, E_S_p_2= {}".format(E_S_c, E_S_c_2, E_S_p, E_S_p_2) )
   
   E_S = f_c*E_S_c + (1-f_c)*E_S_p
   E_S_2 = f_c*E_S_c_2 + (1-f_c)*E_S_p_2
+  E_T = E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S)
+  """
+  # After one of the r servers goes ahead by one, the next server for job termination in the repair group 
+  # is held fixed
+  ro = mu/(mu+gamma)
+  p_0 = (1-ro)/(1+(r-1)*ro)
+  def p_i(i):
+    return r*ro**i * p_0
+  def pi_i(i):
+    sum_p_i_nu_i = p_0*mu*(r-2) + 2*mu+gamma
+    if i == 0:
+      return p_0*(gamma+r*mu)/sum_p_i_nu_i
+    else:
+      return p_i(i)*(2*mu+gamma)/sum_p_i_nu_i
+  f_jd = pi_i(0)*gamma/(gamma+r*mu) + (1-pi_i(0) )*(mu+gamma)/(2*mu+gamma)
+  f_jc = pi_i(0)*gamma/(gamma+r*mu) + pi_i(1)*(mu+gamma)/(2*mu+gamma)
+  f_c = f_jc/f_jd
   
+  beta = r*mu/(gamma+r*mu)
+  E_A = 1/(gamma+r*mu)
+  E_A_2 = 2/(gamma+r*mu)**2
+  E_B = 1/(gamma+mu)
+  E_B_2 = 1/(gamma+mu)**2
+  
+  E_S_c = E_A + beta*E_B
+  E_S_c_2 = E_A_2 + beta**2*E_B_2 + 2*beta*E_A*E_B
+  E_S_p = 1/(gamma+mu)
+  E_S_p_2 = 2/(gamma+mu)**2
+  
+  E_S = f_c*E_S_c + (1-f_c)*E_S_p
+  E_S_2 = f_c*E_S_c_2 + (1-f_c)*E_S_p_2
   E_T = E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S)
   return E_T
 
+# ########################################  LB; Simplex(t)  ###################################### #
+def E_T_simplex_lb(t, arr_rate, gamma, mu):
+  # def E_S_c(t, gamma, mu):
+  #   return sum([binomial(t,i)*2**i * (-1)**(k-i) / (gamma+(2*k-i)*mu) for i in range(t+1) ] )
+  # def E_S_c_2(t, gamma, mu):
+  #   return sum([binomial(t,i)*2**i * (-1)**(k-i) * 2/(gamma+(2*k-i)*mu)**2 for i in range(t+1) ] )
+  def E_S_p_m(m, t, gamma, mu):
+    return sum([binomial(t-m,i)*2**i * (-1)**(t-m-i) / (gamma+(2*t-m-i)*mu) for i in range(t-m+1) ] )
+  def E_S_p_m_2(m, t, gamma, mu):
+    return sum([binomial(t-m,i)*2**i * (-1)**(t-m-i) * 2/(gamma+(2*t-m-i)*mu)**2 for i in range(t-m+1) ] )
+    
+  # E_S_c = E_S_c(t, gamma, mu)
+  # E_S_c_2 = E_S_c_2(t, gamma, mu)
+  E_S_p_m_l, E_S_p_m_2_l = [], []
+  for m in range(t+1):
+    E_S_p_m_l.append(E_S_p_m(m, t, gamma, mu) )
+    E_S_p_m_2_l.append(E_S_p_m_2(m, t, gamma, mu) )
+  # if t == 1:
+  #   E_S_c = 2/(gamma+mu) - 1/(gamma+2*mu)
+  #   E_S_c_2 = 4/(gamma+mu)**2 - 2/(gamma+2*mu)**2
+  #   E_S_p = 1/(gamma+mu)
+  #   E_S_p_2 = 2/(gamma+mu)**2
+    
+  #   f_c = 0.5
+  #   E_S = f_c*E_S_c + (1-f_c)*E_S_p
+  #   E_S_2 = f_c*E_S_c_2 + (1-f_c)*E_S_p_2
+  #   return E_S + arr_rate*E_S_2/2/(1-arr_rate*E_S)
+  # else:
+  #   log(ERROR, "not implemented!")
+  #   return 1
+  
+  nu = 2*t*mu+gamma
+  P_01 = 0 # 2*t*mu/nu * mu/nu * (gamma+mu)/nu
+  for i in range(t):
+    prod = 1
+    for j in range(1, i+1):
+      prod *= 2*(t-j)*mu/nu
+    P_01 += prod * (i+1)*mu/nu * (gamma+(i+1)*mu)/nu
+  P_01 *= 2*t*mu/nu
+  # print("_P_01= {}, P_01= {}".format(2*t*mu/nu * mu/nu * (gamma+mu)/nu, P_01) )
+  
+  P_10 = 0 # (gamma+mu)/nu + (1-(2*mu+gamma)/nu)*(2*mu+gamma)/nu
+  for i in range(t):
+    prod = 1
+    for j in range(1, i+1):
+      prod *= (1-(gamma+2*i*mu)/nu)
+    P_10 += prod * (gamma+(i+1)*mu)/nu
+  
+  # ro_max = P_01/P_10
+  E_X = 1/arr_rate
+  E_S_min = sum(E_S_p_m_l)/len(E_S_p_m_l)
+  # E_J_max = E_X/(E_X-E_S_min)
+  # ro_max = 1 - 1/E_J_max
+  # ro_max = compute_ro(t, arr_rate, gamma, mu)
+  # ro_max = min(E_S_min/(E_X-E_S_min), 0.99)
+  # ro_max = min(math.pow(E_S_min/(E_X-E_S_min), 1/t), 0.99)
+  ro_max = E_S_min/(E_X-E_S_min)/t
+  # print("ro_max= {}".format(ro_max) )
+  
+  # p_0 = (1-ro_max)/(1-ro_max**(t+1) )
+  p_0 = 1/(1+t*ro_max)
+  def p_m(m):
+    return ro_max**(m != 0) * p_0
+    # return ro_max**m * p_0
+    # if m == t:
+    #  m = m - 1
+    # return 1/2**(m+1)
+  # print("p_0= {}".format(p_0) )
+  
+  # Trying to improve lower bound using incremental steps by adjusting ro_m
+  ro_m_l, p_m_l = [], [0]*(t+1)
+  for m in range(t+1):
+    print("m= {}".format(m) )
+    A = 0
+    for i in range(m+1):
+      A += numpy.prod(ro_m_l[:i] )
+    E_Y = E_X - E_S_min
+    B = (t-m)*numpy.prod(ro_m_l[:m] )
+    print("A= {}, B= {}, (E_X-E_Y*A)/B/E_Y= {}".format(A, B, (E_X-E_Y*A)/B/E_Y) )
+    ro_m = min((E_X-E_Y*A)/B/E_Y, 1)/2
+    ro_m_l.append(ro_m)
+    p_0 = 1/(sum([numpy.prod(ro_m_l[:i] ) for i in range(m+1) ] ) + numpy.prod(ro_m_l[:m+1] )*(t-m) )
+    for m_ in range(t+1):
+      p_m_l[m_] = numpy.prod(ro_m_l[:m_] )*p_0
+    print("p_0= {}, ro_m_l= {}, p_m_l= {}".format(p_0, ro_m_l, p_m_l) )
+  # E_S = sum(E_S_p_m_l)/len(E_S_p_m_l)
+  # E_S_2 = sum(E_S_p_m_2_l)/len(E_S_p_m_2_l)
+  E_S = sum([E_S_p_m_l[m]*p_m for p_m in p_m_l] )
+  E_S_2 = sum([E_S_p_m_2_l[m]*p_m for p_m in p_m_l] )
+  # E_S = 0.5*E_S_p_m_l[0] + 0.5*sum(E_S_p_m_l[1:] )/t
+  # E_S_2 = 0.5*E_S_p_m_2_l[0] + 0.5*sum(E_S_p_m_2_l[1:] )/t
+  
+  return E_S + arr_rate*E_S_2/2/(1-arr_rate*E_S)
+
+def compute_ro(t, arr_rate, gamma, mu):
+  def E_S_p_m(m, t, gamma, mu):
+    return sum([binomial(t-m,i)*2**i * (-1)**(t-m-i) / (gamma+(2*t-m-i)*mu) for i in range(t-m+1) ] )
+  def E_S_p_m_2(m, t, gamma, mu):
+    return sum([binomial(t-m,i)*2**i * (-1)**(t-m-i) * 2/(gamma+(2*t-m-i)*mu)**2 for i in range(t-m+1) ] )
+  
+  E_S_p_m_l, E_S_p_m_2_l = [], []
+  for m in range(t+1):
+    E_S_p_m_l.append(E_S_p_m(m, t, gamma, mu) )
+    E_S_p_m_2_l.append(E_S_p_m_2(m, t, gamma, mu) )
+  
+  def p_m(m, ro):
+    p_0 = (1-ro)/(1-ro**(t+1) )
+    return ro**m * p_0
+  def E_S(ro):
+    return sum([E_S_p_m_l[m]*p_m(m,ro) for m in range(t+1) ] )
+  
+  E_X = 1/arr_rate
+  E_S_min = E_S_p_m_l[0]
+  ro = 0.99
+  for i in range(10):
+    ro = E_S(ro)/E_X
+    print("i= {}, ro= {}".format(i, ro) )
+  return ro
+
 if __name__ == "__main__":
-  # simplex_w_two_repair__sys_time(0.9, 1.0)
-  # simplex_w_one_repair__parametric_sys_time()
-  simplex_steady_state_prob_hist()
-  # mu = 1.0
-  # mc_truncation_state_id__state_prob_map_map = {}
-  # for mc_truncation_state_id in range(2, 10, 1):
-  #   mc_truncation_state_id__state_prob_map_map[mc_truncation_state_id] = \
-  #     simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu)
-  # log(WARNING, "mc_truncation_state_id__state_prob_map_map= {}".format(pprint.pformat(mc_truncation_state_id__state_prob_map_map) ) )
+  # simplex_w_two_repair__E_T(0.9, 1.0)
+  # simplex_w_one_repair__parametric_E_T()
+  # simplex_steady_state_prob_hist()
+  # E_T_simplex_lb(t=3, arr_rate=0.9, gamma=1, mu=1)
+  # compute_ro(t=3, arr_rate=0.9, gamma=1, mu=1)
+  
+  mu = 1.0
+  mc_truncation_state_id__state_prob_map_map = {}
+  for mc_truncation_state_id in range(1, 10, 1):
+    mc_truncation_state_id__state_prob_map_map[mc_truncation_state_id] = simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu)
+  log(WARNING, "mc_truncation_state_id__state_prob_map_map= {}".format(pprint.pformat(mc_truncation_state_id__state_prob_map_map) ) )
   

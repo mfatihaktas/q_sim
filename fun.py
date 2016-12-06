@@ -116,8 +116,8 @@ def simplex_t_q__steady_state_dist():
   1.1000000000000001: 0.123022,
   1.2000000000000002: 0.062016}
   """
-  mu, gamma = 1, 0.5
-  lambda_ = 0.9 # 0.9 # 0.9 # 1.1 # 0.5
+  mu, gamma = 1, 1 # 0.5
+  lambda_ = 0.7 # 0.9 # 0.9 # 1.1 # 0.5
   log(WARNING, "lambda_= {}, mu= {}, gamma= {}".format(lambda_, mu, gamma) )
   ro = lambda_/mu
   # tau = lambda_/(2*mu+gamma)
@@ -145,9 +145,9 @@ def simplex_t_q__steady_state_dist():
   # x = 0.84 # for lambda_=0.6
   # x = 0.81 # for lambda_=0.7
   # tau = lambda_/(x*(2*mu+gamma) + (1-x)*lambda_) # _tau
-  # tau = _tau*(1+0.3*lambda_)
-  d = _tau/2 # 0.15
-  tau = (lambda_+d)/(2*mu+gamma-d)
+  tau = _tau*(1+0.3*lambda_)
+  # d = _tau/2 # 0.15
+  # tau = lambda_/(2*mu+gamma)
   s = lambda_+2*mu+gamma
   # tau_ = _tau/(1-_tau*(mu+gamma)*mu/s*(1/s+1/(s-mu) ) )
   k = mu*(mu+gamma)/s*(1/s+1/(s-mu))
@@ -193,10 +193,7 @@ def simplex_t_q__steady_state_dist():
   Y = (r_0+(pi_1_c-b)*r_0*r_1)*pi_0/(r_0-r_1)
   X = pi_0 - Y
   def final_dist(k, i):
-    if k == i:
-      return X/(r_0**i) + Y/(r_1**i)
-    else:
-      return tau**k * (X/(r_0**i) + Y/(r_1**i) )
+    return tau**(k-i) * (X/(r_0**i) + Y/(r_1**i) )
   for k in range(0, 3+1):
     for i in range(0, k+1):
       # print("short_dist:: p= {}".format(short_dist(k, i) ) )

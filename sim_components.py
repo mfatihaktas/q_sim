@@ -6,25 +6,25 @@ from patch import *
 from deprecated import *
 
 class Packet(object):
-  def __init__(self, time, size, _id, src="a", dst="z", flow_id=0):
+  def __init__(self, time, size, _id, flow_id=0):
     self.time = time
     self.size = size
     self._id = _id
-    self.src = src
-    self.dst = dst
     self.flow_id = flow_id
     self.ref_time = 0 # for casual use
     # for FJ and MDS Q implementation
     self.prev_hop_id = None
     self.entrance_time = None
     self.job_id = None
+    self.winner_id = None
   
   def deep_copy(self):
-    p = Packet(time=self.time, size=self.size, _id=self._id, src=self.src, dst=self.dst, flow_id=self.flow_id)
+    p = Packet(time=self.time, size=self.size, _id=self._id, flow_id=self.flow_id)
     p.ref_time = self.ref_time
     p.prev_hop_id = self.prev_hop_id
     p.entrance_time = self.entrance_time
     p.job_id = self.job_id
+    p.winner_id = self.winner_id
     return p
   
   def __repr__(self):
@@ -75,7 +75,7 @@ class PacketGenerator(object):
       # wait for next transmission
       yield self.env.timeout(self.adist() )
       self.n_sent += 1
-      p = Packet(time=self.env.now, size=self.sdist(), _id=self.n_sent, src=self._id, flow_id=self.flow_id)
+      p = Packet(time=self.env.now, size=self.sdist(), _id=self.n_sent, flow_id=self.flow_id)
       self.out.put(p)
 
 class Q(object):
@@ -251,9 +251,9 @@ class JSink(object): # Join
     while True:
       p = (yield self.store.get() )
       self.st_l.append(self.env.now - p.entrance_time)
-      if p.prev_hop_id not in self.qid__num_win_map:
-        self.qid__num_win_map[p.prev_hop_id] = 0
-      self.qid__num_win_map[p.prev_hop_id] += 1
+      if p.winner_id not in self.qid__num_win_map:
+        self.qid__num_win_map[p.winner_id] = 0
+      self.qid__num_win_map[p.winner_id] += 1
       
       if self.out is not None:
         self.out.put(p)
@@ -320,8 +320,7 @@ class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job 
     if not self.fj:
       self.out_c.put_c(CPacket(_id=ref_p.job_id, prev_hop_id=self._id, departed_q_id_l=departed_q_id_l) )
     
-    # ref_p.prev_hop_id = possible_winner_id
-    # ref_p.departed_q_id_l=departed_q_id_l
+    ref_p.winner_id = ref_p.prev_hop_id
     ref_p.prev_hop_id = self._id
     self.out.put(ref_p)
     self.length = max([len(pq) for i, pq in self.input_id__pq_map.items() ] )
@@ -498,6 +497,11 @@ class AVQ(object): # Availability
           li = 1+(g-2)*r
           ri = li + r
           self.qid_l.append("mds{}".format(qid_l[li:ri] ) )
+    else:
+      for g in range(1, t + 1):
+        li = (g-1)*r
+        ri = li + r
+        self.qid_l.append("mds{}".format(qid_l[li:ri] ) )
     self.join_q = JQ(_id=_id, env=env, k=1, input_qid_l=self.qid_l)
     self.join_q.out = self.join_sink
     self.join_q.out_c = self
