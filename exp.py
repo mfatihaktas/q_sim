@@ -145,7 +145,7 @@ def plot_winning_freqs():
   qid__latex_symbol_map = {"1":"s", "2":"{1,1}", "3":"{1,2}"} # ["\\gamma", "\\alpha", "\\beta"]
   for qid, win_freq_l in qid__win_freq_l_map.items():
     plot.plot(arr_l, win_freq_l, 'o-', label=r'$w_{}$'.format(qid__latex_symbol_map[qid] ) )
-    plot.legend()
+  plot.legend()
   plot.xlabel(r'$\lambda$')
   plot.ylabel("Winning frequency")
   plot.title(r'$\mu$= {}'.format(mu) )
@@ -189,19 +189,12 @@ def plot_mds(num_q):
     sim_mds_n_1_E_T = 0 # test_mds_n_k(num_f_run, arr_rate, mu, num_q, 1)
     sim_mds_n_1_E_T_l.append(sim_mds_n_1_E_T)
   plot.plot(arr_l, sm_mds_n_k_E_T_l, 'ro', label="SM-MDS({},{})".format(num_q, k) )
-  plot.legend()
   # plot.plot(arr_l, adj_sm_mds_n_k_E_T_l, 'bo', label="adj_sm_MDS({},{})".format(num_q, k) )
-  # plot.legend()
   # plot.plot(arr_l, adj_2_sm_mds_n_k_E_T_l, 'co', label="adj_2_sm_MDS({},{})".format(num_q, k) )
-  # plot.legend()
   # plot.plot(arr_l, recur_sm_mds_n_k_E_T_l, 'yo', label="recur_sm_MDS({},{})".format(num_q, k) )
-  # plot.legend()
   plot.plot(arr_l, sim_mds_n_k_E_T_l, 'ko', label="MDS({},{})".format(num_q, k) )
-  plot.legend()
   plot.plot(arr_l, adj_mds_n_k_E_T_l, 'go', label="LB-MDS({},{})".format(num_q, k) )
-  plot.legend()
   plot.plot(arr_l, varki_mds_n_k_E_T_l, 'mo', label="Varki-MDS({},{})".format(num_q, k) )
-  plot.legend()
   
   plot.xlabel(r'$\lambda$')
   plot.ylabel("E[T] (s)")
@@ -210,7 +203,7 @@ def plot_mds(num_q):
   log(WARNING, "done; n= {}, k= {}".format(n, k) )
 
 def plot_simplex(num_q):
-  w_sys = False # True
+  w_sys = True # False
   t, r, k = 2, 2, 2
   mu = 1
   gamma = mu
@@ -222,7 +215,7 @@ def plot_simplex(num_q):
   sim_hetero_simplex_E_T_l, sim_hetero2_simplex_E_T_l, sim_hetero3_simplex_E_T_l = [], [], []
   fj_2_2_E_T_l, sim_fj_2_E_T_l = [], []
   
-  simplex_sm_E_T_l, sim_simplex_E_T_l, simplex_E_T_l, simplex_E_T_alt_l, E_T_simplex_lb_l = [], [], [], [], []
+  simplex_sm_E_T_l, sim_simplex_E_T_l, simplex_E_T_l, simplex_E_T_alt_l, E_T_simplex_lb_l, E_T_simplex_naive_lb_l = [], [], [], [], [], []
   simplex_trial_E_T_l, simplex_trial2_E_T_l, simplex_trial3_E_T_l, simplex_trial4_E_T_l = [], [], [], []
   
   simplex_wo_sys_sm_E_T_l = []
@@ -231,7 +224,7 @@ def plot_simplex(num_q):
   # for arr_rate in numpy.arange(0.05, 1.26, 0.2):
     arr_l.append(arr_rate)
     # sim
-    num_f_run = 3
+    num_f_run = 1
     # sim_mds_n_k_E_T_l.append(test_mds_n_k(num_f_run, arr_rate, mu, num_q, k) )
     # t= 3, gamma=mu= 1, for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/7)
     if w_sys and t == 2:
@@ -290,52 +283,38 @@ def plot_simplex(num_q):
         # simplex_E_T_alt_l.append(simplex_w_two_repair__E_T(arr_rate, mu, M=2) )
       else:
         simplex_E_T_l.append(simplex_wo_sys_w_two_repair__E_T(arr_rate, mu) )
-    # E_T_simplex_lb_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu) )
+    E_T_simplex_lb_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu) )
+    E_T_simplex_naive_lb_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu, naive=True) )
     # simplex_trial_E_T_l.append(simplex_w_one_repair__E_T_trial(1, t, arr_rate, mu) )
     # simplex_trial2_E_T_l.append(simplex_w_one_repair__E_T_trial(1.2, t, arr_rate, mu) )
     # simplex_trial3_E_T_l.append(simplex_w_one_repair__E_T_trial(1.5, t, arr_rate, mu) )
     # simplex_trial4_E_T_l.append(simplex_w_one_repair__E_T_trial(1.8, t, arr_rate, mu) )
     
   # plot.plot(arr_l, sim_mds_n_k_E_T_l, 'ro', label="MDS({},{})".format(num_q, k) )
-  # plot.legend()
-  plot.plot(arr_l, simplex_sm_E_T_l, 'ro', label="SM-Simplex(t:{})".format(t) )
-  plot.legend()
+  plot.plot(arr_l, simplex_sm_E_T_l, 'ro', label=r'$E[\hat{T}_{SM}]$')
   # plot.plot(arr_l, simplex_wo_sys_sm_E_T_l, 'ro', label="simplex_wo_sys_sm_t_{}".format(t) )
-  # plot.legend()
   # plot.plot(arr_l, simplex_E_T_alt_l, 'bo', label="UB-Simplex(t:{},M:2)".format(t) )
-  # plot.legend()
   log(WARNING, "sim_simplex_E_T_l= {}".format(pprint.pformat(sim_simplex_E_T_l) ) )
-  plot.plot(arr_l, sim_simplex_E_T_l, 'ko', label="Simplex(t:{})".format(t) )
-  plot.legend()
-  plot.plot(arr_l, simplex_E_T_l, 'go', label="LB-Simplex(t:{},M:5)".format(t) )
-  plot.legend()
-  # plot.plot(arr_l, E_T_simplex_lb_l, 'bo', label="LB-Simplex(t:{})".format(t) )
-  # plot.legend()
+  plot.plot(arr_l, sim_simplex_E_T_l, 'ko', label=r'$E[T]$')
+  # plot.plot(arr_l, simplex_E_T_l, 'go', label="LB-Simplex(t:{},M:5)".format(t) )
+  plot.plot(arr_l, E_T_simplex_lb_l, 'go', label=r'$E[\hat{T}(\mathbf{\rho_{max}})]$')
+  plot.plot(arr_l, E_T_simplex_naive_lb_l, 'bo', label=r'$E[\hat{T}(\mathbf{1})]$')
   color = iter(cm.rainbow(numpy.linspace(0, 2, 4) ) )
   # plot.plot(arr_l, sim_hetero_simplex_E_T_l, 'o', color=next(color), label="hetero_simplex_c_{}".format(hetero_simplex_c) )
-  # plot.legend()
   # plot.plot(arr_l, sim_hetero2_simplex_E_T_l, 'o', color=next(color), label="hetero_simplex_c_{}".format(hetero2_simplex_c) )
-  # plot.legend()
   # plot.plot(arr_l, sim_hetero3_simplex_E_T_l, 'o', color=next(color), label="hetero_simplex_c_{}".format(hetero3_simplex_c) )
-  # plot.legend()
   # plot.plot(arr_l, sim_fj_2_E_T_l, 'o', color=next(color), label="fj_2")
-  # plot.legend()
   # plot.plot(arr_l, fj_2_2_E_T_l, 'o', color=next(color), label="model_fj_2")
-  # plot.legend()
   # plot.plot(arr_l, simplex_trial_E_T_l, 'bo', label="trial_Simplex(t:{})".format(t) )
-  # plot.legend()
   # color = iter(cm.rainbow(numpy.linspace(0, 1, 4) ) )
   # plot.plot(arr_l, simplex_trial2_E_T_l, 'o', color=next(color), label="trial_simplex2_t_{}".format(t) )
-  # plot.legend()
   # plot.plot(arr_l, simplex_trial3_E_T_l, 'o', color=next(color), label="trial_simplex3_t_{}".format(t) )
-  # plot.legend()
   # plot.plot(arr_l, simplex_trial4_E_T_l, 'bo', color=next(color), label="trial_simplex4_t_{}".format(t) )
-  # plot.legend()
   # plot.plot(arr_l, sim_mds_n_1_E_T_l, 'bo', label="MDS({},1)".format(num_q) )
-  # plot.legend()
+  plot.legend()
   plot.xlabel(r'$\lambda$')
   plot.ylabel("E[T] (s)")
-  plot.title(r't= {}, r= {}, k= {}, $\gamma$= {}, $\mu$= {}, w/ sys= {}'.format(t, r, k, gamma, mu, w_sys) )
+  plot.title(r't= {}, r= {}, k= {}, $\gamma$= {}, $\mu$= {}'.format(t, r, k, gamma, mu) )
   plot.savefig("plot_simplex__t_{}.png".format(t) )
   log(WARNING, "done; t= {}, r= {}, k= {}".format(t, r, k) )
 
@@ -368,11 +347,8 @@ def plot_simplex_w_varying_serv_rate_alloc(num_q):
       
       hetero_simplex_E_T_l.append(simplex_w_one_repair__E_T(arr_rate, mu, c) )
     plot.plot(c_l, simplex_sm_E_T_l, 'o', color=next(color), label="SM-Simplex $\lambda={0:0.2f}$".format(arr_rate) )
-    plot.legend()
     plot.plot(c_l, sim_hetero_simplex_E_T_l, 'o', color=next(color), label=r'Simplex $\lambda={0:0.2f}$'.format(arr_rate) )
-    plot.legend()
     plot.plot(c_l, hetero_simplex_E_T_l, 'o', color=next(color), label=r'LB-Simplex $\lambda={0:0.2f}$'.format(arr_rate) )
-    plot.legend()
     
   plot.xlabel("c")
   plot.ylabel("E[T] (s)")
@@ -405,13 +381,9 @@ def plot_avq():
     E_T_avq_l.append(E_T_avq_sys__mds_r_2(arr_rate, gamma, mu, r) )
   
   plot.plot(arr_l, E_T_simplex_sm_l, 'ro', label="SM-Simplex(t:{},r:{},k:{})".format(simplex_t, simplex_r, simplex_k) )
-  plot.legend()
   plot.plot(arr_l, sim_E_T_simplex_l, 'ko', label="Simplex(t:{},r:{},k:{})".format(simplex_t, simplex_r, simplex_k) )
-  plot.legend()
   plot.plot(arr_l, E_T_avq_l, 'go', label="UB-AVQ(t:{},r:{},k:{})".format(t, r, k) )
-  plot.legend()
   # plot.plot(arr_l, sim_E_T_avq_l, 'ko', label="avq [t:{},r:{},k:{}]".format(t, r, k) )
-  # plot.legend()
   plot.xlabel(r'$\lambda$')
   plot.ylabel("E[T] (s)")
   plot.title(r't= {}, r= {}, k= {}, $\gamma$= {}, $\mu$= {}'.format(t, r, k, gamma, mu) )

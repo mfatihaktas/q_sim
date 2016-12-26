@@ -3,6 +3,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plot
 import matplotlib.cm as cm # cm.rainbow
 import sys, pprint, math, numpy, sympy, csv
+from math import factorial
+from numpy import linalg
 from patch import *
 
 def simplex_t_1_mc():
@@ -198,8 +200,56 @@ def simplex_t_q__steady_state_dist():
     for i in range(0, k+1):
       # print("short_dist:: p= {}".format(short_dist(k, i) ) )
       print("k= {}, i= {}; p= {}".format(k, i, final_dist(k, i) ) )
+
+def plot_simplex_start_type_moments(t, gamma, mu):
+  def binomial(x, y):
+    try:
+      binom = factorial(x) // factorial(y) // factorial(x - y)
+    except ValueError:
+      binom = 0
+    return binom
   
+  def E_S_p_m(m, t, gamma, mu):
+    return sum([binomial(t-m,i)*2**i * (-1)**(t-m-i) / (gamma+(2*t-m-i)*mu) for i in range(t-m+1) ] )
+  def E_S_p_m_2(m, t, gamma, mu):
+    return sum([binomial(t-m,i)*2**i * (-1)**(t-m-i) * 2/(gamma+(2*t-m-i)*mu)**2 for i in range(t-m+1) ] )
+  
+  E_S_p_m_l, E_S_p_m_2_l = [], []
+  m_l = []
+  for m in range(t+1):
+    m_l.append(m)
+    E_S_p_m_l.append(E_S_p_m(m, t, gamma, mu) )
+    E_S_p_m_2_l.append(E_S_p_m_2(m, t, gamma, mu) )
+  
+  plot.plot(m_l, E_S_p_m_l, 'o-', label="E_S_p_m")
+  plot.plot(m_l, E_S_p_m_2_l, 'o-', label="E_S_p_m_2")
+  plot.legend()
+  plot.xlabel("m")
+  plot.ylabel("Time")
+  plot.savefig("plot_simplex_start_type_moments.png")
+
+def job_start_fractions(t):
+  P = numpy.zeros(shape=(t+1, t+1) )
+  for i in range(t+1):
+    to_right_sum = 1/(2+0.2)
+    if i == t:
+      to_right_sum = 0
+    j_g_i_l = [to_right_sum/(t-i) for j in range(i+1, t+1) ]
+    j_leq_i_l = [(1-to_right_sum)/(i+1) for j in range(0, i+1) ]
+    # j_g_i_l = [to_right_sum/(t-i+1) for j in range(i, t+1) ]
+    # j_leq_i_l = [(1-to_right_sum)/i for j in range(0, i) ]
+    P[i, :] = j_leq_i_l + j_g_i_l
+  print("P= \n{}".format(P) )
+  P_100 = linalg.matrix_power(P, 100)
+  print("P_100= \n{}".format(P_100) )
+  pi_v = P_100[0]
+  # log(WARNING, "pi_v= {}".format(pprint.pformat(pi_v) ) )
+  state_prob_map = {i:pi for i,pi in enumerate(pi_v) }
+  print("state_prob_map= \n{}".format(pprint.pformat(state_prob_map) ) )
+
 if __name__ == "__main__":
   # simplex_t_1_mc()
-  simplex_t_q__steady_state_dist()
+  # simplex_t_q__steady_state_dist()
+  # job_start_fractions(5)
+  plot_simplex_start_type_moments(10, 1, 1)
   

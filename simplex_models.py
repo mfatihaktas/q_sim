@@ -477,7 +477,7 @@ def E_T_avq_sys__mds_r_2(arr_rate, gamma, mu, r):
   return E_T
 
 # ########################################  LB; Simplex(t)  ###################################### #
-def E_T_simplex_lb(t, arr_rate, gamma, mu):
+def E_T_simplex_lb(t, arr_rate, gamma, mu, naive=False):
   # def E_S_c(t, gamma, mu):
   #   return sum([binomial(t,i)*2**i * (-1)**(k-i) / (gamma+(2*k-i)*mu) for i in range(t+1) ] )
   # def E_S_c_2(t, gamma, mu):
@@ -506,7 +506,7 @@ def E_T_simplex_lb(t, arr_rate, gamma, mu):
   # else:
   #   log(ERROR, "not implemented!")
   #   return 1
-  
+  """
   nu = 2*t*mu+gamma
   P_01 = 0 # 2*t*mu/nu * mu/nu * (gamma+mu)/nu
   for i in range(t):
@@ -523,8 +523,8 @@ def E_T_simplex_lb(t, arr_rate, gamma, mu):
     for j in range(1, i+1):
       prod *= (1-(gamma+2*i*mu)/nu)
     P_10 += prod * (gamma+(i+1)*mu)/nu
-  
-  # ro_max = P_01/P_10
+  ro_max = P_01/P_10
+  """
   E_X = 1/arr_rate
   E_S_min = sum(E_S_p_m_l)/len(E_S_p_m_l)
   # E_J_max = E_X/(E_X-E_S_min)
@@ -532,21 +532,27 @@ def E_T_simplex_lb(t, arr_rate, gamma, mu):
   # ro_max = compute_ro(t, arr_rate, gamma, mu)
   # ro_max = min(E_S_min/(E_X-E_S_min), 0.99)
   # ro_max = min(math.pow(E_S_min/(E_X-E_S_min), 1/t), 0.99)
-  ro_max = E_S_min/(E_X-E_S_min)/t
+  ro_max = E_S_min/E_X
   # print("ro_max= {}".format(ro_max) )
   
-  # p_0 = (1-ro_max)/(1-ro_max**(t+1) )
-  p_0 = 1/(1+t*ro_max)
+  p_0 = (1-ro_max)/(1-ro_max**(t+1) )
+  # p_0 = 1/(1+t*ro_max)
   def p_m(m):
-    return ro_max**(m != 0) * p_0
-    # return ro_max**m * p_0
+    if naive:
+      return 1/(t+1)
+    else:
+      return ro_max**m * p_0
+    # return ro_max**(m != 0) * p_0
     # if m == t:
     #  m = m - 1
     # return 1/2**(m+1)
   # print("p_0= {}".format(p_0) )
-  
+  p_m_l = []
+  for m in range(t+1):
+    p_m_l.append(p_m(m) )
+  """
   # Trying to improve lower bound using incremental steps by adjusting ro_m
-  ro_m_l, p_m_l = [], [0]*(t+1)
+  ro_m_l = []
   for m in range(t+1):
     print("m= {}".format(m) )
     A = 0
@@ -561,10 +567,11 @@ def E_T_simplex_lb(t, arr_rate, gamma, mu):
     for m_ in range(t+1):
       p_m_l[m_] = numpy.prod(ro_m_l[:m_] )*p_0
     print("p_0= {}, ro_m_l= {}, p_m_l= {}".format(p_0, ro_m_l, p_m_l) )
+  """
   # E_S = sum(E_S_p_m_l)/len(E_S_p_m_l)
   # E_S_2 = sum(E_S_p_m_2_l)/len(E_S_p_m_2_l)
-  E_S = sum([E_S_p_m_l[m]*p_m for p_m in p_m_l] )
-  E_S_2 = sum([E_S_p_m_2_l[m]*p_m for p_m in p_m_l] )
+  E_S = sum([E_S_p_m_l[m]*p_m for m,p_m in enumerate(p_m_l) ] )
+  E_S_2 = sum([E_S_p_m_2_l[m]*p_m for m,p_m in enumerate(p_m_l) ] )
   # E_S = 0.5*E_S_p_m_l[0] + 0.5*sum(E_S_p_m_l[1:] )/t
   # E_S_2 = 0.5*E_S_p_m_2_l[0] + 0.5*sum(E_S_p_m_2_l[1:] )/t
   
