@@ -2,7 +2,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plot
 import matplotlib.cm as cm # cm.rainbow
-import sys, pprint, math, numpy, simpy, getopt
+import sys, pprint, math, numpy, sympy, simpy, getopt
 from math import factorial
 from numpy import linalg
 from patch import *
@@ -144,11 +144,32 @@ def simplex_w_one_repair__E_T(arr_rate, mu, c=None):
     return E_S + arr_rate*E_S_2/2/(1-arr_rate*E_S)
 
 def simplex_w_one_repair__E_T_trial(c, t, arr_rate, mu):
-  # mu_1 = mu - arr_rate
-  # mu_2 = 2*mu - arr_rate
-  gamma = mu
-  # return 1/gamma + 1/mu * (mu_2/mu_1 - mu_1/mu_2 + mu_1/(gamma+mu_2) - mu_2/(gamma+mu_1) )
-  return 1/(c*mu + gamma - arr_rate)
+  l, a, b, g, d = sympy.var('l a b g d')
+  F_0 = sympy.Matrix([-l , 0  , l , 0  ], \
+                     [a+g, b-d, 0 , 0  ], \
+                     [g  , b  , -d, a  ], \
+                     [b+g, 0  , 0 , a-d] )
+  H_0 = sympy.Matrix([0, 0, 0, 0, 0], \
+                     [0, l, 0, 0, 0], \
+                     [0, 0, l, 0, 0], \
+                     [0, 0, 0, l, 0] )
+  L_0 = sympy.Matrix([0, a+g, 0  , 0  ], \
+                     [0, 0  , a+g, 0  ], \
+                     [0, 0  , g  , 0  ], \
+                     [0, 0  , b+g, 0  ], \
+                     [0, 0  , 0  , b+g] )
+  F = sympy.Matrix([b-d, 0 , 0 , 0 , 0  ], \
+                   [b  , -d, 0 , 0 , 0  ], \
+                   [0  , b , -d, a , 0  ], \
+                   [0  , 0 , 0 , -d, a  ], \
+                   [0  , 0 , 0 , 0 , a-d] )
+  L = sympy.Matrix([0, a+g, 0  , 0  , 0], \
+                   [0, 0  , a+g, 0  , 0], \
+                   [0, 0  , g  , 0  , 0], \
+                   [0, 0  , b+g, 0  , 0], \
+                   [0, 0  , 0  , b+g, 0] )
+  
+  return 1
 
 # -----------------------------------------  Simplex 2 repair  ----------------------------------- #
 def simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu):
@@ -299,18 +320,6 @@ def simplex_w_two_repair__E_T(arr_rate, mu, M):
   E_T = E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S)
   return E_T
 
-def simplex_w_two_repair__E_T_LB_UB(arr_rate, mu):
-  gamma = mu
-  nu = gamma + 4*mu
-  ro_max, ro_min = (gamma+2*mu)/nu, (gamma+mu)/nu
-  
-  pi_0_0_min = 1 - 1/ro_min
-  pi_B1_min = 1/ro_max * pi_0_0_min
-  f_jc_min = pi_0_0_min*gamma/nu + pi_B1_min*(gamma+mu)/nu
-  pi_0_0_max = 1 - 1/ro_max
-  pi_B1_max = 1/ro_max * pi_0_0_max
-  f_jc_max = pi_0_0_max*gamma/nu + pi_B1_max*(gamma+2*mu)/nu
-  
 def simplex_wo_sys_w_two_repair__E_T(arr_rate, mu):
   return 1/(4*mu-arr_rate) + 1/(3*mu-arr_rate) + 2/3/(2*mu-arr_rate)
 
@@ -477,7 +486,26 @@ def E_T_avq_sys__mds_r_2(arr_rate, gamma, mu, r):
   return E_T
 
 # ########################################  LB; Simplex(t)  ###################################### #
-def E_T_simplex_lb(t, arr_rate, gamma, mu, naive=False):
+def E_T_simplex_varki_gauri_lb(t, arr_rate, gamma, mu):
+  def P_i_next(i):
+    return 2*(t-i)*mu/(gamma+(2*t-i)*mu)
+  def mu_i(i):
+    return gamma + (2*t-i)*mu
+  def lambda_i(i):
+    if i == 0:
+      return arr_rate
+    else:
+      prod = 1
+      for k in range(i):
+        prod = prod * P_i_next(k)
+      return arr_rate*prod
+  E_T = 0
+  # for i in range(2):
+  for i in range(t+1):
+    E_T = E_T + P_i_next(i)/(mu_i(i) - lambda_i(i) )
+  return E_T
+  
+def E_T_simplex_lb(t, arr_rate, gamma, mu, ub=False, naive=False):
   # def E_S_c(t, gamma, mu):
   #   return sum([binomial(t,i)*2**i * (-1)**(k-i) / (gamma+(2*k-i)*mu) for i in range(t+1) ] )
   # def E_S_c_2(t, gamma, mu):
@@ -536,7 +564,8 @@ def E_T_simplex_lb(t, arr_rate, gamma, mu, naive=False):
   # print("ro_max= {}".format(ro_max) )
   
   p_0 = (1-ro_max)/(1-ro_max**(t+1) )
-  # p_0 = 1/(1+t*ro_max)
+  if naive:
+    p_0 = 1/(1+t*ro_max)
   def p_m(m):
     if naive:
       return 1/(t+1)
@@ -547,27 +576,28 @@ def E_T_simplex_lb(t, arr_rate, gamma, mu, naive=False):
     #  m = m - 1
     # return 1/2**(m+1)
   # print("p_0= {}".format(p_0) )
-  p_m_l = []
+  p_m_l = (t+1)*[0]
   for m in range(t+1):
-    p_m_l.append(p_m(m) )
-  """
+    p_m_l[m] = p_m(m)
+  # """
   # Trying to improve lower bound using incremental steps by adjusting ro_m
-  ro_m_l = []
-  for m in range(t+1):
-    print("m= {}".format(m) )
-    A = 0
-    for i in range(m+1):
-      A += numpy.prod(ro_m_l[:i] )
-    E_Y = E_X - E_S_min
-    B = (t-m)*numpy.prod(ro_m_l[:m] )
-    print("A= {}, B= {}, (E_X-E_Y*A)/B/E_Y= {}".format(A, B, (E_X-E_Y*A)/B/E_Y) )
-    ro_m = min((E_X-E_Y*A)/B/E_Y, 1)/2
-    ro_m_l.append(ro_m)
-    p_0 = 1/(sum([numpy.prod(ro_m_l[:i] ) for i in range(m+1) ] ) + numpy.prod(ro_m_l[:m+1] )*(t-m) )
-    for m_ in range(t+1):
-      p_m_l[m_] = numpy.prod(ro_m_l[:m_] )*p_0
-    print("p_0= {}, ro_m_l= {}, p_m_l= {}".format(p_0, ro_m_l, p_m_l) )
-  """
+  if ub:
+    ro_m_l = []
+    for m in range(t+1):
+      print("m= {}".format(m) )
+      A = 0
+      for i in range(m+1):
+        A += numpy.prod(ro_m_l[:i] )
+      E_Y = E_X - E_S_min
+      B = (t-m)*numpy.prod(ro_m_l[:m] )
+      print("A= {}, B= {}, (E_X-E_Y*A)/B/E_Y= {}".format(A, B, (E_X-E_Y*A)/B/E_Y) )
+      ro_m = min((E_X-E_Y*A)/B/E_Y, 1)/2
+      ro_m_l.append(ro_m)
+      p_0 = 1/(sum([numpy.prod(ro_m_l[:i] ) for i in range(m+1) ] ) + numpy.prod(ro_m_l[:m+1] )*(t-m) )
+      for m_ in range(t+1):
+        p_m_l[m_] = numpy.prod(ro_m_l[:m_] )*p_0
+      print("p_0= {}, ro_m_l= {}, p_m_l= {}".format(p_0, ro_m_l, p_m_l) )
+  # """
   # E_S = sum(E_S_p_m_l)/len(E_S_p_m_l)
   # E_S_2 = sum(E_S_p_m_2_l)/len(E_S_p_m_2_l)
   E_S = sum([E_S_p_m_l[m]*p_m for m,p_m in enumerate(p_m_l) ] )

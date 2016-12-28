@@ -4,7 +4,7 @@ import matplotlib.pyplot as plot
 import matplotlib.cm as cm # cm.rainbow
 from cycler import cycler
 from random import expovariate
-import sys, pprint, math, numpy, simpy, getopt
+import sys, pprint, math, numpy, simpy, getopt, itertools
 
 from sim_components import *
 from simplex_models import *
@@ -204,7 +204,7 @@ def plot_mds(num_q):
 
 def plot_simplex(num_q):
   w_sys = True # False
-  t, r, k = 2, 2, 2
+  t, r, k = 5, 2, 2
   mu = 1
   gamma = mu
   arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu, w_sys)
@@ -215,7 +215,8 @@ def plot_simplex(num_q):
   sim_hetero_simplex_E_T_l, sim_hetero2_simplex_E_T_l, sim_hetero3_simplex_E_T_l = [], [], []
   fj_2_2_E_T_l, sim_fj_2_E_T_l = [], []
   
-  simplex_sm_E_T_l, sim_simplex_E_T_l, simplex_E_T_l, simplex_E_T_alt_l, E_T_simplex_lb_l, E_T_simplex_naive_lb_l = [], [], [], [], [], []
+  simplex_sm_E_T_l, sim_simplex_E_T_l, simplex_E_T_l, simplex_E_T_alt_l = [], [], [], []
+  E_T_simplex_ub_l, E_T_simplex_lb_l, E_T_simplex_naive_lb_l, E_T_simplex_varki_gauri_lb_l = [], [], [], []
   simplex_trial_E_T_l, simplex_trial2_E_T_l, simplex_trial3_E_T_l, simplex_trial4_E_T_l = [], [], [], []
   
   simplex_wo_sys_sm_E_T_l = []
@@ -224,7 +225,7 @@ def plot_simplex(num_q):
   # for arr_rate in numpy.arange(0.05, 1.26, 0.2):
     arr_l.append(arr_rate)
     # sim
-    num_f_run = 1
+    num_f_run = 2
     # sim_mds_n_k_E_T_l.append(test_mds_n_k(num_f_run, arr_rate, mu, num_q, k) )
     # t= 3, gamma=mu= 1, for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/7)
     if w_sys and t == 2:
@@ -235,8 +236,9 @@ def plot_simplex(num_q):
         0.8202851866715352,
         0.9993734298285143,
         1.3230863471098744,
-        1.9999289020072679]
-        # 1.9679289020072679]
+        1.9679289020072679]
+        # 1.9679289020072679
+        # 1.9999289020072679]
     elif w_sys and t == 3:
       sim_simplex_E_T_l= [
         0.4692185744911441,
@@ -246,10 +248,27 @@ def plot_simplex(num_q):
       	0.8446347683684426,
       	1.0891266908697737,
       	1.6007724635530007]
+    elif w_sys and t == 4:
+      sim_simplex_E_T_l= [
+        0.41308720307512653,
+        0.46198842372979687,
+        0.5172919002827522,
+        0.5956587704334568,
+        0.7313172804953793,
+        0.946993937225123,
+        1.4346171015038325]
+    elif w_sys and t == 5:
+      sim_simplex_E_T_l= [
+        0.3773439036595755,
+        0.4157220154779594,
+        0.46831693074677627,
+        0.5443438205065009,
+        0.6560641337080825,
+        0.8544174638869552,
+        1.312970149903467]
     else:
       sim_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, w_sys=w_sys)
       sim_simplex_E_T_l.append(sim_simplex_E_T)
-    
     # C = num_q*mu
     # def qmu_l(c):
     #   mu_ = C/2/(c+1)
@@ -283,22 +302,26 @@ def plot_simplex(num_q):
         # simplex_E_T_alt_l.append(simplex_w_two_repair__E_T(arr_rate, mu, M=2) )
       else:
         simplex_E_T_l.append(simplex_wo_sys_w_two_repair__E_T(arr_rate, mu) )
+    E_T_simplex_ub_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu, ub=True) )
     E_T_simplex_lb_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu) )
     E_T_simplex_naive_lb_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu, naive=True) )
+    E_T_simplex_varki_gauri_lb_l.append(E_T_simplex_varki_gauri_lb(t, arr_rate, gamma, mu) )
     # simplex_trial_E_T_l.append(simplex_w_one_repair__E_T_trial(1, t, arr_rate, mu) )
     # simplex_trial2_E_T_l.append(simplex_w_one_repair__E_T_trial(1.2, t, arr_rate, mu) )
     # simplex_trial3_E_T_l.append(simplex_w_one_repair__E_T_trial(1.5, t, arr_rate, mu) )
     # simplex_trial4_E_T_l.append(simplex_w_one_repair__E_T_trial(1.8, t, arr_rate, mu) )
-    
+  marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
   # plot.plot(arr_l, sim_mds_n_k_E_T_l, 'ro', label="MDS({},{})".format(num_q, k) )
-  plot.plot(arr_l, simplex_sm_E_T_l, 'ro', label=r'$E[\hat{T}_{SM}]$')
+  plot.plot(arr_l, simplex_sm_E_T_l, 'r', label=r'$E[\hat{T}_{SM}]$', marker=next(marker), linestyle='')
+  plot.plot(arr_l, E_T_simplex_ub_l, 'm', label=r'$E[\hat{T}(\mathbf{\rho})]$', marker=next(marker), linestyle='')
   # plot.plot(arr_l, simplex_wo_sys_sm_E_T_l, 'ro', label="simplex_wo_sys_sm_t_{}".format(t) )
   # plot.plot(arr_l, simplex_E_T_alt_l, 'bo', label="UB-Simplex(t:{},M:2)".format(t) )
   log(WARNING, "sim_simplex_E_T_l= {}".format(pprint.pformat(sim_simplex_E_T_l) ) )
-  plot.plot(arr_l, sim_simplex_E_T_l, 'ko', label=r'$E[T]$')
+  plot.plot(arr_l, sim_simplex_E_T_l, 'k', label=r'$E[T]$', marker=next(marker), linestyle='')
   # plot.plot(arr_l, simplex_E_T_l, 'go', label="LB-Simplex(t:{},M:5)".format(t) )
-  plot.plot(arr_l, E_T_simplex_lb_l, 'go', label=r'$E[\hat{T}(\mathbf{\rho_{max}})]$')
-  plot.plot(arr_l, E_T_simplex_naive_lb_l, 'bo', label=r'$E[\hat{T}(\mathbf{1})]$')
+  plot.plot(arr_l, E_T_simplex_lb_l, 'g', label=r'$E[\hat{T}(\mathbf{\rho_{max}})]$', marker=next(marker), linestyle='')
+  plot.plot(arr_l, E_T_simplex_naive_lb_l, 'b', label=r'$E[\hat{T}(\mathbf{1})]$', marker=next(marker), linestyle='')
+  plot.plot(arr_l, E_T_simplex_varki_gauri_lb_l, 'c', label=r'$E[\hat{T}_{fast-serial}]$', marker=next(marker), linestyle='')
   color = iter(cm.rainbow(numpy.linspace(0, 2, 4) ) )
   # plot.plot(arr_l, sim_hetero_simplex_E_T_l, 'o', color=next(color), label="hetero_simplex_c_{}".format(hetero_simplex_c) )
   # plot.plot(arr_l, sim_hetero2_simplex_E_T_l, 'o', color=next(color), label="hetero_simplex_c_{}".format(hetero2_simplex_c) )
