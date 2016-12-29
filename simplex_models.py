@@ -143,8 +143,7 @@ def simplex_w_one_repair__E_T(arr_rate, mu, c=None):
     E_S_2 = f_c*E_S_c_2 + (1-f_c)*E_S_p_2
     return E_S + arr_rate*E_S_2/2/(1-arr_rate*E_S)
 
-def simplex_w_one_repair__E_T_trial(t, arr_rate, mu):
-  # l, a, b, g, d = sympy.var('l a b g d')
+def simplex_w_one_repair__E_T_matrix_analytic(t, arr_rate, mu):
   l = arr_rate
   a = b = g = mu
   d = a + b + g + l
@@ -193,21 +192,37 @@ def simplex_w_one_repair__E_T_trial(t, arr_rate, mu):
       if d < e:
         break
       counter = counter + 1
-    print("R:: counter= {}".format(counter) )
+    # print("R:: counter= {}".format(counter) )
     return R
   
   R = R(0.001)
-  print("R=\n {}".format(R) )
+  # print("R=\n {}".format(R) )
   FI_u = numpy.concatenate((F_0, H_0), axis=1)
   FI_l = numpy.concatenate((L_0, R*L+F), axis=1)
   FI = numpy.concatenate((FI_u, FI_l), axis=0)
   # print("FI=\n {}".format(FI) )
   c_v = numpy.concatenate((numpy.ones((4,1)), (numpy.identity(5)-R)**-1 * numpy.ones((5,1)) ), axis=0)
-  print("c_v=\n {}".format(c_v) )
+  # print("c_v=\n {}".format(c_v) )
   FI[:, 0] = c_v
-  print("FI=\n {}".format(FI) )
-  pi_v = numpy.matrix([[1, 0, 0, 0, 0, 0, 0, 0, 0] ]) * FI**-1
-  print("pi_v=\n {}".format(pi_v) )
+  # print("FI=\n {}".format(FI) )
+  PI_v = numpy.matrix([[1, 0, 0, 0, 0, 0, 0, 0, 0] ]) * FI**-1
+  # print("PI_v=\n {}".format(PI_v) )
+  PI_0_v = PI_v[:, 0:4]
+  PI_1_v = PI_v[:, 4:9]
+  print("PI_0_v= {}, PI_1_v= {}".format(PI_0_v, PI_1_v) )
+  # for i in range(2, 10):
+  #   PI_i_v = PI_1_v*R**(i-1)
+  #   print("i= {}, PI_i_v= {}".format(i, PI_i_v) )
+  N_prob_map = {}
+  N_prob_map[0] = PI_0_v[0, 0]
+  N_prob_map[1] = numpy.sum(PI_0_v[:, 1:4] )
+  N_prob_map[2] = numpy.sum(PI_1_v)
+  for n in range(3, 100):
+    PI_i_v = PI_1_v*R**(n-1)
+    N_prob_map[n] = numpy.sum(PI_i_v)
+  # print("N_prob_map= {}".format(pprint.pformat(N_prob_map) ) )
+  
+  return sum([n*prob for n,prob in N_prob_map.items() ] )/arr_rate
 
 # -----------------------------------------  Simplex 2 repair  ----------------------------------- #
 def simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu):
@@ -673,7 +688,7 @@ def compute_ro(t, arr_rate, gamma, mu):
 if __name__ == "__main__":
   # simplex_w_two_repair__E_T(0.9, 1.0)
   # simplex_w_one_repair__parametric_E_T()
-  simplex_steady_state_prob_hist()
+  # simplex_steady_state_prob_hist()
   # E_T_simplex_lb(t=3, arr_rate=0.9, gamma=1, mu=1)
   # compute_ro(t=3, arr_rate=0.9, gamma=1, mu=1)
   
@@ -683,6 +698,6 @@ if __name__ == "__main__":
   #   mc_truncation_state_id__state_prob_map_map[mc_truncation_state_id] = simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu)
   # log(WARNING, "mc_truncation_state_id__state_prob_map_map= {}".format(pprint.pformat(mc_truncation_state_id__state_prob_map_map) ) )
   
-  # simplex_w_one_repair__E_T_trial(t=3, arr_rate=0.5, mu=1)
+  simplex_w_one_repair__E_T_matrix_analytic(t=3, arr_rate=0.55, mu=1)
   
   

@@ -37,7 +37,7 @@ def test_mds_n_k(num_f_run, arr_rate, mu, n, k):
     print("qid__win_freq_map= {}".format(pprint.pformat(qid__win_freq_map) ) )
     
     print("\n")
-    print("mdsq_monitor.state__counter_map= {}".format(pprint.pformat(mdsq_monitor.state__counter_map) ) ) 
+    print("mdsq_monitor.state__counter_map= {}".format(pprint.pformat(mdsq_monitor.state__counter_map) ) )
     total_counter = sum([c for rs, c in mdsq_monitor.state__counter_map.items() ] )
     polled_state__counter_map = {rs:float(c)/total_counter for rs, c in mdsq_monitor.state__counter_map.items() }
     print("polled_state__counter_map= {}".format(pprint.pformat(polled_state__counter_map) ) )
@@ -79,19 +79,19 @@ def test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l=[], w_sys=True):
     # print("state__found_freq_map= {}".format(pprint.pformat(state__found_freq_map) ) )
     
     print("\n")
-    # print("aq_monitor.polled_state__counter_map= {}".format(pprint.pformat(aq_monitor.polled_state__counter_map) ) ) 
+    # print("aq_monitor.polled_state__counter_map= {}".format(pprint.pformat(aq_monitor.polled_state__counter_map) ) )
     total_counter = sum([c for rs, c in aq_monitor.polled_state__counter_map.items() ] )
     polled_state__counter_map = {rs:float(c)/total_counter for rs, c in aq_monitor.polled_state__counter_map.items() }
     print("polled_state__counter_map= {}".format(pprint.pformat(polled_state__counter_map) ) )
     
     print("\n")
-    # print("aq_monitor.state__num_found_by_job_departed_map= {}".format(pprint.pformat(aq_monitor.state__num_found_by_job_departed_map) ) ) 
+    # print("aq_monitor.state__num_found_by_job_departed_map= {}".format(pprint.pformat(aq_monitor.state__num_found_by_job_departed_map) ) )
     total_counter = sum([c for rs, c in aq_monitor.state__num_found_by_job_departed_map.items() ] )
     state__freq_found_by_job_departed_map = {rs:float(c)/total_counter for rs, c in aq_monitor.state__num_found_by_job_departed_map.items() }
     print("state__freq_found_by_job_departed_map= {}".format(pprint.pformat(state__freq_found_by_job_departed_map) ) )
     
     print("\n")
-    # print("aq_monitor.start_setup__num_found_by_job_departed_map= {}".format(pprint.pformat(aq_monitor.start_setup__num_found_by_job_departed_map) ) ) 
+    # print("aq_monitor.start_setup__num_found_by_job_departed_map= {}".format(pprint.pformat(aq_monitor.start_setup__num_found_by_job_departed_map) ) )
     total_counter = sum([c for rs, c in aq_monitor.start_setup__num_found_by_job_departed_map.items() ] )
     start_setup__freq_found_by_job_departed_map = {rs:float(c)/total_counter for rs, c in aq_monitor.start_setup__num_found_by_job_departed_map.items() }
     print("start_setup__freq_found_by_job_departed_map= {}".format(pprint.pformat(start_setup__freq_found_by_job_departed_map) ) )
@@ -204,7 +204,7 @@ def plot_mds(num_q):
 
 def plot_simplex(num_q):
   w_sys = True # False
-  t, r, k = 5, 2, 2
+  t, r, k = 1, 2, 2
   mu = 1
   gamma = mu
   arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu, w_sys)
@@ -215,7 +215,7 @@ def plot_simplex(num_q):
   sim_hetero_simplex_E_T_l, sim_hetero2_simplex_E_T_l, sim_hetero3_simplex_E_T_l = [], [], []
   fj_2_2_E_T_l, sim_fj_2_E_T_l = [], []
   
-  simplex_sm_E_T_l, sim_simplex_E_T_l, simplex_E_T_l, simplex_E_T_alt_l = [], [], [], []
+  simplex_sm_E_T_l, sim_simplex_E_T_l, simplex_E_T_l, simplex_E_T_matrix_analytic_l = [], [], [], []
   E_T_simplex_ub_l, E_T_simplex_lb_l, E_T_simplex_naive_lb_l, E_T_simplex_varki_gauri_lb_l = [], [], [], []
   simplex_trial_E_T_l, simplex_trial2_E_T_l, simplex_trial3_E_T_l, simplex_trial4_E_T_l = [], [], [], []
   
@@ -226,9 +226,19 @@ def plot_simplex(num_q):
     arr_l.append(arr_rate)
     # sim
     num_f_run = 2
-    # sim_mds_n_k_E_T_l.append(test_mds_n_k(num_f_run, arr_rate, mu, num_q, k) )
-    # t= 3, gamma=mu= 1, for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/7)
-    if w_sys and t == 2:
+    # gamma=mu= 1, for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/7)
+    # if w_sys and t == 1:
+    #   pass
+    if w_sys and t == 1:
+      sim_simplex_E_T_l= [
+        0.6906089199666947,
+        0.7708763120409886,
+        0.9118019138920423,
+        1.0672253191648233,
+        1.3378310917617424,
+        1.7793492983131396,
+        2.7576296831667237]
+    elif w_sys and t == 2:
       sim_simplex_E_T_l= [
         0.5459378743387618,
         0.6087927595208366,
@@ -296,10 +306,10 @@ def plot_simplex(num_q):
     
     if t == 1:
       simplex_E_T_l.append(simplex_w_one_repair__E_T(arr_rate, mu) )
+      simplex_E_T_matrix_analytic_l.append(simplex_w_one_repair__E_T_matrix_analytic(t, arr_rate, mu) )
     elif t == 2:
       if w_sys:
         simplex_E_T_l.append(simplex_w_two_repair__E_T(arr_rate, mu, M=5) )
-        # simplex_E_T_alt_l.append(simplex_w_two_repair__E_T(arr_rate, mu, M=2) )
       else:
         simplex_E_T_l.append(simplex_wo_sys_w_two_repair__E_T(arr_rate, mu) )
     E_T_simplex_ub_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu, ub=True) )
@@ -313,15 +323,14 @@ def plot_simplex(num_q):
   marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
   # plot.plot(arr_l, sim_mds_n_k_E_T_l, 'ro', label="MDS({},{})".format(num_q, k) )
   plot.plot(arr_l, simplex_sm_E_T_l, 'r', label=r'$E[\hat{T}_{SM}]$', marker=next(marker), linestyle='')
-  plot.plot(arr_l, E_T_simplex_ub_l, 'm', label=r'$E[\hat{T}(\mathbf{\rho})]$', marker=next(marker), linestyle='')
+  # plot.plot(arr_l, E_T_simplex_ub_l, 'm', label=r'$E[\hat{T}(\mathbf{\rho})]$', marker=next(marker), linestyle='')
   # plot.plot(arr_l, simplex_wo_sys_sm_E_T_l, 'ro', label="simplex_wo_sys_sm_t_{}".format(t) )
-  # plot.plot(arr_l, simplex_E_T_alt_l, 'bo', label="UB-Simplex(t:{},M:2)".format(t) )
   log(WARNING, "sim_simplex_E_T_l= {}".format(pprint.pformat(sim_simplex_E_T_l) ) )
   plot.plot(arr_l, sim_simplex_E_T_l, 'k', label=r'$E[T]$', marker=next(marker), linestyle='')
-  # plot.plot(arr_l, simplex_E_T_l, 'go', label="LB-Simplex(t:{},M:5)".format(t) )
-  plot.plot(arr_l, E_T_simplex_lb_l, 'g', label=r'$E[\hat{T}(\mathbf{\rho_{max}})]$', marker=next(marker), linestyle='')
-  plot.plot(arr_l, E_T_simplex_naive_lb_l, 'b', label=r'$E[\hat{T}(\mathbf{1})]$', marker=next(marker), linestyle='')
-  plot.plot(arr_l, E_T_simplex_varki_gauri_lb_l, 'c', label=r'$E[\hat{T}_{fast-serial}]$', marker=next(marker), linestyle='')
+  plot.plot(arr_l, simplex_E_T_matrix_analytic_l, 'y', label=r'$E[\hat{T}_{matrix-analytic}]$', marker=next(marker), linestyle='')
+  # plot.plot(arr_l, E_T_simplex_lb_l, 'g', label=r'$E[\hat{T}(\mathbf{\rho_{max}})]$', marker=next(marker), linestyle='')
+  # plot.plot(arr_l, E_T_simplex_naive_lb_l, 'b', label=r'$E[\hat{T}(\mathbf{1})]$', marker=next(marker), linestyle='')
+  # plot.plot(arr_l, E_T_simplex_varki_gauri_lb_l, 'c', label=r'$E[\hat{T}_{fast-serial}]$', marker=next(marker), linestyle='')
   color = iter(cm.rainbow(numpy.linspace(0, 2, 4) ) )
   # plot.plot(arr_l, sim_hetero_simplex_E_T_l, 'o', color=next(color), label="hetero_simplex_c_{}".format(hetero_simplex_c) )
   # plot.plot(arr_l, sim_hetero2_simplex_E_T_l, 'o', color=next(color), label="hetero_simplex_c_{}".format(hetero2_simplex_c) )
