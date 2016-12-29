@@ -86,7 +86,7 @@ def simplex_t_1_mc():
   writer.writerow(["", *state_list] )
   for i in range(len(state_list) ):
     writer.writerow([state_list[i], *Q.row(i) ] )
-  file.close()   
+  file.close()
 
 def simplex_t_q__steady_state_dist():
   """
