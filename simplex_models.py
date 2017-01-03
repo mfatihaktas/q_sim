@@ -28,7 +28,7 @@ def gen_harmonic_sum(n, k):
     sum_ += float(1/(i*(i - k) ) )
   return sum_
 
-def fj_2_E_T(arr_rate, mu):
+def E_T_fj_2(arr_rate, mu):
   ro = arr_rate/mu
   return (12 - ro)/(8*(mu - arr_rate) )
 
@@ -117,8 +117,36 @@ def simplex_inner_bound_on_arr_rate(r, t, mu, w_sys=True):
     E_S = 1/mu * sum([binomial(t,i) * 2**i*(-1)**(t-i)/(2*t-i) for i in range(t+1) ] )
   
   return 1/E_S
+
+# -----------------------------------  Simplex w/ split-to-one  ------------------------------- #
+def arr_rate_ub_simplex_split_to_one(t, mu):
+  gamma = mu
+  split_prob_l = [1/(t+1) for g in range(t+1) ]
   
-# -----------------------------------------  Simplex 1 repair  ----------------------------------- #
+  return min(gamma/split_prob_l[0], mu/max(split_prob_l[1:t+1] ) )
+
+def E_T_simplex_split_to_one(t, arr_rate, mu, p_r=None):
+  gamma = mu
+  split_prob_l = [0]*(t+1)
+  for g in range(t+1):
+    if p_r is None:
+      split_prob_l[g] = 1/(t+1)
+    else:
+      if g == 0:
+        split_prob_l[g] = 1-t*p_r
+      else:
+        split_prob_l[g] = p_r
+  
+  E_T = 0
+  for g in range(t+1):
+    arr_rate_ = arr_rate*split_prob_l[g]
+    if g == 0:
+      E_T += split_prob_l[g] * 1/(gamma-arr_rate_)
+    else:
+      E_T += split_prob_l[g] * E_T_fj_2(arr_rate_, mu)
+  return E_T
+
+# -----------------------------------------  Simplex(t=1)  ----------------------------------- #
 def simplex_w_one_repair__E_T(arr_rate, mu, c=None):
   if c == None:
     E_S_c = 0.665/mu
@@ -195,7 +223,7 @@ def simplex_w_one_repair__E_T_matrix_analytic(t, arr_rate, mu):
     # print("R:: counter= {}".format(counter) )
     return R
   
-  R = R(0.001)
+  R = R(0.000001)
   # print("R=\n {}".format(R) )
   FI_u = numpy.concatenate((F_0, H_0), axis=1)
   FI_l = numpy.concatenate((L_0, R*L+F), axis=1)
@@ -213,16 +241,20 @@ def simplex_w_one_repair__E_T_matrix_analytic(t, arr_rate, mu):
   # for i in range(2, 10):
   #   PI_i_v = PI_1_v*R**(i-1)
   #   print("i= {}, PI_i_v= {}".format(i, PI_i_v) )
-  N_prob_map = {}
-  N_prob_map[0] = PI_0_v[0, 0]
-  N_prob_map[1] = numpy.sum(PI_0_v[:, 1:4] )
-  N_prob_map[2] = numpy.sum(PI_1_v)
-  for n in range(3, 100):
-    PI_i_v = PI_1_v*R**(n-1)
-    N_prob_map[n] = numpy.sum(PI_i_v)
-  # print("N_prob_map= {}".format(pprint.pformat(N_prob_map) ) )
+  # N_prob_map = {}
+  # N_prob_map[0] = PI_0_v[0, 0]
+  # N_prob_map[1] = numpy.sum(PI_0_v[:, 1:4] )
+  # N_prob_map[2] = numpy.sum(PI_1_v)
+  # for n in range(3, 100):
+  #   PI_i_v = PI_1_v*R**(n-1)
+  #   N_prob_map[n] = numpy.sum(PI_i_v)
+  # # print("N_prob_map= {}".format(pprint.pformat(N_prob_map) ) )
+  # return sum([n*prob for n,prob in N_prob_map.items() ] )/arr_rate
   
-  return sum([n*prob for n,prob in N_prob_map.items() ] )/arr_rate
+  E_N = PI_0_v*numpy.ones((4,1)) - PI_0_v[0, 0] + \
+        PI_1_v*((numpy.identity(5)-R)**-2 + (numpy.identity(5)-R)**-1)*numpy.ones((5,1))
+  print("E_N= {}".format(E_N) )
+  return E_N[0, 0]/arr_rate
 
 # -----------------------------------------  Simplex 2 repair  ----------------------------------- #
 def simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu):
