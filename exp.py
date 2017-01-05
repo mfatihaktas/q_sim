@@ -57,20 +57,55 @@ def test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l=[], w_sys=True, mixed
     
     env = simpy.Environment()
     if mixed_traff:
-      sym_l = ['a']
+      sym__rgroup_l_map = {}
+      sym_l = None
+      if t < 3:
+        sym_l = ['a', 'b']
+      if t == 3:
+        sym_l = ['a', 'b', 'c']
+      for sym in sym_l:
+        rgroup_l = []
+        if w_sys and t == 1:
+          if sym == 'a':
+            rgroup_l.append([0] )
+            rgroup_l.append([1, 2] )
+            # for g in range(1, t+1):
+            #   rgroup_l.append([2*g-1, 2*g] )
+          elif sym == 'b':
+            rgroup_l.append([1] )
+            rgroup_l.append([0, 2] )
+        elif w_sys and t == 2:
+          if sym == 'a':
+            rgroup_l.append([0] )
+            rgroup_l.append([1, 2] )
+            rgroup_l.append([3, 4] )
+          elif sym == 'b':
+            rgroup_l.append([1] )
+            rgroup_l.append([0, 2] )
+            rgroup_l.append([3, 4] )
+        elif w_sys and t == 3:
+          if sym == 'a':
+            rgroup_l.append([0] )
+            rgroup_l.append([1, 2] )
+            rgroup_l.append([3, 4] )
+            rgroup_l.append([5, 6] )
+          elif sym == 'b':
+            rgroup_l.append([1] )
+            rgroup_l.append([0, 2] )
+            rgroup_l.append([3, 5] )
+            rgroup_l.append([4, 6] )
+          elif sym == 'c':
+            rgroup_l.append([3] )
+            rgroup_l.append([0, 4] )
+            rgroup_l.append([1, 5] )
+            rgroup_l.append([2, 6] )
+        sym__rgroup_l_map[sym] = rgroup_l
       pg = MT_PacketGenerator(env, _id="p_gen",
                              adist=lambda: random.expovariate(arr_rate),
                              sdist=lambda: 1,
                              sym_l=sym_l)
-      sym__rgroup_l_map = {}
-      for i, sym in enumerate(sym_l):
-        rgroup_l = []
-        if w_sys:
-          rgroup_l.append([0] )
-          for g in range(1, t+1):
-            rgroup_l.append([2*g-1, 2*g] )
-        sym__rgroup_l_map[sym] = rgroup_l
-      log(WARNING, "sym__rgroup_l_map= {}".format(pprint.pformat(sym__rgroup_l_map) ) )
+        
+      log(WARNING, "sym__rgroup_l_map=\n {}".format(pprint.pformat(sym__rgroup_l_map) ) )
       a_q = CodedStorageQ("cds_q", env, qid_l, qmu_l, sym__rgroup_l_map)
       # aq_monitor = AVQMonitor(env, aq=a_q, poll_dist=lambda: 0.1)
       # a_q.join_q.out_m = aq_monitor
@@ -83,7 +118,10 @@ def test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l=[], w_sys=True, mixed
       # aq_monitor = AVQMonitor(env, aq=a_q, poll_dist=lambda: 0.1)
       # a_q.join_q.out_m = aq_monitor
       pg.out = a_q
-    env.run(until=50000) # env.run(until=500)
+    env.run(until=50000) # env.run(until=50000) # env.run(until=500)
+    if mixed_traff:
+      print("pg.sym__n_sent= {}".format(pprint.pformat(pg.sym__n_sent) ) )
+    
     
     st_l = a_q.join_sink.st_l
     if len(st_l) > 0:
@@ -119,6 +157,7 @@ def test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l=[], w_sys=True, mixed
     start_setup__freq_found_by_job_departed_map = {rs:float(c)/total_counter for rs, c in aq_monitor.start_setup__num_found_by_job_departed_map.items() }
     print("start_setup__freq_found_by_job_departed_map= {}".format(pprint.pformat(start_setup__freq_found_by_job_departed_map) ) )
     """
+  print("sim_E_T_f_sum/num_f_run= {}".format(sim_E_T_f_sum/num_f_run) )
   return sim_E_T_f_sum/num_f_run
   
 def plot_winning_freqs():
@@ -249,7 +288,7 @@ def plot_simplex(num_q):
   # for arr_rate in numpy.arange(0.05, 1.26, 0.2):
     arr_rate_l.append(arr_rate)
     # sim
-    num_f_run = 1
+    num_f_run = 3
     # gamma=mu= 1, for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/7)
     # if w_sys and t == 1:
     #   pass deneme
@@ -324,54 +363,80 @@ def plot_simplex(num_q):
     else:
       E_T_sim_simplex_l.append(test_simplex_q(num_f_run, arr_rate, mu, k, r, t, w_sys=w_sys) )
     # mixed_traff
-    if w_sys and t == 11:
-      pass
+    if w_sys and t == 1:
+      E_T_sim_simplex_mixed_traff_l= [
+        0.6907408144088172,
+        0.7534786674301083,
+        0.8670549437839371,
+        1.0157725875780679,
+        1.2238618265783803,
+        1.5909891765709532,
+        2.286087812745277]
+    elif w_sys and t == 2:
+      E_T_sim_simplex_mixed_traff_l= [
+        0.532665362364591,
+        0.6086401739792854,
+        0.6731769751198722,
+        0.7854682740033085,
+        0.9373880168977933,
+        1.2287967062609655,
+        1.6920865129907166]
+    elif w_sys and t == 3:
+      E_T_sim_simplex_mixed_traff_l= [
+        0.45739370981666344,
+        0.5113558732199666,
+        0.5709895671208652,
+        0.6539680930186696,
+        0.782540234323826,
+        0.976091978810901,
+        1.3603386072899841]
     else:
       E_T_sim_simplex_mixed_traff_l.append(test_simplex_q(num_f_run, arr_rate, mu, k, r, t, w_sys=w_sys, mixed_traff=True) )
     
+    # C = num_q*mu
+    # def qmu_l(c):
+    #   mu_ = C/2/(c+1)
+    #   gamma = c*2*mu_
+    #   return [gamma, mu_, mu_]
+    # hetero_simplex_c = 0.001
+    # sim_hetero_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l(hetero_simplex_c) )
+    # sim_hetero_E_T_simplex_l.append(sim_hetero_simplex_E_T)
+    # hetero2_simplex_c = 0.3
+    # sim_hetero2_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l(hetero2_simplex_c) )
+    # sim_hetero2_E_T_simplex_l.append(sim_hetero2_simplex_E_T)
+    # hetero3_simplex_c = 0.6
+    # sim_hetero3_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l(hetero3_simplex_c) )
+    # sim_hetero3_E_T_simplex_l.append(sim_hetero3_simplex_E_T)
+    
+    # E_T_fj_2_l.append(fj_2_2_E_T(arr_rate, C/2) )
+    # E_T_fj_2_l.append(fj_2_2_E_T(arr_rate, mu) )
+    # E_T_sim_fj_2_l.append(test_mds_n_k(num_f_run, arr_rate, C/2, n=2, k=2))
+    
+    # E_T_sim_mds_n_1_l.append(test_mds_n_k(num_f_run, arr_rate, mu, num_q, 1) )
+    
+    E_T_simplex_sm_l.append(simplex_sm_E_T(t, arr_rate, mu) )
+    # E_T_simplex_wo_sys_sm_l.append(simplex_wo_sys_sm_E_T(t, arr_rate, mu) )
+    
+    if t == 1:
+      E_T_simplex_l.append(simplex_w_one_repair__E_T(arr_rate, mu) )
+      E_T_simplex_matrix_analytic_l.append(simplex_w_one_repair__E_T_matrix_analytic(t, arr_rate, mu) )
+    elif t == 2:
+      if w_sys:
+        E_T_simplex_alt_l.append(simplex_w_two_repair__E_T(arr_rate, mu, M=2) )
+        E_T_simplex_l.append(simplex_w_two_repair__E_T(arr_rate, mu, M=5) )
+      else:
+        E_T_simplex_l.append(simplex_wo_sys_w_two_repair__E_T(arr_rate, mu) )
+    E_T_simplex_ub_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu, ub=True) )
+    E_T_simplex_lb_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu) )
+    E_T_simplex_naive_lb_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu, naive=True) )
+    E_T_simplex_varki_gauri_lb_l.append(E_T_simplex_varki_gauri_lb(t, arr_rate, gamma, mu) )
+    # simplex_trial_E_T_l.append(simplex_w_one_repair__E_T_trial(1, t, arr_rate, mu) )
+    # simplex_trial2_E_T_l.append(simplex_w_one_repair__E_T_trial(1.2, t, arr_rate, mu) )
+    # simplex_trial3_E_T_l.append(simplex_w_one_repair__E_T_trial(1.5, t, arr_rate, mu) )
+    # simplex_trial4_E_T_l.append(simplex_w_one_repair__E_T_trial(1.8, t, arr_rate, mu) )
+    
     marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
     def plot_split_to_all():
-      # C = num_q*mu
-      # def qmu_l(c):
-      #   mu_ = C/2/(c+1)
-      #   gamma = c*2*mu_
-      #   return [gamma, mu_, mu_]
-      # hetero_simplex_c = 0.001
-      # sim_hetero_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l(hetero_simplex_c) )
-      # sim_hetero_E_T_simplex_l.append(sim_hetero_simplex_E_T)
-      # hetero2_simplex_c = 0.3
-      # sim_hetero2_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l(hetero2_simplex_c) )
-      # sim_hetero2_E_T_simplex_l.append(sim_hetero2_simplex_E_T)
-      # hetero3_simplex_c = 0.6
-      # sim_hetero3_simplex_E_T = test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l(hetero3_simplex_c) )
-      # sim_hetero3_E_T_simplex_l.append(sim_hetero3_simplex_E_T)
-      
-      # E_T_fj_2_l.append(fj_2_2_E_T(arr_rate, C/2) )
-      # E_T_fj_2_l.append(fj_2_2_E_T(arr_rate, mu) )
-      # E_T_sim_fj_2_l.append(test_mds_n_k(num_f_run, arr_rate, C/2, n=2, k=2))
-      
-      # E_T_sim_mds_n_1_l.append(test_mds_n_k(num_f_run, arr_rate, mu, num_q, 1) )
-      
-      E_T_simplex_sm_l.append(simplex_sm_E_T(t, arr_rate, mu) )
-      # E_T_simplex_wo_sys_sm_l.append(simplex_wo_sys_sm_E_T(t, arr_rate, mu) )
-      
-      if t == 1:
-        E_T_simplex_l.append(simplex_w_one_repair__E_T(arr_rate, mu) )
-        E_T_simplex_matrix_analytic_l.append(simplex_w_one_repair__E_T_matrix_analytic(t, arr_rate, mu) )
-      elif t == 2:
-        if w_sys:
-          E_T_simplex_alt_l.append(simplex_w_two_repair__E_T(arr_rate, mu, M=2) )
-          E_T_simplex_l.append(simplex_w_two_repair__E_T(arr_rate, mu, M=5) )
-        else:
-          E_T_simplex_l.append(simplex_wo_sys_w_two_repair__E_T(arr_rate, mu) )
-      E_T_simplex_ub_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu, ub=True) )
-      E_T_simplex_lb_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu) )
-      E_T_simplex_naive_lb_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu, naive=True) )
-      E_T_simplex_varki_gauri_lb_l.append(E_T_simplex_varki_gauri_lb(t, arr_rate, gamma, mu) )
-      # simplex_trial_E_T_l.append(simplex_w_one_repair__E_T_trial(1, t, arr_rate, mu) )
-      # simplex_trial2_E_T_l.append(simplex_w_one_repair__E_T_trial(1.2, t, arr_rate, mu) )
-      # simplex_trial3_E_T_l.append(simplex_w_one_repair__E_T_trial(1.5, t, arr_rate, mu) )
-      # simplex_trial4_E_T_l.append(simplex_w_one_repair__E_T_trial(1.8, t, arr_rate, mu) )
       # plot.plot(arr_rate_l, E_T_sim_mds_n_k_l, 'ro', label="MDS({},{})".format(num_q, k) )
       plot.plot(arr_rate_l, E_T_simplex_sm_l, 'r', label=r'$E[\hat{T}_{SM}]$', marker=next(marker), linestyle='', mew=2)
       plot.plot(arr_rate_l, E_T_simplex_ub_l, 'm', label=r'$E[\hat{T}(\mathbf{\rho})]$', marker=next(marker), linestyle='', mew=2)
@@ -380,7 +445,8 @@ def plot_simplex(num_q):
       log(WARNING, "E_T_sim_simplex_l= {}".format(pprint.pformat(E_T_sim_simplex_l) ) )
       # plot.plot(arr_rate_l, E_T_simplex_alt_l, 'b', label=r'$E[\hat{T}_{LB}], M=2$', marker=next(marker), linestyle='', mew=2)
       plot.plot(arr_rate_l, E_T_sim_simplex_l, 'k', label=r'$E[T]$', marker=next(marker), linestyle='', mew=2)
-      plot.plot(arr_rate_l, E_T_sim_simplex_mixed_traff_l, color='gray', label=r'$E[T], mixed-traff$', marker=next(marker), linestyle='', mew=2)
+      log(WARNING, "E_T_sim_simplex_mixed_traff_l= {}".format(pprint.pformat(E_T_sim_simplex_mixed_traff_l) ) )
+      plot.plot(arr_rate_l, E_T_sim_simplex_mixed_traff_l, color='gray', label=r'$E[T], mixed-traffic$', marker=next(marker), linestyle='', mew=2)
       # plot.plot(arr_rate_l, E_T_simplex_l, 'g', label=r'$E[\hat{T}_{LB}], M=5$', marker=next(marker), linestyle='', mew=2)
       plot.plot(arr_rate_l, E_T_simplex_lb_l, 'g', label=r'$E[\hat{T}(\mathbf{\rho_{max}})]$', marker=next(marker), linestyle='', mew=2)
       plot.plot(arr_rate_l, E_T_simplex_naive_lb_l, 'b', label=r'$E[\hat{T}(\mathbf{1})]$', marker=next(marker), linestyle='', mew=2)
@@ -410,8 +476,8 @@ def plot_simplex(num_q):
     log(WARNING, "E_T_sim_simplex_l= {}".format(pprint.pformat(E_T_sim_simplex_l) ) )
     plot.plot(arr_rate_l, E_T_sim_simplex_l, 'k', label=r'$E[T]$, split-to-all', marker=next(marker), linestyle='', mew=2)
     plot.plot(arr_rate_sto_l, E_T_simplex_sto_l, 'b', label=r'$E[T]$, split-to-one', marker=next(marker), linestyle='', mew=2)
-  # plot_split_to_all()
-  plot_split_to_one()
+  plot_split_to_all()
+  # plot_split_to_one()
   plot.legend()
   plot.xlabel(r'$\lambda$')
   plot.ylabel("E[T] (s)")
@@ -508,6 +574,9 @@ if __name__ == "__main__":
   opt_map = get_opts(sys.argv[1:] )
   log(WARNING, "opt_map= {}".format(pprint.pformat(opt_map) ) )
   num_q = int(opt_map["--num_q"] )
+  
+  # test_simplex_q(num_f_run=1, arr_rate=0.1, mu=1, k=2, r=2, t=1, mixed_traff=True)
+  
   # plot_winning_freqs()
   plot_simplex(num_q)
   # plot_avq()

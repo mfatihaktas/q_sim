@@ -33,16 +33,16 @@ class Packet(object):
       format(self._id, self.prev_hop_id, self.job_id)
 
 class CPacket(object): # Control
-  def __init__(self, _id, prev_hop_id=None, departed_q_id_l=[]):
+  def __init__(self, _id, prev_hop_id=None, departed_qid_l=[]):
     self._id = _id
     self.prev_hop_id = prev_hop_id
-    self.departed_q_id_l = departed_q_id_l
+    self.departed_qid_l = departed_qid_l
   
   def deep_copy(self):
    return CPacket(self._id, self.prev_hop_id)
   
   def __repr__(self):
-    return "CPacket[_id= {}, prev_hop_id= {}, departed_q_id_l= {}]".format(self._id, self.prev_hop_id, self.departed_q_id_l)
+    return "CPacket[_id= {}, prev_hop_id= {}, departed_qid_l= {}]".format(self._id, self.prev_hop_id, self.departed_qid_l)
 
 MPACKET_JOB_DEPARTED = "job_departed"
 class MPacket(object): # Monitor
@@ -68,6 +68,7 @@ class MT_PacketGenerator(object):
     self.n_sent = 0
     self.flow_id = flow_id
     
+    self.sym__n_sent = {}
     self.out = None
     self.action = env.process(self.run())  # starts the run() method as a SimPy process
 
@@ -78,7 +79,11 @@ class MT_PacketGenerator(object):
       yield self.env.timeout(self.adist() )
       self.n_sent += 1
       if self.sym_l is not None:
-        p = Packet(time=self.env.now, size=self.sdist(), _id=self.n_sent, sym=self.sym_l[random.randint(0,len(self.sym_l)-1) ], flow_id=self.flow_id)
+        sym = self.sym_l[random.randint(0,len(self.sym_l)-1) ]
+        if sym not in self.sym__n_sent:
+          self.sym__n_sent[sym] = 0
+        self.sym__n_sent[sym] = self.sym__n_sent[sym] + 1
+        p = Packet(time=self.env.now, size=self.sdist(), _id=self.n_sent, sym=sym, flow_id=self.flow_id)
       else:
         p = Packet(time=self.env.now, size=self.sdist(), _id=self.n_sent, flow_id=self.flow_id)
       self.out.put(p)
@@ -276,6 +281,7 @@ class JQ(object):
     
     # self.input_id__pq_map = {i: [] for i in input_qid_l}
     self.job_id__p_l_map = {}
+    # self.job_id__departed_qid_l_map = {}
     self.qt_l = []
     self.length = 0 # maximum of the lengths of all pq's
     # self.state__num_found_map = {}
@@ -296,9 +302,6 @@ class JQ(object):
     return None
   
   def check_for_job_completion(self, p):
-    departed_q_id_l = []
-    departed_q_id_l.append(p.prev_hop_id)
-    
     p_l = self.job_id__p_l_map[p.job_id]
     recved_from_qid_l = [p.prev_hop_id for p in p_l]
     rgroup_l = self.sym__rgroup_l_map[p.sym]
@@ -311,21 +314,23 @@ class JQ(object):
       if success:
         break
     if success:
-      self.out_c.put_c(CPacket(_id=p.job_id, prev_hop_id=self._id, departed_q_id_l=departed_q_id_l) )
-      self.job_id__p_l_map.pop()
-    
-    p.winner_id = p.prev_hop_id
-    p.prev_hop_id = self._id
-    self.out.put(p)
-    if self.out_m is not None:
-      self.out_m.put_m(MPacket(_id=p.job_id, event_str=MPACKET_JOB_DEPARTED) )
+      self.out_c.put_c(CPacket(_id=p.job_id, prev_hop_id=self._id, departed_qid_l=[p.prev_hop_id for p in p_l] ) )
+      
+      p.winner_id = p.prev_hop_id
+      p.prev_hop_id = self._id
+      self.out.put(p)
+      if self.out_m is not None:
+        self.out_m.put_m(MPacket(_id=p.job_id, event_str=MPACKET_JOB_DEPARTED) )
   
   def run(self):
     while True:
       p = (yield self.store.get() )
       # self.input_id__pq_map[p.prev_hop_id].append(p)
       if p.job_id not in self.job_id__p_l_map:
-        self.job_id__p_l_map[p.job_id].append(p)
+        self.job_id__p_l_map[p.job_id] = []
+        # self.job_id__departed_qid_l_map[p.job_id] = []
+      self.job_id__p_l_map[p.job_id].append(p)
+      # self.job_id__departed_qid_l_map[p.job_id].append([p.prev_hop_id] )
       self.check_for_job_completion(p)
   
   def put(self, p):
@@ -363,12 +368,11 @@ class CodedStorageQ(object):
     self.join_q.out = self.join_sink
     self.join_q.out_c = self
     self.join_q.out_m = None # can be set by the caller if desired
-    if w_sys:
-      for i, qid in enumerate(qid_l):
-        q = S1_Q(_id=qid, env=env, serv_rate=qmu_l[i] )
-        log(DEBUG, "g= {}, q= {}".format(g, q) )
-        q.out = self.join_q
-        self.qid_q_map[g] = q
+    for i, qid in enumerate(qid_l):
+      q = S1_Q(_id=qid, env=env, serv_rate=qmu_l[i] )
+      log(DEBUG, "i= {}, q= {}".format(i, q) )
+      q.out = self.join_q
+      self.qid_q_map[i] = q
     
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
@@ -379,11 +383,11 @@ class CodedStorageQ(object):
     self.job_id_counter = 0
   
   def __repr__(self):
-    return "AVQ[qid_l= {}]".format(qid_l)
+    return "CSQ[qid_l= {}]".format(self.qid_l)
   
   def state(self, job_id_to_exclude=[]):
     state = []
-    for g, q in self.qid_q_map.items():
+    for i, q in self.qid_q_map.items():
       state += q.state(job_id_to_exclude)
     return state
   
@@ -391,8 +395,7 @@ class CodedStorageQ(object):
     while True:
       p = (yield self.store.get() )
       for qid, q in self.qid_q_map.items():
-        if g != -1:
-          q.put(p.deep_copy() )
+        q.put(p.deep_copy() )
       
   def put(self, p):
     sim_log(DEBUG, self.env, self, "recved", p)
@@ -405,7 +408,7 @@ class CodedStorageQ(object):
     while True:
       cp = (yield self.store_c.get() )
       for g, q in self.qid_q_map.items():
-        if g != -1 and q._id not in cp.departed_q_id_l:
+        if g != -1 and q._id not in cp.departed_qid_l:
           q.put_c(cp.deep_copy() )
   
   def put_c(self, cp):
