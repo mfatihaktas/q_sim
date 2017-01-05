@@ -1,0 +1,107 @@
+\documentclass[tikz,border=0pt,10pt]{standalone}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+\usepackage{pgf,xcolor}
+\usepackage{eulervm}
+\usepackage{booktabs,rotating,multirow,caption}
+\usepackage{makecell}
+\usetikzlibrary{decorations.text}
+\usetikzlibrary{automata}
+\usetikzlibrary{arrows}
+\usepackage{mathdots}
+\usetikzlibrary{decorations.pathreplacing}
+\usetikzlibrary{backgrounds}
+\begin{document}
+\def\myshift#1{\raisebox{-2.5ex}}
+\begin{small}
+  \begin{tikzpicture}[->, >=stealth', auto, semithick, node distance=3cm]
+  	\tikzstyle{every state}=[fill=white,draw=black,thick,text=black,scale=0.65]
+    \node[state]    (0_0)                 {$(0,0)$};
+    \node[state]    (1_0)[right of=0_0]	{$(1,0)$};
+    \node[state]    (2_0)[right of=1_0]   {$(2,0)$};
+    \node[state,draw=none]    (3_0)[right of=2_0]   {$$};
+    \node[state]    (0_1)[above of=0_0]   {$(0,1)$};
+    \node[state]    (1_1)[right of=0_1]   {$(1,1)$};
+    \node[state]    (2_1)[right of=1_1]   {$(2,1)$};
+    \node[state,draw=none]    (3_1)[right of=2_1]   {$$};
+    \node[state]    (0_2)[above of=0_1]   {$(0,2)$};
+    \node[state]    (1_2)[right of=0_2]   {$(1,2)$};
+    \node[state]    (2_2)[right of=1_2]   {$(2,2)$};
+    \node[state,draw=none]    (3_2)[right of=2_2]   {$$};
+    \node[state,draw=none]    (0_3)[above of=0_2]   {$$};
+    \node[state,draw=none]    (1_3)[right of=0_3]   {$$};
+    \node[state,draw=none]    (2_3)[right of=1_3]   {$$};
+    \node[state,draw=none]    (3_3)[right of=2_3]   {$$};
+    \path
+    (0_0)
+      edge[bend left]    node[above=-0.8mm]{$2\mu$}    		(1_0)
+      edge[bend right]   node[left=-0.8mm]{$2\mu$}   		(0_1)
+    (1_0)
+      edge[bend left]    node[below=-0.8mm]{$\gamma+\mu$}	(0_0)
+      edge			     node[left=-0.8mm]{$2\mu$}			(1_1)
+      edge[bend left]    node[above=-0.8mm]{$\mu$}			(2_0)
+    (2_0)
+      edge[bend left]    node[below=-0.8mm]{$\gamma+\mu$}	(1_0)
+      edge			     node[left=-0.8mm]{$2\mu$}			(2_1)
+      edge[draw=none]    node[auto=false]{$\ldots$}   		(3_0)
+    (0_1)
+      edge[bend right]   node[left=-0.8mm]{$\gamma+\mu$}	(0_0)
+      edge[bend right]	 node[left=-0.8mm]{$\mu$}			(0_2)
+      edge			     node[above=-0.8mm]{$2\mu$}			(1_1)
+    (1_1)
+      edge			     node[right=-0.8mm]{$\mu$}			(1_2)
+      edge			     node[above=-0.8mm]{$\mu$}			(2_1)
+      edge			     node[above=-0.8mm,sloped]{$\gamma+2\mu$} (0_0)
+    (2_1)
+      edge			     node[left=-0.8mm]{$\mu$}			(2_2)
+      edge[draw=none]    node[auto=false]{$\ldots$}   		(3_1)
+      edge			     node[above=-0.8mm,sloped]{$\gamma+2\mu$} (1_0)
+    (0_2)
+      edge[bend right]   node[left=-0.8mm]{$\gamma+\mu$}	(0_1)
+      edge[draw=none]    node[auto=false]{$\vdots$}   		(0_3)
+      edge			     node[above=-0.8mm]{$2\mu$}			(1_2)
+    (1_2)
+      edge[draw=none]    node[auto=false]{$\vdots$}   		(1_3)
+      edge			     node[above=-0.8mm]{$\mu$}			(2_2)
+      edge			     node[above=-0.8mm,sloped]{$\gamma+2\mu$} (0_1)
+    (2_2)
+      edge[draw=none]    node[auto=false]{$\vdots$}   		(2_3)
+      edge[draw=none]    node[auto=false]{$\ldots$}   		(3_2)
+      edge			     node[above=-0.8mm,sloped]{$\gamma+2\mu$} (1_1);
+%       (0_0_0)
+%         edge[bend right]    node[left=-0.8mm]{$\lambda$}    (1_0_0)
+%       (1_0_0)
+%         edge[bend right]    node[right=-0.8mm]{$\gamma$}    (0_0_0)
+%         edge[right]        node[above=-0.8mm]{$\alpha$}    (1_1_0)
+%         edge[left]        node[above=-0.8mm]{$\beta$}    (1_0_1)
+%         edge[bend right]  node[left=-0.8mm]{$\lambda$}    (2_0_0)
+%       (1_1_0)
+%         edge[bend right]    node[above=-0.8mm,sloped]{$\beta + \gamma$}    (0_0_0)
+%         edge               node[right]{$\lambda$}            (2_1_0)
+%       (1_0_1)
+%         edge[bend left]    node[above=-0.8mm,sloped]{$\alpha + \gamma$}    (0_0_0)
+%         edge               node[left=-0.8mm]{$\lambda$}            (2_0_1)
+%       (2_0_0)
+%         edge[bend right]    node[right=-0.8mm]{$\gamma$}    (1_0_0)
+%         edge[right=-0.8mm]        node[above=-0.8mm]{$\alpha$}    (2_1_0)
+%         edge[left=-0.8mm]        node[above=-0.8mm]{$\beta$}    (2_0_1)
+% 		edge[draw=none]    node[auto=false,above]{$\vdots$}    (3_0_0)
+%       (2_1_0)
+%         edge[bend right]    node[below=-0.8mm,sloped]{$\beta + \gamma$}    (1_0_0)
+% 		edge[draw=none]    node[auto=false,above]{$\vdots$}    (3_1_0)
+%         edge               node[above=-0.8mm]{$\alpha$}            (2_2_0)
+%       (2_2_0)
+%         edge[bend right]    node[above=-0.8mm,sloped]{$\beta + \gamma$}    (1_1_0)
+% 		edge[draw=none]    node[auto=false,above]{$\vdots$}    (3_2_0)
+%         edge[draw=none]    node[auto=false,above]{$\ddots$}    (3_3_0)
+%       (2_0_1)
+%         edge[bend left]    node[below=-0.8mm,sloped]{$\alpha + \gamma$}    (1_0_0)
+% 		edge[draw=none]    node[auto=false,above]{$\vdots$}    (3_0_1)
+%         edge               node[above=-0.8mm]{$\beta$}            (2_0_2)
+%       (2_0_2)
+%         edge[bend left]    node[above=-0.8mm,sloped]{$\alpha + \gamma$}    (1_0_1)
+% 		edge[draw=none]    node[auto=false,above]{$\vdots$}    (3_0_2)
+%         edge[draw=none]    node[auto=false,above]{$\iddots$}    (3_0_3);
+  \end{tikzpicture}
+  \end{small}
+  \end{document}

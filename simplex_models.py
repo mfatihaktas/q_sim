@@ -146,6 +146,21 @@ def E_T_simplex_split_to_one(t, arr_rate, mu, p_r=None):
       E_T += split_prob_l[g] * E_T_fj_2(arr_rate_, mu)
   return E_T
 
+def plot_E_T_simplex_split_to_one(t, mu):
+  arr_rate_ub = simplex_inner_bound_on_arr_rate(2, t, mu, True)
+  
+  color = iter(cm.rainbow(numpy.linspace(0, 1, 4) ) )
+  for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/4):
+    p_r_l, E_T_l = [], []
+    for p_r in numpy.arange(0.05, 1, 1/20):
+      p_r_l.append(p_r)
+      E_T_l.append(max(0, E_T_simplex_split_to_one(t, arr_rate, mu, p_r) ) )
+    plot.plot(p_r_l, E_T_l, 'o', color=next(color), label=r't= {}, $\lambda$= {}, $\mu$= {}'.format(t, arr_rate, mu) )
+    plot.legend()
+  plot.xlabel(r'$p_r$')
+  plot.ylabel(r'$E[T]$')
+  # plot.title()
+  plot.savefig("plot_E_T_simplex_split_to_one.png")
 # -----------------------------------------  Simplex(t=1)  ----------------------------------- #
 def simplex_w_one_repair__E_T(arr_rate, mu, c=None):
   if c == None:
@@ -730,6 +745,6 @@ if __name__ == "__main__":
   #   mc_truncation_state_id__state_prob_map_map[mc_truncation_state_id] = simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu)
   # log(WARNING, "mc_truncation_state_id__state_prob_map_map= {}".format(pprint.pformat(mc_truncation_state_id__state_prob_map_map) ) )
   
-  simplex_w_one_repair__E_T_matrix_analytic(t=3, arr_rate=0.55, mu=1)
-  
+  # simplex_w_one_repair__E_T_matrix_analytic(t=3, arr_rate=0.55, mu=1)
+  plot_E_T_simplex_split_to_one(t=3, mu=1)
   

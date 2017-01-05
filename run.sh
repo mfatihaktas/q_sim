@@ -12,6 +12,7 @@ for i in `seq $BEGIN_SIMNODE_ID $END_SIMNODE_ID`; do
 done
 echo "SIM_NODES= $SIM_NODES"
 
+MATLAB=/cac/u01/mfa51/Desktop/matlab_2016/install_/bin/./matlab
 PYTHON=~/Desktop/Python-3.5.1/install/bin/python3
 MPIRUN=/cac/u01/mfa51/Desktop/openmpi-1.10.2/install/bin/mpirun
 PKILL=/usr/bin/pkill
@@ -20,6 +21,8 @@ if [ $1 = 'e' ]; then
   # LOG_F="$1.log"
   # rm -r __pycache__; $PYTHON exp.py < /dev/null 2>&1 | tee $LOG_F
   rm -r __pycache__; rm *.png; $PYTHON exp.py --num_q=3
+elif [ $1 = 'm' ]; then
+  $MATLAB -r "run exp.m; quit"
 elif [ $1 = 's' ]; then
   rm -r __pycache__; rm *.png; $PYTHON simplex_models.py
 elif [ $1 = 'f' ]; then
