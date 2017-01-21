@@ -39,3 +39,23 @@ def log(dlevel, log):
 
 def list_to_str(l):
   return ",".join("%s" % e for e in l)
+
+def harmonic_sum(n):
+  sum_ = 0
+  for i in range(1, n+1):
+    sum_ += float(1/i)
+  return sum_
+
+def harmonic_2_sum(n):
+  sum_ = 0
+  for i in range(1, n+1):
+    sum_ += float(1/(i**2) )
+  return sum_
+
+def gen_harmonic_sum(n, k):
+  sum_ = 0
+  for i in range(1, n+1):
+    if (i - k) == 0:
+      continue
+    sum_ += float(1/(i*(i - k) ) )
+  return sum_

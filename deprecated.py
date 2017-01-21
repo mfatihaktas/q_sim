@@ -3,7 +3,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plot
 import matplotlib.cm as cm # cm.rainbow
 import numpy, math
-from sim_components import *
+from simplex_sim_components import *
 
 def eg_pgen_psink():
   env = simpy.Environment()
@@ -13,7 +13,7 @@ def eg_pgen_psink():
   
   pg1.out = ps
   pg2.out = ps
-  # 
+  #
   env.run(until=20)
 
 def eg_overloaded_m1_q():
@@ -25,7 +25,7 @@ def eg_overloaded_m1_q():
   
   pg.out = m1_q
   m1_q.out = ps
-  # 
+  #
   env.run(until=20)
   print("waits: {}".format(ps.waits) )
   print("pg.n_sent= {}\nps.n_recved= {}\nm1_q.n_dropped= {}"
@@ -48,7 +48,7 @@ def test_m_m_1():
   
   pg.out = m1_q
   # m1_q.out = ps
-  # 
+  #
   # env.run(until=8000)
   env.run(until=50000)
   # env.run(until=500000)
@@ -170,7 +170,7 @@ def plot_split_merge_approx_error(arr_rate, mu, n):
     for i in range(0, k):
       k__i_list_map[k].append(i)
       k__p_i_list_map[k].append(p_i(i) )
-    # 
+    #
     k_list.append(k)
     k__avg_active_num_server_list.append((n-k+1)*(k-1)*mu/gamma * p_k_1)
   # print("k__i_list_map=\n{}".format(pprint.pformat(k__i_list_map) ) )
@@ -224,20 +224,20 @@ def test_simplex(arr_rate=None):
     print("sim_E_T= {}".format(float(sum(st_list) )/len(st_list)) )
   # """
   print("\n")
-  # print("aq_monitor.polled_state__counter_map= {}".format(pprint.pformat(aq_monitor.polled_state__counter_map) ) ) 
+  # print("aq_monitor.polled_state__counter_map= {}".format(pprint.pformat(aq_monitor.polled_state__counter_map) ) )
   total_counter = sum([c for rs, c in aq_monitor.polled_state__counter_map.items() ] )
   polled_state__counter_map = {rs:float(c)/total_counter for rs, c in aq_monitor.polled_state__counter_map.items() }
   print("polled_state__counter_map= {}".format(pprint.pformat(polled_state__counter_map) ) )
   return polled_state__counter_map['0,(0,0)']
   
   print("\n")
-  # print("aq_monitor.state__num_found_by_job_departed_map= {}".format(pprint.pformat(aq_monitor.state__num_found_by_job_departed_map) ) ) 
+  # print("aq_monitor.state__num_found_by_job_departed_map= {}".format(pprint.pformat(aq_monitor.state__num_found_by_job_departed_map) ) )
   total_counter = sum([c for rs, c in aq_monitor.state__num_found_by_job_departed_map.items() ] )
   state__freq_found_by_job_departed_map = {rs:float(c)/total_counter for rs, c in aq_monitor.state__num_found_by_job_departed_map.items() }
   print("state__freq_found_by_job_departed_map= {}".format(pprint.pformat(state__freq_found_by_job_departed_map) ) )
   
   print("\n")
-  # print("aq_monitor.start_setup__num_found_by_job_departed_map= {}".format(pprint.pformat(aq_monitor.start_setup__num_found_by_job_departed_map) ) ) 
+  # print("aq_monitor.start_setup__num_found_by_job_departed_map= {}".format(pprint.pformat(aq_monitor.start_setup__num_found_by_job_departed_map) ) )
   total_counter = sum([c for rs, c in aq_monitor.start_setup__num_found_by_job_departed_map.items() ] )
   start_setup__freq_found_by_job_departed_map = {rs:float(c)/total_counter for rs, c in aq_monitor.start_setup__num_found_by_job_departed_map.items() }
   print("start_setup__freq_found_by_job_departed_map= {}".format(pprint.pformat(start_setup__freq_found_by_job_departed_map) ) )

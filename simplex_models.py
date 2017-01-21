@@ -6,107 +6,12 @@ import sys, pprint, math, numpy, sympy, simpy, getopt
 from math import factorial
 from numpy import linalg
 from patch import *
-from sim_components import *
-
-def harmonic_sum(n):
-  sum_ = 0
-  for i in range(1, n+1):
-    sum_ += float(1/i)
-  return sum_
-
-def harmonic_2_sum(n):
-  sum_ = 0
-  for i in range(1, n+1):
-    sum_ += float(1/(i**2) )
-  return sum_
-
-def gen_harmonic_sum(n, k):
-  sum_ = 0
-  for i in range(1, n+1):
-    if (i - k) == 0:
-      continue
-    sum_ += float(1/(i*(i - k) ) )
-  return sum_
+# from sim_components import *
 
 def E_T_fj_2(arr_rate, mu):
   ro = arr_rate/mu
   return (12 - ro)/(8*(mu - arr_rate) )
 
-# -----------------------------------------------  MDS  ------------------------------------------ #
-def mds_n_2_E_T(arr_rate, mu, n): # for only k = 2
-  # high-regime assumption
-  f_jc = (n - 2)/(n - 1)
-  f_jp = 1 - f_jc
-  mds_E_S_p = 1/((n - 1)*mu)
-  mds_E_S_c = (1/mu)*(harmonic_sum(n) - harmonic_sum(n-2) )
-  mds_E_S = f_jp*mds_E_S_p + f_jc*mds_E_S_c
-  mds_E_S_p_2 = 2/(((n - 1)**2)*(mu**2) )
-  mds_E_S_c_2 = (1/(mu**2) )*(harmonic_2_sum(n) - harmonic_2_sum(n-2) ) + mds_E_S_c**2
-  mds_E_S_2 = f_jp*mds_E_S_p_2 + f_jc*mds_E_S_c_2
-  # mds_E_T = mds_E_S/(1 - arr_rate*mds_E_S) # w/ M/M/1 assumption
-  mds_E_T = mds_E_S + (arr_rate/2)*mds_E_S_2/(1 - arr_rate*mds_E_S) # w/ M/G/1 assumption
-  return mds_E_T
-  
-def adjustable_mds_n_2_E_T(arr_rate, mu, n): # for only k = 2
-  # gamma = min(arr_rate, mu)
-  # gamma = min(arr_rate*mu/(arr_rate+mu), \
-  #             mu/(harmonic_sum(n) - harmonic_sum(n-2) ) )
-  gamma = mu
-  ro = gamma/mu
-  p_0 = 1/(1 + n*ro/(n - 1 - ro) )
-  def p_i(i):
-    return (ro/(n - 1) )**i * n*p_0
-  
-  nu = (n-1)*mu + gamma
-  sum_for_pi = p_0*n*gamma + nu*(1-p_0)
-  pi_0 = p_0*n*gamma/sum_for_pi
-  pi_1 = p_i(1)*nu/sum_for_pi
-  
-  f_jd = (n-1)*mu/nu*(1-pi_0)
-  f_c = pi_1*(n-1)*mu/nu
-  f_jc = f_c/f_jd
-  f_jp = 1 - f_jc
-  
-  mds_E_S_p = 1/((n - 1)*mu)
-  mds_E_S_c = (1/mu)*(harmonic_sum(n) - harmonic_sum(n-2) )
-  mds_E_S = f_jp*mds_E_S_p + f_jc*mds_E_S_c
-  mds_E_S_p_2 = 2/(((n - 1)**2)*(mu**2) )
-  mds_E_S_c_2 = (1/(mu**2) )*(harmonic_2_sum(n) - harmonic_2_sum(n-2) ) + mds_E_S_c**2
-  mds_E_S_2 = f_jp*mds_E_S_p_2 + f_jc*mds_E_S_c_2
-  mds_E_T = mds_E_S + (arr_rate/2)*mds_E_S_2/(1 - arr_rate*mds_E_S)
-  return mds_E_T
-
-def sm_mds_n_k_E_T(arr_rate, mu, n, k): # works for k >= 1
-  harmonic_diff = harmonic_sum(n) - harmonic_sum(n-k)
-  if 1/arr_rate < harmonic_diff/mu:
-    return None
-  ro = arr_rate/mu
-  return harmonic_diff/mu + \
-    arr_rate*(harmonic_2_sum(n)-harmonic_2_sum(n-k) + harmonic_diff**2)/(2*mu**2 * (1 - ro*harmonic_diff) )
-
-def adj_sm_mds_n_k_E_T(arr_rate, mu, n, k):
-  return sm_mds_n_k_E_T(arr_rate, mu, n, k-1) + sm_mds_n_k_E_T(arr_rate, mu, n-k+1, 1)
-
-def adj_2_sm_mds_n_k_E_T(arr_rate, mu, n, k):
-  return sm_mds_n_k_E_T(arr_rate, mu, n, k-2) + sm_mds_n_k_E_T(arr_rate, mu, n-k+2, 1) + sm_mds_n_k_E_T(arr_rate, mu, n-k+1, 1)
-
-def recur_sm_mds_n_k_E_T(arr_rate, mu, n, k):
-  if n > k:
-    if k > 1:
-      return recur_sm_mds_n_k_E_T(arr_rate, mu, n, k-1) + sm_mds_n_k_E_T(arr_rate, mu, n-k+1, 1)
-    elif k == 1:
-      return sm_mds_n_k_E_T(arr_rate, mu, n, k)
-    else:
-      log(ERROR, "Unexpected k= {}".format(k) )
-      sys.exit(1)
-  else:
-    log(ERROR, "Unexpected n= {} <= k= {}".format(n, k) )
-    return sm_mds_n_k_E_T(arr_rate, mu, n, k)
-
-def mds_inner_bound_on_arr_rate(n, k, mu):
-  sm_mds_n_k_E_S = 1/mu * (harmonic_sum(n) - harmonic_sum(n-k) )
-  return 1/sm_mds_n_k_E_S
-  
 def simplex_inner_bound_on_arr_rate(r, t, mu, w_sys=True):
   E_S = 1
   if w_sys:

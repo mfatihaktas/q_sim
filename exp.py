@@ -6,12 +6,13 @@ from cycler import cycler
 from random import expovariate
 import sys, pprint, math, numpy, simpy, getopt, itertools
 
-from sim_components import *
-from more_sim_components import MT_PacketGenerator, CodedStorageQ
+from simplex_sim_components import *
+from mds_sim_components import *
 from simplex_models import *
+from mds_models import *
 # plot_color_l = ["indigo", "darkorange", "yellowgreen", "cyan", "darkmagenta", "darkred", "black", "slateblue", "goldenrod", "darksalmon", "forestgreen", "saddlebrown", "grey"]
 
-def test_mds_n_k(num_f_run, arr_rate, mu, n, k):
+def test_mds_n_k(num_f_run, arr_rate, mu, n, k, r=None):
   sim_E_T_f_sum = 0
   for f in range(num_f_run):
     log(WARNING, "arr_rate= {}, mu= {}, n= {}, k= {}".format(arr_rate, mu, n, k) )
@@ -19,9 +20,9 @@ def test_mds_n_k(num_f_run, arr_rate, mu, n, k):
     pg = PacketGenerator(env, _id="p_gen",
                          adist=lambda: random.expovariate(arr_rate),
                          sdist=lambda: 1)
-    qid_l = ["{}".format(i) for i in range(1, n + 1) ]
+    qid_l = ["{}".format(i) for i in range(n) ]
     # qserv_dist_l = [lambda: random.expovariate(mu) for i in range(n) ]
-    mdsq = MDSQ("mdsq", env, k, qid_l, qserv_rate_l=[mu for i in range(n) ] )
+    mdsq = MDSQ("mdsq", env, k, qid_l, qserv_rate_l=[mu for i in range(n) ], r=r)
     mdsq_monitor = MDSQMonitor(env, q=mdsq, poll_dist=lambda: 1)
     pg.out = mdsq
     env.run(until=50000) # env.run(until=5000)
@@ -59,7 +60,7 @@ def test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l=[], w_sys=True, mixed
     if mixed_traff:
       sym__rgroup_l_map = {}
       sym_l = None
-      if t < 3:
+      if t < 3 or t == 4:
         sym_l = ['a', 'b']
       if t == 3:
         sym_l = ['a', 'b', 'c']
@@ -99,6 +100,19 @@ def test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l=[], w_sys=True, mixed
             rgroup_l.append([0, 4] )
             rgroup_l.append([1, 5] )
             rgroup_l.append([2, 6] )
+        elif w_sys and t == 4:
+          if sym == 'a':
+            rgroup_l.append([0] )
+            rgroup_l.append([1, 2] )
+            rgroup_l.append([3, 4] )
+            rgroup_l.append([5, 6] )
+            rgroup_l.append([7, 8] )
+          elif sym == 'b':
+            rgroup_l.append([1] )
+            rgroup_l.append([0, 2] )
+            rgroup_l.append([3, 4] )
+            rgroup_l.append([5, 6] )
+            rgroup_l.append([7, 8] )
         sym__rgroup_l_map[sym] = rgroup_l
       pg = MT_PacketGenerator(env, _id="p_gen",
                              adist=lambda: random.expovariate(arr_rate),
@@ -106,7 +120,7 @@ def test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l=[], w_sys=True, mixed
                              sym_l=sym_l)
         
       log(WARNING, "sym__rgroup_l_map=\n {}".format(pprint.pformat(sym__rgroup_l_map) ) )
-      a_q = CodedStorageQ("cds_q", env, qid_l, qmu_l, sym__rgroup_l_map)
+      a_q = MT_AvQ("cds_q", env, qid_l, qmu_l, sym__rgroup_l_map)
       # aq_monitor = AVQMonitor(env, aq=a_q, poll_dist=lambda: 0.1)
       # a_q.join_q.out_m = aq_monitor
       pg.out = a_q
@@ -264,6 +278,74 @@ def plot_mds(num_q):
   plot.savefig("plot_mds__n_{}_k_{}.png".format(num_q, k) )
   log(WARNING, "done; n= {}, k= {}".format(n, k) )
 
+def plot_mds_n_2(n):
+  n = 5
+  k = 2
+  mu = 1
+  # gamma = mu
+  arr_rate_ub = mds_inner_bound_on_arr_rate(n, k, mu)
+  log(WARNING, "n= {}, k= {}, mu= {}, arr_rate_ub={}".format(n, k, mu, arr_rate_ub) )
+  
+  arr_rate_l = []
+  E_T_mds_n_k_sm_l, E_T_mds_n_k_sim_l, E_T_mds_n_k_lb_l, E_T_mds_n_k_varki_gauri_lb_l = [], [], [], []
+  E_T_mds_n_k_split_to_3_sim_l = []
+  # for arr_rate in [*numpy.arange(0.05, arr_rate_ub, arr_rate_ub/7), arr_rate_ub-0.1]:
+  for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/7):
+    arr_rate_l.append(arr_rate)
+    # sim
+    num_f_run = 3
+    if n == 3:
+      E_T_mds_n_k_sim_l= [
+        0.8556037128377268,
+        0.9607942308333743,
+        1.0536232157615888,
+        1.2124623964086967,
+        1.4178943036232037,
+        1.7094303177886272,
+        2.2350543957767584]
+    elif n == 4:
+      E_T_mds_n_k_sim_l= [
+        0.5812755345723262,
+        0.6569461385017236,
+        0.7425261002623366,
+        0.8560773825930664,
+        1.032387913703661,
+        1.294593549223201,
+        1.8578248960696804]
+    elif n == 5:
+      E_T_mds_n_k_sim_l= [
+        0.46425896730877336,
+        0.5146692509223326,
+        0.5789923822694713,
+        0.6703636918860807,
+        0.8008080993505126,
+        1.0426485991760615,
+        1.5271327221577]
+    else:
+      E_T_mds_n_k_sim_l.append(test_mds_n_k(num_f_run, arr_rate, mu, n, k) )
+    
+    E_T_mds_n_k_split_to_3_sim_l.append(test_mds_n_k(num_f_run, arr_rate, mu, n, k, r=3) )
+    
+    E_T_mds_n_k_sm_l.append(E_T_mds_n_k_sm(arr_rate, mu, n, k) )
+    if k == 2:
+      E_T_mds_n_k_lb_l.append(mds_n_2_E_T(arr_rate, mu, n) )
+    E_T_mds_n_k_varki_gauri_lb_l.append(E_T_mds_n_k_varki_gauri_lb(arr_rate, mu, n, k) )
+  marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
+  plot.plot(arr_rate_l, E_T_mds_n_k_sm_l, color='red', label=r'$E[\hat{T}_{SM}]$', marker=next(marker), linestyle='', mew=2)
+  print("E_T_mds_n_k_sim_l= {}".format(pprint.pformat(E_T_mds_n_k_sim_l) ) )
+  plot.plot(arr_rate_l, E_T_mds_n_k_sim_l, color='black', label=r'$E[T]$', marker=next(marker), linestyle='', mew=2)
+  print("E_T_mds_n_k_split_to_3_sim_l= {}".format(pprint.pformat(E_T_mds_n_k_split_to_3_sim_l) ) )
+  plot.plot(arr_rate_l, E_T_mds_n_k_split_to_3_sim_l, color='magenta', label=r'$E[T], r: 3$', marker=next(marker), linestyle='', mew=2)
+  plot.plot(arr_rate_l, E_T_mds_n_k_lb_l, color='green', label=r'$E[\hat{T}_{LB}]$', marker=next(marker), linestyle='', mew=2)
+  plot.plot(arr_rate_l, E_T_mds_n_k_varki_gauri_lb_l, color='blue', label=r'$E[\hat{T}_{Gauri}]$', marker=next(marker), linestyle='', mew=2)
+  plot.legend()
+  plot.xlabel(r'$\lambda$')
+  plot.ylabel("E[T] (s)")
+  # plot.title(r't= {}, r= {}, k= {}, $\gamma$= {}, $\mu$= {}'.format(t, r, k, gamma, mu) )
+  plot.title(r'n= {}, k= {}, $\mu$= {}'.format(n, k, mu) )
+  plot.savefig("plot_mds_{}_2.png".format(n) )
+  log(WARNING, "done; n= {}".format(n) )
+
 def plot_simplex(num_q):
   w_sys = True # False
   t, r, k = 1, 2, 2
@@ -271,58 +353,58 @@ def plot_simplex(num_q):
   gamma = mu
   arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu, w_sys)
   log(WARNING, "w_sys= {}, t= {}, r= {}, k= {}, mu= {}, arr_rate_ub={}".format(w_sys, t, r, k, mu, arr_rate_ub) )
-      
+  
   arr_rate_l = []
   E_T_sim_mds_n_k_l, E_T_sim_mds_n_1_l = [], []
   sim_hetero_E_T_simplex_l, sim_hetero2_E_T_simplex_l, sim_hetero3_E_T_simplex_l = [], [], []
   E_T_fj_2_l, E_T_sim_fj_2_l = [], []
   
   E_T_simplex_sm_l, E_T_sim_simplex_l, E_T_simplex_l, E_T_simplex_alt_l, E_T_simplex_matrix_analytic_l = [], [], [], [], []
-  E_T_simplex_ub_l, E_T_simplex_lb_l, E_T_simplex_naive_lb_l, E_T_simplex_varki_gauri_lb_l = [], [], [], []
+  E_T_simplex_approx_l, E_T_simplex_lb_l, E_T_simplex_naive_lb_l, E_T_simplex_varki_gauri_lb_l = [], [], [], []
   simplex_trial_E_T_l, simplex_trial2_E_T_l, simplex_trial3_E_T_l, simplex_trial4_E_T_l = [], [], [], []
   
   E_T_simplex_wo_sys_sm_l = []
   E_T_sim_simplex_mixed_traff_l = []
-  for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/7):
-  # for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/20):
+  # for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/7):
+  for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/20):
   # for arr_rate in numpy.arange(0.05, 1.26, 0.2):
     arr_rate_l.append(arr_rate)
     # sim
-    num_f_run = 3
+    num_f_run = 1
     # gamma=mu= 1, for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/7)
     # if w_sys and t == 1:
     #   pass deneme
     if w_sys and t == 1:
-      E_T_sim_simplex_l= [
-        0.6906089199666947,
-        0.7708763120409886,
-        0.9118019138920423,
-        1.0672253191648233,
-        1.3378310917617424,
-        1.7793492983131396,
-        2.8576296831667237]
-        # 2.7576296831667237]
       # E_T_sim_simplex_l= [
-      #   0.690182518823904,
-      #   0.7157334332190215,
-      #   0.7564590917460736,
-      #   0.7967851721092581,
-      #   0.8349148470704952,
-      #   0.9039070102346713,
-      #   0.9633550609535413,
-      #   1.008759189066751,
-      #   1.093635647677166,
-      #   1.1765798382640023,
-      #   1.2715006428459072,
-      #   1.4319781498055488,
-      #   1.5838561388495074,
-      #   1.769614490873982,
-      #   2.026993960656419,
-      #   2.4789818006986994,
-      #   3.187262080396768,
-      #   4.005550778820975,
-      #   7.333009029591799,
-      #   14.343792390544774]
+      #   0.6906089199666947,
+      #   0.7708763120409886,
+      #   0.9118019138920423,
+      #   1.0672253191648233,
+      #   1.3378310917617424,
+      #   1.7793492983131396,
+      #   2.8576296831667237]
+      #   # 2.7576296831667237]
+      E_T_sim_simplex_l= [
+        0.690182518823904,
+        0.7157334332190215,
+        0.7564590917460736,
+        0.7967851721092581,
+        0.8349148470704952,
+        0.9039070102346713,
+        0.9633550609535413,
+        1.008759189066751,
+        1.093635647677166,
+        1.1765798382640023,
+        1.2715006428459072,
+        1.4319781498055488,
+        1.5838561388495074,
+        1.769614490873982,
+        2.026993960656419,
+        2.4789818006986994,
+        3.187262080396768,
+        4.005550778820975,
+        7.333009029591799,
+        14.343792390544774]
     elif w_sys and t == 2:
       E_T_sim_simplex_l= [
         0.5538279298569435,
@@ -426,7 +508,7 @@ def plot_simplex(num_q):
         E_T_simplex_l.append(simplex_w_two_repair__E_T(arr_rate, mu, M=5) )
       else:
         E_T_simplex_l.append(simplex_wo_sys_w_two_repair__E_T(arr_rate, mu) )
-    E_T_simplex_ub_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu, ub=True) )
+    E_T_simplex_approx_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu, ub=True) )
     E_T_simplex_lb_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu) )
     E_T_simplex_naive_lb_l.append(E_T_simplex_lb(t, arr_rate, gamma, mu, naive=True) )
     E_T_simplex_varki_gauri_lb_l.append(E_T_simplex_varki_gauri_lb(t, arr_rate, gamma, mu) )
@@ -438,19 +520,20 @@ def plot_simplex(num_q):
     marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
     def plot_split_to_all():
       # plot.plot(arr_rate_l, E_T_sim_mds_n_k_l, 'ro', label="MDS({},{})".format(num_q, k) )
-      plot.plot(arr_rate_l, E_T_simplex_sm_l, 'r', label=r'$E[\hat{T}_{SM}]$', marker=next(marker), linestyle='', mew=2)
-      plot.plot(arr_rate_l, E_T_simplex_ub_l, 'm', label=r'$E[\hat{T}(\mathbf{\rho})]$', marker=next(marker), linestyle='', mew=2)
+      # plot.plot(arr_rate_l, E_T_simplex_sm_l, 'r', label=r'$E[\hat{T}_{SM}]$', marker=next(marker), linestyle='', mew=2)
+      # plot.plot(arr_rate_l, E_T_simplex_approx_l, 'm', label=r'$E[\hat{T}(\mathbf{\hat{\rho}})]$', marker=next(marker), linestyle='', mew=2)
       # plot.plot(arr_rate_l, E_T_simplex_wo_sys_sm_l, 'ro', label="simplex_wo_sys_sm_t_{}".format(t) )
       # plot.plot(arr_rate_l, E_T_simplex_matrix_analytic_l, 'y', label=r'$E[\hat{T}_{MA}]$', marker=next(marker), linestyle='', mew=2)
-      log(WARNING, "E_T_sim_simplex_l= {}".format(pprint.pformat(E_T_sim_simplex_l) ) )
-      # plot.plot(arr_rate_l, E_T_simplex_alt_l, 'b', label=r'$E[\hat{T}_{LB}], M=2$', marker=next(marker), linestyle='', mew=2)
-      plot.plot(arr_rate_l, E_T_sim_simplex_l, 'k', label=r'$E[T]$', marker=next(marker), linestyle='', mew=2)
-      log(WARNING, "E_T_sim_simplex_mixed_traff_l= {}".format(pprint.pformat(E_T_sim_simplex_mixed_traff_l) ) )
-      plot.plot(arr_rate_l, E_T_sim_simplex_mixed_traff_l, color='gray', label=r'$E[T], mixed-traffic$', marker=next(marker), linestyle='', mew=2)
-      # plot.plot(arr_rate_l, E_T_simplex_l, 'g', label=r'$E[\hat{T}_{LB}], M=5$', marker=next(marker), linestyle='', mew=2)
-      plot.plot(arr_rate_l, E_T_simplex_lb_l, 'g', label=r'$E[\hat{T}(\mathbf{\rho_{max}})]$', marker=next(marker), linestyle='', mew=2)
-      plot.plot(arr_rate_l, E_T_simplex_naive_lb_l, 'b', label=r'$E[\hat{T}(\mathbf{1})]$', marker=next(marker), linestyle='', mew=2)
-      plot.plot(arr_rate_l, E_T_simplex_varki_gauri_lb_l, 'c', label=r'$E[\hat{T}_{fast-serial}]$', marker=next(marker), linestyle='', mew=2)
+      # log(WARNING, "E_T_sim_simplex_l= {}".format(pprint.pformat(E_T_sim_simplex_l) ) )
+      # plot.plot(arr_rate_l, E_T_sim_simplex_l, 'k', label=r'$E[T]$', marker=next(marker), linestyle='', mew=2)
+      plot.plot(arr_rate_l, E_T_sim_simplex_l, 'k', label=r'$E[T], fixed-arrival$', marker=next(marker), linestyle='', mew=2)
+      # log(WARNING, "E_T_sim_simplex_mixed_traff_l= {}".format(pprint.pformat(E_T_sim_simplex_mixed_traff_l) ) )
+      plot.plot(arr_rate_l, E_T_sim_simplex_mixed_traff_l, color='brown', label=r'$E[T], mixed-arrival$', marker=next(marker), linestyle='', mew=2)
+      # plot.plot(arr_rate_l, E_T_simplex_alt_l, 'b', label=r'$E[\hat{T}], M=2$', marker=next(marker), linestyle='', mew=2)
+      # plot.plot(arr_rate_l, E_T_simplex_l, 'g', label=r'$E[\hat{T}], M=5$', marker=next(marker), linestyle='', mew=2)
+      plot.plot(arr_rate_l, E_T_simplex_lb_l, 'g', label=r'$E[\hat{T}(\hat{\rho})]$', marker=next(marker), linestyle='', mew=2)
+      plot.plot(arr_rate_l, E_T_simplex_naive_lb_l, 'b', label=r'$E[\hat{T}(1)]$', marker=next(marker), linestyle='', mew=2)
+      # plot.plot(arr_rate_l, E_T_simplex_varki_gauri_lb_l, 'c', label=r'$E[\hat{T}_{fast-serial}]$', marker=next(marker), linestyle='', mew=2)
       color = iter(cm.rainbow(numpy.linspace(0, 2, 4) ) )
       # plot.plot(arr_rate_l, sim_hetero_E_T_simplex_l, 'o', color=next(color), label="hetero_simplex_c_{}".format(hetero_simplex_c) )
       # plot.plot(arr_rate_l, sim_hetero2_E_T_simplex_l, 'o', color=next(color), label="hetero_simplex_c_{}".format(hetero2_simplex_c) )
@@ -474,10 +557,10 @@ def plot_simplex(num_q):
       arr_rate_sto_l.append(arr_rate)
       E_T_simplex_sto_l.append(E_T_simplex_split_to_one(t, arr_rate, mu) )
     log(WARNING, "E_T_sim_simplex_l= {}".format(pprint.pformat(E_T_sim_simplex_l) ) )
-    plot.plot(arr_rate_l, E_T_sim_simplex_l, 'k', label=r'$E[T]$, split-to-all', marker=next(marker), linestyle='', mew=2)
-    plot.plot(arr_rate_sto_l, E_T_simplex_sto_l, 'b', label=r'$E[T]$, split-to-one', marker=next(marker), linestyle='', mew=2)
-  plot_split_to_all()
-  # plot_split_to_one()
+    plot.plot(arr_rate_l, E_T_sim_simplex_l, 'k', label=r'$E[T]$, replicate-to-all', marker=next(marker), linestyle='', mew=2)
+    plot.plot(arr_rate_sto_l, E_T_simplex_sto_l, 'b', label=r'$E[T]$, select-one', marker=next(marker), linestyle='', mew=2)
+  # plot_split_to_all()
+  plot_split_to_one()
   plot.legend()
   plot.xlabel(r'$\lambda$')
   plot.ylabel("E[T] (s)")
@@ -578,6 +661,7 @@ if __name__ == "__main__":
   # test_simplex_q(num_f_run=1, arr_rate=0.1, mu=1, k=2, r=2, t=1, mixed_traff=True)
   
   # plot_winning_freqs()
-  plot_simplex(num_q)
+  # plot_simplex(num_q)
+  plot_mds_n_2(num_q)
   # plot_avq()
   # plot_simplex_w_varying_serv_rate_alloc(num_q)
