@@ -233,7 +233,7 @@ class S1_Q(Q): # Memoryless service, 1 server
   def run_c(self):
     while True:
       cp = (yield self.store_c.get() )
-      if self.p_in_serv.job_id == cp._id:
+      if self.p_in_serv is not None and self.p_in_serv.job_id == cp._id:
         if self.cancel is None:
           log(ERROR, "self.cancel is None!")
           return 1
@@ -306,7 +306,9 @@ class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job 
     self.fj = False
     if self.k == len(input_qid_l):
       self.fj = True
-    self.input_id__pq_map = {i: [] for i in input_qid_l}
+    # self.input_id__pq_map = {i: [] for i in input_qid_l}
+    
+    self.job_id__p_l_map = {}
     self.qt_l = []
     self.length = 0 # maximum of the lengths of all pq's
     # self.state__num_found_map = {}
@@ -323,43 +325,61 @@ class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job 
     return "JQ[_id= {}, k= {}, input_qid_l= [{}]]".format(self._id, self.k, ",".join(self.input_qid_l) )
   
   def state(self):
-    return [len(pq) for i, pq in self.input_id__pq_map.items() ]
+    # return [len(pq) for i, pq in self.input_id__pq_map.items() ]
+    return None
   
-  def check_for_job_completion(self, possible_winner_id):
-    now = self.env.now
-    len_l = [len(pq) for i, pq in self.input_id__pq_map.items() ]
-    num_non_zero = len([l for l in len_l if l > 0] )
-    if num_non_zero > self.k:
-      log(ERROR, "num_non_zero= {} > k= {}".format(num_non_zero, self.k) )
+  def check_for_job_completion(self, p):
+    # now = self.env.now
+    # len_l = [len(pq) for i, pq in self.input_id__pq_map.items() ]
+    # num_non_zero = len([l for l in len_l if l > 0] )
+    # if num_non_zero > self.k:
+    #   log(ERROR, "num_non_zero= {} > k= {}".format(num_non_zero, self.k) )
+    #   return 1
+    # elif num_non_zero < self.k:
+    #   return 0
+    
+    # ref_p = None
+    # departed_q_id_l = []
+    # for j, pq in self.input_id__pq_map.items():
+    #   if len(pq) == 0:
+    #     continue
+    #   p = pq.pop(0)
+    #   departed_q_id_l.append(p.prev_hop_id)
+    #   if ref_p is None:
+    #     ref_p = p
+    #   else:
+    #     if (p.prev_hop_id == ref_p.prev_hop_id) or \
+    #       (p.entrance_time != ref_p.entrance_time) or \
+    #       (p.job_id != ref_p.job_id):
+    #       log(ERROR, "JQ= {}\n\tsupposed to be tasks of the same job;\n\tp= {}\n\tref_p= {}".format(self, p, ref_p) )
+    #       return 1
+    #   self.qt_l.append(now - p.ref_time)
+    # if not self.fj:
+    #   self.out_c.put_c(CPacket(_id=ref_p.job_id, prev_hop_id=self._id, departed_q_id_l=departed_q_id_l) )
+    
+    # ref_p.winner_id = ref_p.prev_hop_id
+    # ref_p.prev_hop_id = self._id
+    # self.out.put(ref_p)
+    # self.length = max([len(pq) for i, pq in self.input_id__pq_map.items() ] )
+    # if self.out_m is not None:
+    #   self.out_m.put_m(MPacket(_id=ref_p.job_id, event_str=MPACKET_JOB_DEPARTED) )
+    
+    p_l = self.job_id__p_l_map[p.job_id]
+    if len(p_l) > self.k:
+      log(ERROR, "len(p_l)= {} > k= {}".format(len(p_l), self.k) )
       return 1
-    elif num_non_zero < self.k:
+    elif len(p_l) < self.k:
       return 0
+    self.job_id__p_l_map.pop(p.job_id, None)
+    self.qt_l.append(self.env.now - p.ref_time)
+    recved_from_qid_l = [p.prev_hop_id for p in p_l]
     
-    ref_p = None
-    departed_q_id_l = []
-    for j, pq in self.input_id__pq_map.items():
-      if len(pq) == 0:
-        continue
-      p = pq.pop(0)
-      departed_q_id_l.append(p.prev_hop_id)
-      if ref_p is None:
-        ref_p = p
-      else:
-        if (p.prev_hop_id == ref_p.prev_hop_id) or \
-           (p.entrance_time != ref_p.entrance_time) or \
-           (p.job_id != ref_p.job_id):
-          log(ERROR, "JQ= {}\n\tsupposed to be tasks of the same job;\n\tp= {}\n\tref_p= {}".format(self, p, ref_p) )
-          return 1
-      self.qt_l.append(now - p.ref_time)
-    if not self.fj:
-      self.out_c.put_c(CPacket(_id=ref_p.job_id, prev_hop_id=self._id, departed_q_id_l=departed_q_id_l) )
-    
-    ref_p.winner_id = ref_p.prev_hop_id
-    ref_p.prev_hop_id = self._id
-    self.out.put(ref_p)
-    self.length = max([len(pq) for i, pq in self.input_id__pq_map.items() ] )
+    self.out_c.put_c(CPacket(_id=p.job_id, prev_hop_id=self._id, departed_qid_l=recved_from_qid_l) )
+    p.winner_id = p.prev_hop_id
+    p.prev_hop_id = self._id
+    self.out.put(p)
     if self.out_m is not None:
-      self.out_m.put_m(MPacket(_id=ref_p.job_id, event_str=MPACKET_JOB_DEPARTED) )
+      self.out_m.put_m(MPacket(_id=p.job_id, event_str=MPACKET_JOB_DEPARTED) )
   
   def run(self):
     while True:
@@ -373,8 +393,11 @@ class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job 
       #   self.state__num_found_map[state] = 0
       # self.state__num_found_map[state] += 1
       
-      self.input_id__pq_map[p.prev_hop_id].append(p)
-      self.check_for_job_completion(p.prev_hop_id)
+      # self.input_id__pq_map[p.prev_hop_id].append(p)
+      if p.job_id not in self.job_id__p_l_map:
+        self.job_id__p_l_map[p.job_id] = []
+      self.job_id__p_l_map[p.job_id].append(p.deep_copy() )
+      self.check_for_job_completion(p)
   
   def put(self, p):
     sim_log(DEBUG, self.env, self, "recved", p)
@@ -384,10 +407,11 @@ class JQ(object): # JoinQ for MDS; completion of any k tasks out of n means job 
   def run_c(self):
     while True:
       cp = (yield self.store_c.get() )
-      for j, pq in self.input_id__pq_map.items():
-        for p in pq:
-          if p.job_id == cp._id:
-            pq.remove(p)
+      # for j, pq in self.input_id__pq_map.items():
+      #   for p in pq:
+      #     if p.job_id == cp._id:
+      #       pq.remove(p)
+      self.job_id__p_l_map.pop(p.job_id, None)
   
   def put_c(self, cp):
     sim_log(DEBUG, self.env, self, "recved", cp)
@@ -462,10 +486,11 @@ class MT_JQ(object):
   def run_c(self):
     while True:
       cp = (yield self.store_c.get() )
-      for j, pq in self.input_id__pq_map.items():
-        for p in pq:
-          if p.job_id == cp._id:
-            pq.remove(p)
+      # for j, pq in self.input_id__pq_map.items():
+      #   for p in pq:
+      #     if p.job_id == cp._id:
+      #       pq.remove(p)
+      self.job_id__p_l_map.pop(p.job_id, None)
   
   def put_c(self, cp):
     sim_log(DEBUG, self.env, self, "recved", cp)

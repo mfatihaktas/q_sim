@@ -79,9 +79,9 @@ class MDSQ(object):
     while True:
       cp = (yield self.store_c.get() )
       for i, q in self.id_q_map.items():
-        if q._id not in cp.departed_q_id_l:
+        if q._id not in cp.departed_qid_l:
           q.put_c(cp)
-      if cp.prev_hop_id != self._id: # To avoid inifinite loops forward only when cp comes from a different jq than self
+      if cp.prev_hop_id != self._id: # To avoid inifinite loops forward only when cp comes from a different JQ than self
         self.join_q.put_c(cp)
   
   def put_c(self, cp):

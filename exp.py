@@ -15,7 +15,7 @@ from mds_models import *
 def test_mds_n_k(num_f_run, arr_rate, mu, n, k, r=None):
   sim_E_T_f_sum = 0
   for f in range(num_f_run):
-    log(WARNING, "arr_rate= {}, mu= {}, n= {}, k= {}".format(arr_rate, mu, n, k) )
+    log(WARNING, "arr_rate= {}, mu= {}, n= {}, k= {}, r= {}".format(arr_rate, mu, n, k, r) )
     env = simpy.Environment()
     pg = PacketGenerator(env, _id="p_gen",
                          adist=lambda: random.expovariate(arr_rate),
@@ -247,8 +247,8 @@ def plot_mds(num_q):
     adj_2_sm_mds_n_k_E_T_l.append(adj_2_sm_mds_n_k_E_T(arr_rate, mu, num_q, k) )
     recur_sm_mds_n_k_E_T_l.append(recur_sm_mds_n_k_E_T(arr_rate, mu, num_q, k) )
     
-    mds_n_k_E_T_l.append(mds_n_2_E_T(arr_rate, mu, num_q) )
-    adj_mds_n_k_E_T_l.append(adjustable_mds_n_2_E_T(arr_rate, mu, num_q) )
+    mds_n_k_E_T_l.append(E_T_mds_n_2(arr_rate, mu, num_q) )
+    adj_mds_n_k_E_T_l.append(adjustable_E_T_mds_n_2(arr_rate, mu, num_q) )
     
     ro = float(arr_rate/mu)
     varki_mds_n_k_E_T = 1/mu * (harmonic_sum(num_q) - harmonic_sum(num_q-k) ) + \
@@ -293,7 +293,7 @@ def plot_mds_n_2(n):
   for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/7):
     arr_rate_l.append(arr_rate)
     # sim
-    num_f_run = 3
+    num_f_run = 1
     if n == 3:
       E_T_mds_n_k_sim_l= [
         0.8556037128377268,
@@ -324,11 +324,22 @@ def plot_mds_n_2(n):
     else:
       E_T_mds_n_k_sim_l.append(test_mds_n_k(num_f_run, arr_rate, mu, n, k) )
     
-    E_T_mds_n_k_split_to_3_sim_l.append(test_mds_n_k(num_f_run, arr_rate, mu, n, k, r=3) )
+    r = 3
+    if n == 3:
+      E_T_mds_n_k_split_to_3_sim_l= [
+        0.8486573357737086,
+        1.0417516906091275,
+        1.3497905516693636,
+        2.006516860120473,
+        4.817898637159252,
+        2016.4529376443202,
+        5951.278605721713]
+    else:
+      E_T_mds_n_k_split_to_3_sim_l.append(test_mds_n_k(num_f_run, arr_rate, mu, n, k, r=r) )
     
     E_T_mds_n_k_sm_l.append(E_T_mds_n_k_sm(arr_rate, mu, n, k) )
     if k == 2:
-      E_T_mds_n_k_lb_l.append(mds_n_2_E_T(arr_rate, mu, n) )
+      E_T_mds_n_k_lb_l.append(E_T_mds_n_2(arr_rate, mu, n) )
     E_T_mds_n_k_varki_gauri_lb_l.append(E_T_mds_n_k_varki_gauri_lb(arr_rate, mu, n, k) )
   marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
   plot.plot(arr_rate_l, E_T_mds_n_k_sm_l, color='red', label=r'$E[\hat{T}_{SM}]$', marker=next(marker), linestyle='', mew=2)
