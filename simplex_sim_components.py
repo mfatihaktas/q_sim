@@ -6,6 +6,8 @@ from heapq import heappush, heappop
 from patch import *
 from deprecated import *
 
+REGULAR_TRAFF_SYM = 'r'
+MDS_TRAFF_SYM = 'm'
 class Packet(object):
   def __init__(self, time, size, _id, sym=None, flow_id=0):
     self.time = time
@@ -13,6 +15,7 @@ class Packet(object):
     self._id = _id
     self.sym = sym
     self.flow_id = flow_id
+    
     self.ref_time = 0 # for casual use
     # for FJ and MDS Q implementation
     self.prev_hop_id = None
@@ -30,8 +33,8 @@ class Packet(object):
     return p
   
   def __repr__(self):
-    return "Packet[_id: {}, prev_hop_id: {}, job_id: {}]".\
-      format(self._id, self.prev_hop_id, self.job_id)
+    return "Packet[_id: {}, prev_hop_id: {}, job_id: {}, sym: {}]".\
+      format(self._id, self.prev_hop_id, self.job_id, self.sym)
 
 class CPacket(object): # Control
   def __init__(self, _id, prev_hop_id=None, departed_qid_l=[]):
@@ -58,58 +61,53 @@ class MPacket(object): # Monitor
     return "MPacket[_id= {}, event_str= {}]".format(self._id, self.event_str)
 
 class PacketGenerator(object):
-  def __init__(self, env, _id, adist, sdist, initial_delay=0, finish=float("inf"), flow_id=0):
+  def __init__(self, env, _id, arr_dist, size_dist, initial_delay=0, finish=float("inf"), flow_id=0):
     self._id = _id
     self.env = env
-    self.adist = adist
-    self.sdist = sdist
+    self.arr_dist = arr_dist
+    self.size_dist = size_dist
     self.initial_delay = initial_delay
     self.finish = finish
-    self.n_sent = 0
     self.flow_id = flow_id
     
+    self.n_sent = 0
     self.out = None
-    self.action = env.process(self.run())  # starts the run() method as a SimPy process
+    self.action = None
+  
+  def init():
+    self.action = env.process(self.run() )  # starts the run() method as a SimPy process
 
   def run(self):
     yield self.env.timeout(self.initial_delay)
     while self.env.now < self.finish:
       # wait for next transmission
-      yield self.env.timeout(self.adist() )
+      yield self.env.timeout(self.arr_dist() )
       self.n_sent += 1
-      p = Packet(time=self.env.now, size=self.sdist(), _id=self.n_sent, flow_id=self.flow_id)
+      p = Packet(time=self.env.now, size=self.size_dist(), _id=self.n_sent, flow_id=self.flow_id)
       self.out.put(p)
 
-class MT_PacketGenerator(object):
-  def __init__(self, env, _id, adist, sdist, sym_l=None, initial_delay=0, finish=float("inf"), flow_id=0):
-    self._id = _id
-    self.env = env
-    self.adist = adist
-    self.sdist = sdist
-    self.sym_l = sym_l
-    self.initial_delay = initial_delay
-    self.finish = finish
-    self.n_sent = 0
-    self.flow_id = flow_id
+class MT_PacketGenerator(PacketGenerator):
+  def __init__(self, env, _id, arr_dist, size_dist, sym_l=None, initial_delay=0, finish=float("inf"), flow_id=0):
+    super().__init__(env, _id, arr_dist, size_dist, initial_delay, finish, flow_id)
     
     self.sym__n_sent = {}
-    self.out = None
+    # self.out = None
     self.action = env.process(self.run())  # starts the run() method as a SimPy process
 
   def run(self):
     yield self.env.timeout(self.initial_delay)
     while self.env.now < self.finish:
       # wait for next transmission
-      yield self.env.timeout(self.adist() )
+      yield self.env.timeout(self.arr_dist() )
       self.n_sent += 1
       if self.sym_l is not None:
         sym = self.sym_l[random.randint(0,len(self.sym_l)-1) ]
         if sym not in self.sym__n_sent:
           self.sym__n_sent[sym] = 0
         self.sym__n_sent[sym] = self.sym__n_sent[sym] + 1
-        p = Packet(time=self.env.now, size=self.sdist(), _id=self.n_sent, sym=sym, flow_id=self.flow_id)
+        p = Packet(time=self.env.now, size=self.size_dist(), _id=self.n_sent, sym=sym, flow_id=self.flow_id)
       else:
-        p = Packet(time=self.env.now, size=self.sdist(), _id=self.n_sent, flow_id=self.flow_id)
+        p = Packet(time=self.env.now, size=self.size_dist(), _id=self.n_sent, flow_id=self.flow_id)
       self.out.put(p)
 
 class Q(object):
@@ -132,7 +130,7 @@ class S1_Q(Q): # Memoryless service, 1 server
     
     self.p_l = []
     self.p_in_serv = None
-    self.cancel = None
+    self.cancel, self.preempt = None, None
     self.n_recved = 0
     self.n_dropped = 0
     self.size_n = 0  # Current size of the queue in n
@@ -187,6 +185,9 @@ class S1_Q(Q): # Memoryless service, 1 server
       self.busy = 1
       if self.cancel is None:
         self.cancel = self.env.event()
+      if self.preempt is None:
+        self.preempt = self.env.event()
+      
       exp_clock_start_time = None
       if self.serv_dist is None:
         if self.rate is None:
@@ -194,18 +195,21 @@ class S1_Q(Q): # Memoryless service, 1 server
           return 1
         log(WARNING, "self.serv_dist is None!")
         sim_log(WARNING, self.env, self, "starting D-clock! on ", self.p_in_serv)
-        yield (self.cancel | self.env.timeout(self.p_in_serv.size/self.rate) ) # service
+        yield (self.cancel | self.preempt | self.env.timeout(self.p_in_serv.size/self.rate) ) # service
       else:
         exp_clock_start_time = self.env.now
         sim_log(DEBUG, self.env, self, "starting Exp-clock on ", self.p_in_serv)
-        yield (self.cancel | self.env.timeout(self.serv_dist() ) ) # service
+        yield (self.cancel | self.preempt | self.env.timeout(self.serv_dist() ) ) # service
       if self.cancel is None: # task got cancelled
         sim_log(DEBUG, self.env, self, "cancelling", self.p_in_serv)
         sim_log(DEBUG, self.env, self, "cancelled Exp-clock on ", self.p_in_serv)
+      elif self.preempt is None: # task got preempted
+        self.p_l.insert(1, self.p_in_serv)
+        sim_log(DEBUG, self.env, self, "preempted ", self.p_in_serv)
       else:
         sim_log(DEBUG, self.env, self, "done with Exp-clock in {}s on ".format(self.env.now-exp_clock_start_time), self.p_in_serv)
         self.qt_l.append(self.env.now - self.p_in_serv.ref_time)
-        if self.out is not None:
+        if self.out is not None and self.p_in_serv.sym != REGULAR_TRAFF_SYM:
           sim_log(DEBUG, self.env, self, "finished serv, forwarding", self.p_in_serv)
           self.p_in_serv.prev_hop_id = self._id
           self.out.put(self.p_in_serv)
@@ -214,7 +218,7 @@ class S1_Q(Q): # Memoryless service, 1 server
           
       self.busy = 0
   
-  def put(self, p):
+  def put(self, p, preempt=False):
     self.n_recved += 1
     p.ref_time = self.env.now
     sim_log(DEBUG, self.env, self, "recved", p)
@@ -228,6 +232,11 @@ class S1_Q(Q): # Memoryless service, 1 server
     else:
       self.size_n = t_size_n
       self.size_B = t_size_B
+      if preempt and len(self.p_l) > 0:
+        self.preempt.succeed()
+        self.preempt = None
+        self.p_l.insert(0)
+        return
       return self.store.put(p)
   
   def run_c(self):

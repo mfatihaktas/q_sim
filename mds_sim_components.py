@@ -3,30 +3,53 @@ from simpy.core import BoundClass
 from simpy.resources import base
 from heapq import heappush, heappop
 
-from simplex_sim_components import * # Packet, CPacket, MPACKET_JOB_DEPARTED, MPacket, S1_Q
+from simplex_sim_components import *
 from patch import *
 from deprecated import *
 
+class MDS_PacketGenerator(PacketGenerator):
+  def __init__(self, env, _id, mds_arr_dist, size_dist, initial_delay=0, finish=float("inf"), flow_id=0, sys_arr_dist=None):
+    super().__init__(env, _id, mds_arr_dist, size_dist, initial_delay, finish, flow_id)
+    self.sys_arr_dist = sys_arr_dist
+    
+    self.mds_n_sent = 0
+    self.sys_n_sent = 0
+    self.out = None
+    
+    self.mds_action = env.process(self.mds_run() )  # starts the run() method as a SimPy process
+    if sys_arr_dist is not None:
+      self.sys_action = env.process(self.sys_run() )
+  
+  def __repr__(self):
+    return "MDS_PacketGenerator[mds_n_sent= {}, sys_n_sent= {}]".format(self.mds_n_sent, self.sys_n_sent)
+  
+  def mds_run(self):
+    yield self.env.timeout(self.initial_delay)
+    while self.env.now < self.finish:
+      yield self.env.timeout(self.arr_dist() )
+      self.mds_n_sent += 1
+      self.out.put(Packet(time=self.env.now, size=self.size_dist(), _id=self.mds_n_sent, sym=MDS_TRAFF_SYM) )
+  
+  def sys_run(self):
+    yield self.env.timeout(self.initial_delay)
+    while self.env.now < self.finish:
+      yield self.env.timeout(self.sys_arr_dist() )
+      self.sys_n_sent += 1
+      self.out.put(Packet(time=self.env.now, size=self.size_dist(), _id=self.sys_n_sent, sym=REGULAR_TRAFF_SYM) )
+  
 # *******************************************  MDSQ  ********************************************* #
 # Fork incoming job to all sub-q's, wait for any k task to complete, cancel the remainings.
 class MDSQ(object):
-  def __init__(self, _id, env, k, qid_l, qserv_rate_l, r=None, out=None):
+  def __init__(self, _id, env, k, qid_l, qserv_rate_l, r=None, preempt=False, out=None):
     self._id = _id
     self.env = env
+    self.n = len(qid_l)
+    self.r = r
     self.k = k
     self.qid_l = qid_l
     self.qserv_rate_l = qserv_rate_l
+    self.preempt = preempt
     # self.out = out
-    
-    self.num_q = len(qid_l)
-    self.qid_to_split_l = []
-    if r is None:
-      self.qid_to_split_l = self.qid_l
-    else:
-      while len(self.qid_to_split_l) < r:
-        qid = qid_l[random.randint(0, self.num_q-1) ]
-        if qid not in self.qid_to_split_l:
-          self.qid_to_split_l.append(qid)
     
     self.join_sink = JSink(_id, env)
     self.join_sink.out = out
@@ -34,7 +57,7 @@ class MDSQ(object):
     self.join_q.out = self.join_sink
     self.join_q.out_c = self
     self.id_q_map = {}
-    for i in range(self.num_q):
+    for i in range(self.n):
       qid = qid_l[i]
       m1_q = S1_Q(_id=qid, env=env, serv_rate=qserv_rate_l[i] )
       m1_q.out = self.join_q
@@ -63,8 +86,22 @@ class MDSQ(object):
   def run(self):
     while True:
       p = (yield self.store.get() )
+      self.qid_to_split_l = []
+      if p.sym == MDS_TRAFF_SYM:
+        if self.r is None:
+          self.qid_to_split_l = self.qid_l
+        else:
+          while len(self.qid_to_split_l) < self.r:
+            qid = self.qid_l[random.randint(0, self.n-1) ]
+            if qid not in self.qid_to_split_l:
+              self.qid_to_split_l.append(qid)
+      elif p.sym == REGULAR_TRAFF_SYM:
+        self.qid_to_split_l = self.qid_l
+      else:
+        log(ERROR, "Unexpected p.sym= {}".format(p.sym) )
+        return 1
       for qid in self.qid_to_split_l:
-        self.id_q_map[qid].put(p)
+        self.id_q_map[qid].put(p, preempt=self.preempt)
   
   def put(self, p):
     sim_log(DEBUG, self.env, self, "recved", p)
@@ -96,7 +133,7 @@ class MDSQMonitor(object):
     
     self.t_l = [] # Time steps that the numbers polled from the aq
     # self.n_l = [] # Num of packets in the aq
-    self.polled_state__counter_map = {}
+    self.state__counter_map = {}
     
     self.action = env.process(self.run() )
   
@@ -111,6 +148,6 @@ class MDSQMonitor(object):
       # self.n_l.append(num_job)
       # rel_state = ",".join("%d" % (num_job-l) for l in state)
       rel_state = list_to_str(state)
-      if rel_state not in self.polled_state__counter_map:
-        self.polled_state__counter_map[rel_state] = 0
-      self.polled_state__counter_map[rel_state] += 1
+      if rel_state not in self.state__counter_map:
+        self.state__counter_map[rel_state] = 0
+      self.state__counter_map[rel_state] += 1

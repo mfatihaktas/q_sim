@@ -22,7 +22,8 @@ if [ $1 = 'e' ]; then
   # rm -r __pycache__; $PYTHON exp.py < /dev/null 2>&1 | tee $LOG_F
   rm -r __pycache__; rm *.png; $PYTHON exp.py --num_q=3
 elif [ $1 = 'm' ]; then
-  $MATLAB -r "run exp.m; quit"
+  # $MATLAB -r "run exp.m; quit"
+  rm -r __pycache__; rm *.png; $PYTHON mds_exp.py --num_q=3
 elif [ $1 = 's' ]; then
   rm -r __pycache__; rm *.png; $PYTHON simplex_models.py
 elif [ $1 = 'd' ]; then

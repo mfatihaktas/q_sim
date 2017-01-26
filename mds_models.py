@@ -34,6 +34,9 @@ def E_T_sys__mds_n_2(arr_rate, mu, n):
   return E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S)
 
 # ------------------------------------  MDS: Full-Data Download  ---------------------------------- #
+def E_T_mds_n_r_2(arr_rate, mu, n, r):
+  return E_T_mds_n_2(r/n * arr_rate, mu, r)
+  
 def E_T_mds_n_2(arr_rate, mu, n):
   # high-regime assumption
   f_jc = (n - 2)/(n - 1)
@@ -104,9 +107,12 @@ def E_T_mds_n_k_sm_recur(arr_rate, mu, n, k):
     log(ERROR, "Unexpected n= {} <= k= {}".format(n, k) )
     return E_T_mds_n_k_sm(arr_rate, mu, n, k)
 
-def mds_inner_bound_on_arr_rate(n, k, mu):
+def mds_inner_bound_on_arr_rate(mu, n, k):
   sm_mds_n_k_E_S = 1/mu * (harmonic_sum(n) - harmonic_sum(n-k) )
   return 1/sm_mds_n_k_E_S
+
+def mds_exact_bound_on_arr_rate(mu, n, k):
+  return n*mu/k
 
 def E_T_mds_n_k_varki_gauri_lb(arr_rate, mu, n, k):
   ro = float(arr_rate/mu)
