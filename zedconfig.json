@@ -4,7 +4,7 @@
     ],
     "preferences": {
         "editorTheme": "solarized_light",
-        "fontSize": 13,
+        "fontSize": 14,
         "tabSize": 2,
         "printMarginColumn": 100
     },
@@ -17,6 +17,14 @@
       "Navigate:Goto": {
           "mac": "Command-O",
           "win": "Ctrl-O"
+      },
+      "Find:Next": {
+          "win": "Ctrl-K",
+          "mac": "Command-K"
+      },
+      "Find:Previous": {
+          "mac": "Command-Shift-K",
+          "win": "Ctrl-Shift-K"
       }
     },
     "commands": {},

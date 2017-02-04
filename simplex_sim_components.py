@@ -135,7 +135,7 @@ class S1_Q(Q): # Memoryless service, 1 server
     self.n_dropped = 0
     self.size_n = 0  # Current size of the queue in n
     self.size_B = 0  # Current size of the queue in bytes
-    self.busy = 0  # Used to track if a packet is currently being sent
+    self.busy = False  # Used to track if a packet is currently being sent
     self.wt_l = []
     self.qt_l = []
     
@@ -182,7 +182,7 @@ class S1_Q(Q): # Memoryless service, 1 server
       self.wt_l.append(self.env.now - self.p_in_serv.ref_time)
       self.size_n -= 1
       self.size_B -= self.p_in_serv.size
-      self.busy = 1
+      self.busy = True
       if self.cancel is None:
         self.cancel = self.env.event()
       if self.preempt is None:
@@ -216,7 +216,7 @@ class S1_Q(Q): # Memoryless service, 1 server
         else:
           sim_log(DEBUG, self.env, self, "finished serv", self.p_in_serv)
           
-      self.busy = 0
+      self.busy = False
   
   def put(self, p, preempt=False):
     self.n_recved += 1
@@ -232,10 +232,11 @@ class S1_Q(Q): # Memoryless service, 1 server
     else:
       self.size_n = t_size_n
       self.size_B = t_size_B
-      if preempt and len(self.p_l) > 0:
+      if preempt and self.busy:
         self.preempt.succeed()
         self.preempt = None
-        self.p_l.insert(0)
+        self.p_l.insert(0, p)
+        self.syncer.put(1)
         return
       return self.store.put(p)
   

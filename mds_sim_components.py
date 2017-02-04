@@ -112,6 +112,32 @@ class MDSQ(object):
       p.job_id = self.job_id_counter
     return self.store.put(p)
   
+  # def put(self, p):
+  #   sim_log(DEBUG, self.env, self, "recved", p)
+  #   if p.entrance_time is None:
+  #     p.entrance_time = self.env.now
+  #   if p.job_id is None:
+  #     self.job_id_counter += 1
+  #     p.job_id = self.job_id_counter
+  #   # return self.store.put(p)
+  #   self.qid_to_split_l = []
+  #   if p.sym == MDS_TRAFF_SYM:
+  #     if self.r is None:
+  #       self.qid_to_split_l = self.qid_l
+  #     else:
+  #       while len(self.qid_to_split_l) < self.r:
+  #         qid = self.qid_l[random.randint(0, self.n-1) ]
+  #         if qid not in self.qid_to_split_l:
+  #           self.qid_to_split_l.append(qid)
+  #   elif p.sym == REGULAR_TRAFF_SYM:
+  #     # self.qid_to_split_l = self.qid_l
+  #     self.qid_to_split_l.append(self.qid_l[random.randint(0, self.n-1) ] )
+  #   else:
+  #     log(ERROR, "Unexpected p.sym= {}".format(p.sym) )
+  #     return 1
+  #   for qid in self.qid_to_split_l:
+  #     self.id_q_map[qid].put(p, preempt=self.preempt)
+  
   def run_c(self):
     while True:
       cp = (yield self.store_c.get() )
@@ -124,7 +150,16 @@ class MDSQ(object):
   def put_c(self, cp):
     sim_log(DEBUG, self.env, self, "recved", cp)
     return self.store_c.put(cp)
-
+  
+  # def put_c(self, cp):
+  #   sim_log(DEBUG, self.env, self, "recved", cp)
+  #   # return self.store_c.put(cp)
+  #   for i, q in self.id_q_map.items():
+  #     if q._id not in cp.departed_qid_l:
+  #       q.put_c(cp)
+  #   if cp.prev_hop_id != self._id: # To avoid inifinite loops forward only when cp comes from a different JQ than self
+  #     self.join_q.put_c(cp)
+  
 class MDSQMonitor(object):
   def __init__(self, env, q, poll_dist):
     self.q = q

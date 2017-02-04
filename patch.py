@@ -5,8 +5,8 @@ DEBUG = 1
 WARNING = 2
 ERROR = 3
 
-DEBUG_LEVEL = INFO
-# DEBUG_LEVEL = WARNING
+# DEBUG_LEVEL = INFO
+DEBUG_LEVEL = WARNING
 # DEBUG_LEVEL = ERROR
 
 debug_level__string_map = {INFO: "INFO", DEBUG: "DEBUG", WARNING: "WARNING", ERROR: "ERROR"}
@@ -40,19 +40,19 @@ def log(dlevel, log):
 def list_to_str(l):
   return ",".join("%s" % e for e in l)
 
-def harmonic_sum(n):
+def H(n):
   sum_ = 0
   for i in range(1, n+1):
     sum_ += float(1/i)
   return sum_
 
-def harmonic_2_sum(n):
+def H_2(n):
   sum_ = 0
   for i in range(1, n+1):
     sum_ += float(1/(i**2) )
   return sum_
 
-def gen_harmonic_sum(n, k):
+def gen_H(n, k):
   sum_ = 0
   for i in range(1, n+1):
     if (i - k) == 0:
