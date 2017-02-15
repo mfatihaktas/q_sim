@@ -61,7 +61,7 @@ class MPacket(object): # Monitor
     return "MPacket[_id= {}, event_str= {}]".format(self._id, self.event_str)
 
 class PacketGenerator(object):
-  def __init__(self, env, _id, arr_dist, size_dist, initial_delay=0, finish=float("inf"), flow_id=0):
+  def __init__(self, env, _id, arr_dist, size_dist = None, initial_delay=0, finish=float("inf"), flow_id=0):
     self._id = _id
     self.env = env
     self.arr_dist = arr_dist
@@ -74,8 +74,8 @@ class PacketGenerator(object):
     self.out = None
     self.action = None
   
-  def init():
-    self.action = env.process(self.run() )  # starts the run() method as a SimPy process
+  def init(self):
+    self.action = self.env.process(self.run() )  # starts the run() method as a SimPy process
 
   def run(self):
     yield self.env.timeout(self.initial_delay)
@@ -83,11 +83,11 @@ class PacketGenerator(object):
       # wait for next transmission
       yield self.env.timeout(self.arr_dist() )
       self.n_sent += 1
-      p = Packet(time=self.env.now, size=self.size_dist(), _id=self.n_sent, flow_id=self.flow_id)
+      p = Packet(time=self.env.now, size=1, _id=self.n_sent, flow_id=self.flow_id)
       self.out.put(p)
 
 class MT_PacketGenerator(PacketGenerator):
-  def __init__(self, env, _id, arr_dist, size_dist, sym_l=None, initial_delay=0, finish=float("inf"), flow_id=0):
+  def __init__(self, env, _id, arr_dist, size_dist=None, sym_l=None, initial_delay=0, finish=float("inf"), flow_id=0):
     super().__init__(env, _id, arr_dist, size_dist, initial_delay, finish, flow_id)
     
     self.sym__n_sent = {}
@@ -105,9 +105,9 @@ class MT_PacketGenerator(PacketGenerator):
         if sym not in self.sym__n_sent:
           self.sym__n_sent[sym] = 0
         self.sym__n_sent[sym] = self.sym__n_sent[sym] + 1
-        p = Packet(time=self.env.now, size=self.size_dist(), _id=self.n_sent, sym=sym, flow_id=self.flow_id)
+        p = Packet(time=self.env.now, size=1, _id=self.n_sent, sym=sym, flow_id=self.flow_id)
       else:
-        p = Packet(time=self.env.now, size=self.size_dist(), _id=self.n_sent, flow_id=self.flow_id)
+        p = Packet(time=self.env.now, size=1, _id=self.n_sent, flow_id=self.flow_id)
       self.out.put(p)
 
 class Q(object):

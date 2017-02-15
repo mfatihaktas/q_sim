@@ -32,7 +32,10 @@ elif [ $1 = 'm' ]; then
 elif [ $1 = 's' ]; then
   rm -r __pycache__; rm *.png; $PYTHON simplex_models.py
 elif [ $1 = 'd' ]; then
-  rm -r __pycache__; rm *.png; $PYTHON det_models.py
+  # rm -r __pycache__; rm *.png; $PYTHON det_models.py
+  rm -r __pycache__; $PYTHON deneme.py
+elif [ $1 = 'a' ]; then
+  rm -r __pycache__; $PYTHON auto_repeat_models.py
 elif [ $1 = 'f' ]; then
   rm -r __pycache__; rm *.png; $PYTHON fun.py
 # elif [ $1 = 'd' ]; then

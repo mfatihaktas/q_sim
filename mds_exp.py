@@ -9,24 +9,23 @@ import sys, pprint, math, numpy, simpy, getopt, itertools
 from mds_sim_components import *
 from mds_models import *
 
-def test_m_m_1(num_f_run, arr_rate, mu, n):
+def test_m_m_1(num_f_run, arr_rate, mu, long_sim=False):
   E_T_sim_f_sum = 0
+  if long_sim:
+    num_f_run = 5
   for f in range(num_f_run):
     print("****************************************")
-    log(WARNING, "arr_rate= {}, mu= {}, n= {}".format(arr_rate, mu, n) )
+    log(WARNING, "arr_rate= {}, mu= {}".format(arr_rate, mu) )
     env = simpy.Environment()
-    
     pg = PacketGenerator(env, _id="pg",
-                         adist=lambda: random.expovariate(arr_rate),
-                         sdist=lambda: 1.0)
-    m1_q = S1_Q(_id=0, env=env, serv_dist=lambda: random.expovariate(serv_rate) )
+                         arr_dist=lambda: random.expovariate(arr_rate) )
+    m1_q = S1_Q(_id=0, env=env, serv_rate=mu)
     # qm = QMonitor(env, q=m1_q, dist=lambda: 0.5)
-    # qm = QMonitor(env, q=m1_q, dist=lambda: 500)
     pg.out = m1_q
+    pg.init()
+    env.run(until=10**(long_sim) * 50000)
     
-    env.run(50000)
-    
-    E_T_sim_f_sum += sum(m1_q.qt_list)/len(m1_q.qt_list)
+    E_T_sim_f_sum += sum(m1_q.qt_l)/len(m1_q.qt_l)
   return E_T_sim_f_sum/num_f_run
   
   # print("received: {}, dropped {}, sent {}".format(m1_q.n_recved, m1_q.n_dropped, pg.n_sent) )
@@ -34,11 +33,11 @@ def test_m_m_1(num_f_run, arr_rate, mu, n):
   
   # print("arr_rate= {}, serv_rate= {}".format(arr_rate, serv_rate) )
   # E_N = arr_rate/(serv_rate - arr_rate)
-  # print("E[N]= {}, sim_E[N]= {:.3f}".format(E_N, float(sum(qm.n_list) )/len(qm.n_list) ) )
+  # print("E[N]= {}, sim_E[N]= {:.3f}".format(E_N, float(sum(qm.n_l) )/len(qm.n_l) ) )
   # E_T = E_N/arr_rate
-  # print("E[T]= {:.3f}, sim_E[T]= {:.3f}".format(E_T, float(sum(m1_q.qt_list) )/len(m1_q.qt_list) ) )
+  # print("E[T]= {:.3f}, sim_E[T]= {:.3f}".format(E_T, float(sum(m1_q.qt_l) )/len(m1_q.qt_l) ) )
   # E_W = E_T - 1/serv_rate
-  # print("E[W]= {:.3f}, sim_E[W]= {:.3f}".format(E_W, float(sum(m1_q.wt_list) )/len(m1_q.wt_list) ) )
+  # print("E[W]= {:.3f}, sim_E[W]= {:.3f}".format(E_W, float(sum(m1_q.wt_l) )/len(m1_q.wt_l) ) )
 
 def plot_m_m_1():
   mu = 1
@@ -51,7 +50,7 @@ def plot_m_m_1():
   for arr_rate in numpy.arange(0.05, mu, mu/20):
     arr_rate_l.append(arr_rate)
   
-    E_T_m_m_1_sim_l.append(test_m_m_1(num_f_run, arr_rate, mu, n) )
+    E_T_m_m_1_sim_l.append(test_m_m_1(num_f_run, arr_rate, mu, long_sim=(arr_rate >= 0.8) ) )
     E_T_m_m_1_l.append(1/(mu-arr_rate) )
   marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
   print("E_T_m_m_1_sim_l= {}".format(pprint.pformat(E_T_m_m_1_sim_l) ) )
@@ -67,20 +66,21 @@ def plot_m_m_1():
 
 def test_mds_n_k(num_f_run, mds_arr_rate, mu, n, k, r=None, l_s=None, preempt=False, long_sim = False):
   E_T_sim_f_sum = 0
+  if long_sim:
+    num_f_run = 3
   for f in range(num_f_run):
     print("****************************************")
     log(WARNING, "mds_arr_rate= {}, mu= {}, n= {}, k= {}, r= {}, l_s= {}".format(mds_arr_rate, mu, n, k, r, l_s) )
     env = simpy.Environment()
-    
     sys_arr_dist = None if l_s is None else lambda: random.expovariate(n*l_s)
     pg = MDS_PacketGenerator(env, _id="p_gen",
                              mds_arr_dist=lambda: random.expovariate(mds_arr_rate),
-                             size_dist=lambda: 1, sys_arr_dist=sys_arr_dist)
+                             sys_arr_dist=sys_arr_dist)
     qid_l = ["{}".format(i) for i in range(n) ]
     mdsq = MDSQ("mdsq", env, k, qid_l, qserv_rate_l=[mu for i in range(n) ], r=r, preempt=preempt)
     mdsq_monitor = MDSQMonitor(env, q=mdsq, poll_dist=lambda: 1)
     pg.out = mdsq
-    env.run(until=1**(long_sim) * 50000) # env.run(until=5000)
+    env.run(until=60**(long_sim) * 50000) # env.run(until=5000)
     
     st_l = mdsq.join_sink.st_l
     if len(st_l) > 0:
@@ -92,14 +92,14 @@ def test_mds_n_k(num_f_run, mds_arr_rate, mu, n, k, r=None, l_s=None, preempt=Fa
     print("total_num_wins= {}, \n pg= {}".format(total_num_wins, pg) )
     qid__win_freq_map = {i:float(n)/total_num_wins for i, n in mdsq.join_sink.qid__num_win_map.items() }
     print("qid__win_freq_map= {}".format(pprint.pformat(qid__win_freq_map) ) )
-    print("sim time= 10**(long_sim) * 50000")
+    print("sim time= 100**(long_sim) * 50000")
     
     # print("\n")
     # # print("mdsq_monitor.state__counter_map= {}".format(pprint.pformat(mdsq_monitor.state__counter_map) ) )
     # total_counter = sum([c for rs, c in mdsq_monitor.state__counter_map.items() ] )
     # polled_state__freq_map = {rs:float(c)/total_counter for rs, c in mdsq_monitor.state__counter_map.items() }
     # print("polled_state__freq_map= {}".format(pprint.pformat(polled_state__freq_map) ) )
-    print("----------------------------------------")
+    # print("----------------------------------------")
   return E_T_sim_f_sum/num_f_run
 
 def plot_mds(num_q):
@@ -203,7 +203,7 @@ def plot_mds(num_q):
 def plot_mds_n_2(n):
   n = 3
   k = 2
-  mu = 1*2
+  mu = 1
   l_s = None # 0.1 # None
   arr_rate_ub = mds_exact_bound_on_arr_rate(mu, n, k) # 0.9* # mds_inner_bound_on_arr_rate mds_exact_bound_on_arr_rate(mu, n, k)
   long_sim_threshold = mds_inner_bound_on_arr_rate(mu, n, k)
@@ -220,7 +220,6 @@ def plot_mds_n_2(n):
   for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/15):
   # for arr_rate in numpy.arange(arr_rate_ub-0.4, arr_rate_ub+0.1, 0.05):
   # for arr_rate in numpy.arange(1.4, arr_rate_ub, arr_rate_ub/10):
-    arr_rate = 2*arr_rate
     arr_rate_l.append(arr_rate)
     # sim
     num_f_run = 1
@@ -486,7 +485,7 @@ if __name__ == "__main__":
   # test_mds_n_k(num_f_run=1, mds_arr_rate=0.5, mu=1, n=3, k=2, r=None, l_s=0.5, preempt=True)
   
   # plot_mds(num_q)
-  # plot_mds_n_2(num_q)
-  plot_m_m_1()
+  plot_mds_n_2(num_q)
+  # plot_m_m_1()
   # plot_mds_n_r_2(num_q)
   

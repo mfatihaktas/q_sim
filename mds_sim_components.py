@@ -8,7 +8,7 @@ from patch import *
 from deprecated import *
 
 class MDS_PacketGenerator(PacketGenerator):
-  def __init__(self, env, _id, mds_arr_dist, size_dist, initial_delay=0, finish=float("inf"), flow_id=0, sys_arr_dist=None):
+  def __init__(self, env, _id, mds_arr_dist, size_dist=None, initial_delay=0, finish=float("inf"), flow_id=0, sys_arr_dist=None):
     super().__init__(env, _id, mds_arr_dist, size_dist, initial_delay, finish, flow_id)
     self.sys_arr_dist = sys_arr_dist
     
@@ -28,14 +28,14 @@ class MDS_PacketGenerator(PacketGenerator):
     while self.env.now < self.finish:
       yield self.env.timeout(self.arr_dist() )
       self.mds_n_sent += 1
-      self.out.put(Packet(time=self.env.now, size=self.size_dist(), _id=self.mds_n_sent, sym=MDS_TRAFF_SYM) )
+      self.out.put(Packet(time=self.env.now, size=1, _id=self.mds_n_sent, sym=MDS_TRAFF_SYM) )
   
   def sys_run(self):
     yield self.env.timeout(self.initial_delay)
     while self.env.now < self.finish:
       yield self.env.timeout(self.sys_arr_dist() )
       self.sys_n_sent += 1
-      self.out.put(Packet(time=self.env.now, size=self.size_dist(), _id=self.sys_n_sent, sym=REGULAR_TRAFF_SYM) )
+      self.out.put(Packet(time=self.env.now, size=1, _id=self.sys_n_sent, sym=REGULAR_TRAFF_SYM) )
   
 # *******************************************  MDSQ  ********************************************* #
 # Fork incoming job to all sub-q's, wait for any k task to complete, cancel the remainings.

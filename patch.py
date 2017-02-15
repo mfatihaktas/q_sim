@@ -1,4 +1,4 @@
-import inspect
+import inspect, math
 
 INFO = 0
 DEBUG = 1
@@ -59,3 +59,15 @@ def gen_H(n, k):
       continue
     sum_ += float(1/(i*(i - k) ) )
   return sum_
+
+def binomial(n, k):
+  if n == k:
+    return 1
+  elif k == 1:
+    return n
+  elif k == 0:
+    return 1
+  elif k > n:
+    return 0
+  else:
+    return math.factorial(n)/math.factorial(k)/math.factorial(n-k)
