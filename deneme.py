@@ -26,7 +26,7 @@ def plot_autorepeat_conf_k_n():
   plot.plot(d_l, prob_T_k_n_geq_L_l, color='black', label=r'$Pr\{T \geq L\}$', marker=next(marker), linestyle='', mew=2)
   plot.plot(d_l, prob_T_k_n_geq_L_alt_l, color='brown', label=r'$Pr\{T_{alt} \geq L\}$', marker=next(marker), linestyle='', mew=2)
   plot.legend()
-  plot.xlabel(r'$d$')
+  plot.xlabel(r'$\delta$')
   plot.ylabel(r'$Pr\{T \geq L\}$')
   plot.title(r'mu= {}, k= {}, n= {}, L= {}'.format(mu, k, n, L) )
   plot.savefig("plot_autorepeat_conf_k_{}_n_{}.png".format(k, n) )
@@ -61,9 +61,97 @@ def plot_autorepeat_dist_k_n():
   plot.legend()
   plot.xlabel(r'$t$')
   plot.ylabel(r'$Pr\{T \geq t\}$')
-  plot.title(r'mu= {}, k= {}, n= {}, d= {}'.format(mu, k, n, d) )
+  plot.title(r'mu= {}, k= {}, n= {}, $\delta$= {}'.format(mu, k, n, d) )
   plot.savefig("plot_autorepeat_dist_k_{}_n_{}.png".format(k, n) )
   log(WARNING, "done; k= {}, n= {}".format(k, n) )
+
+def plot_d_E_T_shiftedexp_k_n_dk():
+  D = 1
+  mu = 1
+  k = 1 # 10
+  N = 20 # 20
+  d = 1
+  
+  n__k_l_m, n__d_E_T_dk_l_m = {}, {}
+  
+  k_step = 2
+  for n in range(k, N, k_step):
+    n__d_E_T_dk_l_m[n] = []
+    n__k_l_m[n] = []
+    for k_ in numpy.arange(1, n+1, 1):
+      n__k_l_m[n].append(k_)
+      n__d_E_T_dk_l_m[n].append(d_E_T_shiftedexp_k_n_dk(D, mu, d, k_, n) )
+  marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )  
+  color = iter(cm.rainbow(numpy.linspace(0, 1, int(N/k_step) ) ) )
+  # plot.plot(d_l, d_l, label=r'$y=d$', color="black", marker='.', linestyle='', mew=2)
+  for n in range(k, N, k_step):
+    m = next(marker)
+    c = next(color)
+    plot.plot(n__k_l_m[n], n__d_E_T_dk_l_m[n], label=r'n:{}, $d(E[T])/dk$'.format(n), color=c, marker=m, linestyle='', mew=2)
+  # plot.legend()
+  plot.legend(loc='center left', bbox_to_anchor=(0.9, 0.5) )
+  plot.xlabel(r'$k$')
+  plot.title(r'D= {}, $\mu$= {}, $\delta$= {}'.format(D, mu, d) )
+  plot.ylabel("E[T] (s)")
+  plot.savefig("plot_d_E_T_shiftedexp_k_n_dk__d_{}.png".format(d) )
+  log(WARNING, "done; k= {}".format(k) )
+
+def plot_autorepeat_shiftedexp_k_n():
+  D = 1
+  mu = 1
+  k = 1 # 10
+  N = 20 # 20
+  d = 1
+  
+  d_l = []
+  n__E_T_l_m, n__E_T_model_l_m = {}, {}
+  n__k_l_m = {}
+  
+  varying_d = False
+  varying_k = True
+  
+  first_loop = True
+  k_step = 2
+  for n in range(k, N, k_step):
+    n__E_T_l_m[n] = []
+    n__E_T_model_l_m[n] = []
+    if varying_d:
+      for d in numpy.arange(0.1, 2*H(k)/mu, 0.1):
+        if first_loop:
+          d_l.append(d)
+        n__E_T_l_m[n].append(E_T_shiftedexp_k_n(D, mu, d, k, n) )
+        # n__E_T_model_l_m[n].append(E_T_k_n_alt(mu, d, k, n) )
+      first_loop = False
+    elif varying_k:
+      n__k_l_m[n] = []
+      for k_ in numpy.arange(1, n+1, 1):
+        n__k_l_m[n].append(k_)
+        n__E_T_l_m[n].append(E_T_shiftedexp_k_n(D, mu, d, k_, n) )
+  marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )  
+  color = iter(cm.rainbow(numpy.linspace(0, 1, int(N/k_step) ) ) )
+  # plot.plot(d_l, d_l, label=r'$y=d$', color="black", marker='.', linestyle='', mew=2)
+  for n in range(k, N, k_step):
+    m = next(marker)
+    c = next(color)
+    if varying_d:
+      plot.plot(d_l, n__E_T_l_m[n], label=r'n:{}, $E[T]$'.format(n), color=c, marker=m, linestyle='', mew=2)
+      # plot.plot(d_l, n__E_T_model_l_m[n], label=r'$E[\hat{T}]$', color=c, alpha=0.7, marker=m, linestyle='', mew=2)
+    elif varying_k:
+      plot.plot(n__k_l_m[n], n__E_T_l_m[n], label=r'n:{}, $E[T]$'.format(n), color=c, marker=m, linestyle='', mew=2)
+  # plot.legend()
+  plot.legend(loc='center left', bbox_to_anchor=(0.9, 0.5) )
+  if varying_d:
+    plot.xlabel(r'$\delta$')
+    plot.title(r'D= {}, $\mu$= {}, k= {}'.format(D, mu, k) )
+  elif varying_k:
+    plot.xlabel(r'$k$')
+    plot.title(r'D= {}, $\mu$= {}, $\delta$= {}'.format(D, mu, d) )
+  plot.ylabel("E[T] (s)")
+  if varying_d:
+    plot.savefig("plot_autorepeat_shiftedexp_k_{}.png".format(k) )
+  elif varying_k:
+    plot.savefig("plot_autorepeat_shiftedexp_d_{}.png".format(d) )
+  log(WARNING, "done; k= {}".format(k) )
   
 def plot_autorepeat_k_n():
   mu = 1
@@ -72,7 +160,6 @@ def plot_autorepeat_k_n():
   
   d_l = []
   n__E_T_l_m, n__E_T_model_l_m = {}, {}
-  
   
   first_loop = True
   k_step = 1
@@ -94,10 +181,49 @@ def plot_autorepeat_k_n():
     plot.plot(d_l, n__E_T_l_m[n], label=r'$E[T]$, n:{}'.format(n), color=c, marker=m, linestyle='', mew=2)
     # plot.plot(d_l, n__E_T_model_l_m[n], label=r'$E[\hat{T}]$', color=c, alpha=0.7, marker=m, linestyle='', mew=2)
   plot.legend()
-  plot.xlabel(r'$d$')
+  plot.xlabel(r'$\delta$')
   plot.ylabel("E[T] (s)")
   plot.title(r'$\mu$= {}, k= {}'.format(mu, k) )
   plot.savefig("plot_autorepeat_k_{}.png".format(k) )
+  log(WARNING, "done; k= {}".format(k) )
+
+def plot_autorepeat_cost_k_n():
+  mu = 1
+  k = 10
+  N = 20
+  
+  d_l = []
+  n__E_T_l_m, n__E_T_model_l_m, n__E_C_l_m, n__E_C_cp_l_m = {}, {}, {}, {}
+  
+  first_loop = True
+  k_step = 1
+  for n in range(k, N, k_step):
+    n__E_T_l_m[n] = []
+    n__E_T_model_l_m[n] = []
+    n__E_C_l_m[n] = []
+    n__E_C_cp_l_m[n] = []
+    for d in numpy.arange(0.1, 2*H(k)/mu, 0.1):
+      if first_loop:
+        d_l.append(d)
+      n__E_T_l_m[n].append(E_T_k_n(mu, d, k, n) )
+      # n__E_T_model_l_m[n].append(E_T_k_n_alt(mu, d, k, n) )
+      n__E_C_l_m[n].append(E_C_k_n(mu, d, k, n) )
+      # n__E_C_cp_l_m[n].append(E_C_k_n(mu, d, k, n, cancel_parity=True) )
+    first_loop = False
+  marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )  
+  color = iter(cm.rainbow(numpy.linspace(0, 1, int((N-k)/k_step) ) ) )
+  # plot.plot(d_l, d_l, label=r'$y=d$', color="black", marker='.', linestyle='', mew=2)
+  for n in range(k, N, k_step):
+    m = next(marker)
+    c = next(color)
+    plot.plot(n__E_T_l_m[n], n__E_C_l_m[n], label=r'$E[C],E[T]$, n:{}'.format(n), color=c, marker=m, linestyle='', mew=2)
+    # plot.plot(n__E_T_l_m[n], n__E_C_cp_l_m[n], label=r'$E[C_c],E[T]$, n:{}'.format(n), color=c, marker=m, linestyle='', mew=2)
+    # plot.plot(n__E_T_model_l_m[n], n__E_C_l_m[n], label=r'$E[\hat{T}]$', color=c, alpha=0.7, marker=m, linestyle='', mew=2)
+  plot.legend()
+  plot.xlabel(r'$E[T]$ (s)')
+  plot.ylabel(r'$E[C]$ (s)')
+  plot.title(r'$\mu$= {}, k= {}'.format(mu, k) )
+  plot.savefig("plot_autorepeat_cost_k_{}.png".format(k) )
   log(WARNING, "done; k= {}".format(k) )
 
 def plot_prob_N_d():
@@ -182,6 +308,10 @@ if __name__ == "__main__":
   # plot_prob_N_d()
   # plot_den()
   # plot_binomial_dist__approx()
-  plot_autorepeat_k_n()
+  
+  plot_d_E_T_shiftedexp_k_n_dk()
+  # plot_autorepeat_shiftedexp_k_n()
+  # plot_autorepeat_cost_k_n()
+  # plot_autorepeat_k_n()
   # plot_autorepeat_dist_k_n()
   # plot_autorepeat_conf_k_n()

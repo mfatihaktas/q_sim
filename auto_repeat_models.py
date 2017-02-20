@@ -76,25 +76,57 @@ def try_approx():
   p = math.exp(-mu*d)
   # approx = -1/mu*(H(k) - (k*p + 1 - (1-p)**k)/2 - mu*d)
   approx = -1/mu*(H(k) - mu*d)
-  print("actual= {}, approx= {}, err= {}".format(actual, approx, abs(actual-approx) ) )
+  # print("actual= {}, approx= {}, err= {}".format(actual, approx, abs(actual-approx) ) )
 
-# Send k initially, send n-k more after d
-def E_T_k_n(mu, d, k, n):
-  p = math.exp(-mu*d)
+# ###############################  Send k initially, send n-k more after d  ###################### #
+# X_i ~ D/k + Exp(mu)
+def E_T_shiftedexp_k_n(D, mu, d, k, n):
+  return D/k + E_T_k_n(mu, d+D/k, k, n)
+
+def d_E_T_shiftedexp_k_n_dk(D, mu, d, k, n):
+  q_ = 1 - math.exp(-mu*(d+D/k) )
+  return D/k**2 * (-2 + q_**k - k*(1-q_)/(n-k*q_) )
+
+# X_i ~ Exp(mu)
+"""
+def E_C_k_n(mu, d, k, n):
+  b = 1
   q = 1 - math.exp(-mu*d)
   
   E_H_n_r = 0
-  for r in range(k):
-    E_H_n_r += ((H(n-r) )/mu) * binomial(k, r)*(1-p)**r * p**(k-r)
+  for r in range(k+1):
+    E_H_n_r += H(n-r) * binomial(k,r) * q**r * (1-q)**(k-r)
   
-  print("d= {}, k= {}, n= {}\n\t E_H_n_r - H(n-k)= {}".format(d, k, n, E_H_n_r - H(n-k) ) )
+  return b*k*(d - sympy.mpmath.quad(lambda x: (1-math.exp(-mu*x) )**k, [0, d] ) ) + \
+         b*n*1/mu*(E_H_n_r - H(n-k) )
+"""
+
+def E_C_k_n(mu, d, k, n, cancel_parity=False):
+  q = 1 - math.exp(-mu*d)
+  E_C = q**k * (k*q/mu - k*d*(1-q) ) + n*(1-q**k)/mu + k*d*q**k * (1/q-1)
+  if cancel_parity:
+    E_C -= (n-k)/mu
+  return E_C
+
+def E_T_k_n(mu, d, k, n):
+  q = 1 - math.exp(-mu*d)
+  
+  E_H_n_r = 0
+  for r in range(k+1):
+    E_H_n_r += H(n-r) * binomial(k,r) * q**r * (1-q)**(k-r)
+  # sum_ = 0
+  # for r in range(k):
+  #   sum_ += (H(n-r) - H(n-k) ) * binomial(k,r) * q**r * (1-q)**(k-r)
+  
+  # print("d= {}, k= {}, n= {}\n\t E_H_n_r - H(n-k)= {}".format(d, k, n, E_H_n_r - H(n-k) ) )
+  # print("d= {}, k= {}, n= {}\n\t sum_= {}".format(d, k, n, sum_) )
   
   return d - sympy.mpmath.quad(lambda x: (1-math.exp(-mu*x) )**k, [0, d] ) + \
          1/mu*(E_H_n_r - H(n-k) )
+        # 1/mu*sum_
 
 # Is equal to E_T_k_n
 def E_T_k_n_alt(mu, d, k, n):
-  p = math.exp(-mu*d)
   q = 1-math.exp(-mu*d)
   E_H_n_r = 0
   for r in range(k+1):
@@ -110,8 +142,6 @@ def E_T_k_n_alt(mu, d, k, n):
   
   # return d - 1/mu*sympy.mpmath.quad(lambda x: x**k * 1/(1-x), [0, q] ) + \
   #       (E_H_n_r/mu - H(n-k)/mu)
-  if n == k:
-    return d - 1/mu*sympy.mpmath.quad(lambda x: x**k * 1/(1-x), [0, q] )
   
   return d - 1/mu*sympy.mpmath.quad(lambda x: x**k * 1/(1-x), [0, q] ) + \
          1/mu*(E_H_n_r - H(n-k) )

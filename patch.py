@@ -41,6 +41,8 @@ def list_to_str(l):
   return ",".join("%s" % e for e in l)
 
 def H(n):
+  if n == 0:
+    return 0
   sum_ = 0
   for i in range(1, n+1):
     sum_ += float(1/i)
