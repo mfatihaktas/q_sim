@@ -1,4 +1,4 @@
-import inspect, math
+import inspect, math, sympy
 
 INFO = 0
 DEBUG = 1
@@ -73,3 +73,9 @@ def binomial(n, k):
     return 0
   else:
     return math.factorial(n)/math.factorial(k)/math.factorial(n-k)
+
+def I(u_l, m, n):
+  return B(m, n, u_l=u_l)/B(m, n)
+
+def B(m, n, u_l=1):
+  return sympy.mpmath.quad(lambda x: x**(m-1) * (1-x)**(n-1), [0, u_l] )

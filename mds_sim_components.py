@@ -3,7 +3,7 @@ from simpy.core import BoundClass
 from simpy.resources import base
 from heapq import heappush, heappop
 
-from simplex_sim_components import *
+from sim_components import *
 from patch import *
 from deprecated import *
 
@@ -35,7 +35,7 @@ class MDS_PacketGenerator(PacketGenerator):
     while self.env.now < self.finish:
       yield self.env.timeout(self.sys_arr_dist() )
       self.sys_n_sent += 1
-      self.out.put(Packet(time=self.env.now, size=1, _id=self.sys_n_sent, sym=REGULAR_TRAFF_SYM) )
+      self.out.put(Packet(time=self.env.now, size=1, _id=self.sys_n_sent, sym=SYS_TRAFF_SYM) )
   
 # *******************************************  MDSQ  ********************************************* #
 # Fork incoming job to all sub-q's, wait for any k task to complete, cancel the remainings.
@@ -71,7 +71,8 @@ class MDSQ(object):
     self.job_id_counter = 0
   
   def __repr__(self):
-    return "MDSQ[k= {}, qid_l= [{}] ]".format(self.k, ",".join(self.qid_l) )
+    # return "MDSQ[k= {}, qid_l= [{}] ]".format(self.k, ",".join(self.qid_l) )
+    return "MDSQ[k= {}, qid_l= {} ]".format(self.k, self.qid_l)
   
   def length(self):
     return max([q.length() for i, q in self.id_q_map.items() ] )
@@ -95,11 +96,8 @@ class MDSQ(object):
             qid = self.qid_l[random.randint(0, self.n-1) ]
             if qid not in self.qid_to_split_l:
               self.qid_to_split_l.append(qid)
-      elif p.sym == REGULAR_TRAFF_SYM:
-        self.qid_to_split_l = self.qid_l
       else:
-        log(ERROR, "Unexpected p.sym= {}".format(p.sym) )
-        return 1
+        self.qid_to_split_l = self.qid_l
       for qid in self.qid_to_split_l:
         self.id_q_map[qid].put(p, preempt=self.preempt)
   
@@ -129,7 +127,7 @@ class MDSQ(object):
   #         qid = self.qid_l[random.randint(0, self.n-1) ]
   #         if qid not in self.qid_to_split_l:
   #           self.qid_to_split_l.append(qid)
-  #   elif p.sym == REGULAR_TRAFF_SYM:
+  #   elif p.sym == SYS_TRAFF_SYM:
   #     # self.qid_to_split_l = self.qid_l
   #     self.qid_to_split_l.append(self.qid_l[random.randint(0, self.n-1) ] )
   #   else:

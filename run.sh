@@ -20,7 +20,8 @@ PKILL=/usr/bin/pkill
 if [ $1 = 'e' ]; then
   # LOG_F="$1.log"
   # rm -r __pycache__; $PYTHON exp.py < /dev/null 2>&1 | tee $LOG_F
-  rm -r __pycache__; rm *.png; $PYTHON exp.py --num_q=3
+  # rm -r __pycache__; rm *.png; $PYTHON exp.py --num_q=3
+  rm -r __pycache__; $PYTHON exp.py --num_q=3
 elif [ $1 = 'm' ]; then
   # $MATLAB -r "run exp.m; quit"
   # rm -r __pycache__; rm *.png; $PYTHON mds_exp.py --num_q=3 # > mds_exp.log
@@ -31,11 +32,14 @@ elif [ $1 = 'm' ]; then
   fi
 elif [ $1 = 's' ]; then
   rm -r __pycache__; rm *.png; $PYTHON simplex_models.py
+elif [ $1 = 'c' ]; then
+  rm -r __pycache__; $PYTHON codes_stability.py
 elif [ $1 = 'd' ]; then
   # rm -r __pycache__; rm *.png; $PYTHON det_models.py
   rm -r __pycache__; $PYTHON deneme.py
 elif [ $1 = 'a' ]; then
-  rm -r __pycache__; $PYTHON auto_repeat_models.py
+  rm -r __pycache__; $PYTHON arepeat_models.py
+  # rm -r __pycache__; $PYTHON arepeat_sim_components.py
 elif [ $1 = 'f' ]; then
   rm -r __pycache__; rm *.png; $PYTHON fun.py
 # elif [ $1 = 'd' ]; then

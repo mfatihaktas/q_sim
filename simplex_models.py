@@ -157,7 +157,7 @@ def simplex_w_one_repair__E_T_matrix_analytic(t, arr_rate, mu):
   # print("PI_v=\n {}".format(PI_v) )
   PI_0_v = PI_v[:, 0:4]
   PI_1_v = PI_v[:, 4:9]
-  print("PI_0_v= {}, PI_1_v= {}".format(PI_0_v, PI_1_v) )
+  # print("PI_0_v= {}, PI_1_v= {}".format(PI_0_v, PI_1_v) )
   # for i in range(2, 10):
   #   PI_i_v = PI_1_v*R**(i-1)
   #   print("i= {}, PI_i_v= {}".format(i, PI_i_v) )
@@ -173,7 +173,7 @@ def simplex_w_one_repair__E_T_matrix_analytic(t, arr_rate, mu):
   
   E_N = PI_0_v*numpy.ones((4,1)) - PI_0_v[0, 0] + \
         PI_1_v*((numpy.identity(5)-R)**-2 + (numpy.identity(5)-R)**-1)*numpy.ones((5,1))
-  print("E_N= {}".format(E_N) )
+  # print("E_N= {}".format(E_N) )
   return E_N[0, 0]/arr_rate
 
 # -----------------------------------------  Simplex 2 repair  ----------------------------------- #
@@ -302,7 +302,7 @@ def simplex_w_two_repair__E_T(arr_rate, mu, M):
   
   mc_truncation_state_id = M # 5
   state_prob_map = simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu)
-  log(WARNING, "state_prob_map=\n {}".format(pprint.pformat(state_prob_map) ) )
+  # log(WARNING, "state_prob_map=\n {}".format(pprint.pformat(state_prob_map) ) )
   
   gamma = mu
   nu = gamma + 4*mu
@@ -589,19 +589,19 @@ def E_T_simplex_lb(t, arr_rate, gamma, mu, ub=False, naive=False):
   if ub:
     ro_m_l = []
     for m in range(t+1):
-      print("m= {}".format(m) )
+      # print("m= {}".format(m) )
       A = 0
       for i in range(m+1):
         A += numpy.prod(ro_m_l[:i] )
       E_Y = E_X - E_S_min
       B = (t-m)*numpy.prod(ro_m_l[:m] )
-      print("A= {}, B= {}, (E_X-E_Y*A)/B/E_Y= {}".format(A, B, (E_X-E_Y*A)/B/E_Y) )
+      # print("A= {}, B= {}, (E_X-E_Y*A)/B/E_Y= {}".format(A, B, (E_X-E_Y*A)/B/E_Y) )
       ro_m = min((E_X-E_Y*A)/B/E_Y, 1)/2
       ro_m_l.append(ro_m)
       p_0 = 1/(sum([numpy.prod(ro_m_l[:i] ) for i in range(m+1) ] ) + numpy.prod(ro_m_l[:m+1] )*(t-m) )
       for m_ in range(t+1):
         p_m_l[m_] = numpy.prod(ro_m_l[:m_] )*p_0
-      print("p_0= {}, ro_m_l= {}, p_m_l= {}".format(p_0, ro_m_l, p_m_l) )
+      # print("p_0= {}, ro_m_l= {}, p_m_l= {}".format(p_0, ro_m_l, p_m_l) )
   # """
   # E_S = sum(E_S_p_m_l)/len(E_S_p_m_l)
   # E_S_2 = sum(E_S_p_m_2_l)/len(E_S_p_m_2_l)
