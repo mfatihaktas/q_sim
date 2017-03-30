@@ -165,7 +165,7 @@ def E_C_G_1red(task_t_rv, d, k, w_cancel=True):
     return min(sum_, E_X_k__k_minus_1(k+1) + E_T_G_1red(task_t_rv, 0, k) )
   else:
     return k*mu + mu*(1 - task_t_rv.cdf(d)**k)
-  
+
 def plot_Pr_T_g_t_G_1red():
   def Pr_T_g_t(k, d, t):
     t_ = max(d, t)
@@ -196,7 +196,7 @@ def plot_Pr_T_g_t_G_1red():
   plot.gcf().clear()
   log(WARNING, "done; k= {}, d= {}, task_t_rv= {}".format(k, d, task_t_rv) )
   
-# ##################  X_i ~ Exp(mu), Send l > k any k is enough, send n-l more after d  ################ #
+# ####################  X_i ~ Exp(mu), (l, k, n=k+1, \Delta)  ####################### #
 def E_C_exp_k_l_n(mu, d, k, l, n, w_cancel=False):
   if w_cancel:
     return k/mu
@@ -211,19 +211,19 @@ def E_T_exp_k_l_n(mu, d, k, l, n):
   # for r in range(k):
   #   E_T += (H(n-r) - H(n-k) ) * binomial(l,r) * q**r * (1-q)**(l-r)
   # return E_T
-  sum_ = 0
+  E_T = H(l)-H(l-k) + I(1-q, l-k+1, k)*(H(l-k)-H(n-k) )
   for r in range(k):
-    sum_ += (H(n-r) - H(l-r) ) * binomial(l,r) * q**r * (1-q)**(l-r)
-  return H(l) - H(l-k) + sum_ + I(1-q, l-k+1, k)*(H(l-k) - H(n-k) )
+    E_T += (H(n-r) - H(l-r) ) * binomial(l,r) * q**r * (1-q)**(l-r)
+  return E_T
 
 def E_T_exp_k_l_n_approx(mu, d, k, l, n):
   q = 1 - math.exp(-mu*d)
   
-  E_T = 0
+  # E_T = 0
   # for r in range(k+1):
   #   E_T += (H(n) - H(n-r) ) * binomial(k,r) * q**r * (1-q)**(k-r)
   
-  E_T = d - sympy.mpmath.quad(lambda x: sum([binomial(l,i)*(1-math.exp(-mu*x) )**i * math.exp(-mu*x)**(l-i) for i in range(k, l+1) ] ), [0, d] )
+  # E_T = d - sympy.mpmath.quad(lambda x: sum([binomial(l,i)*(1-math.exp(-mu*x) )**i * math.exp(-mu*x)**(l-i) for i in range(k, l+1) ] ), [0, d] )
   
   # E_T = d - 1/mu*sum([binomial(l,i)*B(i+1, l-i, u_l=q) for i in range(k, l+1) ] )
   # E_T = d + 1/mu*math.log(1-q)*I(q,k,l-k+1) - 1/mu/B(k,l-k+1)*sympy.mpmath.quad(lambda x: math.log(1-x)*x**(k-1) * (1-x)**(l-k), [0, q] )
@@ -232,7 +232,7 @@ def E_T_exp_k_l_n_approx(mu, d, k, l, n):
   
   # for r in range(k):
   #   E_T += (H(n-r) - H(n-k) ) * binomial(l,r) * q**r * (1-q)**(l-r)
-  sum_ = 0
+  # sum_ = 0
   # for r in range(k):
   #   sum_ += H(n-r) * binomial(l,r) * q**r * (1-q)**(l-r)
   # for r in range(k):
@@ -260,38 +260,15 @@ def E_T_exp_k_l_n_approx(mu, d, k, l, n):
   # return q**k * (H(l) - H(l-k) ) + (1-q**k)*(d + 1/mu*math.log(math.exp(-mu*d)*l/(n-k) + (n-l)/(n-k) ) )
   # return E_T + I(1-q, l-k+1, k)*(1/mu*math.log(math.exp(-mu*d)*l/(n-k) + (n-l)/(n-k) ) )
   
-  for r in range(k):
-    sum_ += math.log((n-r)/(n-k) ) * binomial(l,r) * q**r * (1-q)**(l-r)
-  # return E_T + I(1-q, l-k+1, k)*sum_
-  return E_T + sum_
+  E_T = H(l)-H(l-k) + I(1-q, l-k+1, k)*(H(l-k)-H(n-k) )
+  # for r in range(k):
+  #   E_T += math.log((n-r)/(n-k) ) * binomial(l,r) * q**r * (1-q)**(l-r)
+  r_ = k*q # math.ceil(k*q)
+  # E_T += H(n-r_) - H(l-r_)
+  E_T += math.log(n-r_) - math.log(l-r_)
+  return E_T
 
-# ##########################  X_i ~ D/k + Exp(mu), Send k any k is enough, send n-k more after d  ###################### #
-def E_T_shiftedexp_k_n(D, mu, d, k, n):
-  return D/k + E_T_exp_k_n(mu, d, k, n)
-
-def d_E_T_shiftedexp_k_n_dk(D, mu, d, k, n):
-  q_ = 1 - math.exp(-mu*(d+D/k) )
-  # return D/k**2 * (-2 + q_**k - k*(1-q_)/(n-k*q_) )
-  
-  # Beta_q_k_0 = sympy.mpmath.quad(lambda x: x**(k-1) * 1/(1-x), [0, q_] )
-  # rhs = mu*D/k**2 * q_**k - k*Beta_q_k_0 + (mu*D/k*(1-q_) - q_)/(n-k*q_) + 1/(n-k)
-  # return -2*D/k**2 + 1/mu*rhs
-  
-  Beta_q_ = sympy.mpmath.quad(lambda x: x**k * 1/(1-x), [0, q_] )
-  rhs = (mu*D*(k+1)/k**2 * (1-q_)/q_ - math.log(q_) )*Beta_q_ + (mu*D/k*(1-q_) - q_)/(n-k*q_) + 1/(n-k)
-  r = -2*D/k**2 + 1/mu*rhs
-  print("k= {}, r= {}".format(k, r) )
-  return r
-
-  # q_k = 1 - math.exp(-mu*(d+D/k) )
-  # q_k_1 = 1 - math.exp(-mu*(d+D/(k-1) ) )
-  # # B_diff = sympy.mpmath.quad(lambda x: x**(k-1) * 1/(1-x), [0, q_k_1] ) - \
-  # #         sympy.mpmath.quad(lambda x: x**k * 1/(1-x), [0, q_k] )
-  # B_diff = q_k**k/k # q_k_1**k/k
-  # r = 2*D*(1/k - 1/(k-1) ) + 1/mu*(B_diff + math.log((n-k*q_k)/(n-(k-1)*q_k_1) ) + 1/(n-k+1) )
-  # print("k= {}, r= {}".format(k, r) )
-  # return r
-
+# ####################  X_i ~ Exp(mu), (l=k, k, n=k+1, \Delta)  ####################### #
 def E_C_exp_k_n(mu, d, k, n, w_cancel=False):
   if w_cancel:
     return k/mu
@@ -318,6 +295,62 @@ def E_T_exp_k_n_approx(mu, d, k, n):
          1/mu*(E_H_n_r - H(n-k) )
         # 1/mu*(math.log((n-k*q)/(n-k) ) )
         # 1/mu*(math.log((n-k*q)/(n-k) ) + 1/2/(n-k*q) - 1/2/(n-k) )
+
+# ####################  X_i ~ D/k + Exp(mu), (l=k, k, n=k+1, \Delta)  ####################### #
+def E_T_shiftedexp_k_n(D, mu, d, k, n):
+  return D/k + E_T_exp_k_n(mu, d, k, n)
+
+def d_E_T_shiftedexp_k_n_dk(D, mu, d, k, n):
+  q_ = 1 - math.exp(-mu*(d+D/k) )
+  # return D/k**2 * (-2 + q_**k - k*(1-q_)/(n-k*q_) )
+  
+  # Beta_q_k_0 = sympy.mpmath.quad(lambda x: x**(k-1) * 1/(1-x), [0, q_] )
+  # rhs = mu*D/k**2 * q_**k - k*Beta_q_k_0 + (mu*D/k*(1-q_) - q_)/(n-k*q_) + 1/(n-k)
+  # return -2*D/k**2 + 1/mu*rhs
+  
+  Beta_q_ = sympy.mpmath.quad(lambda x: x**k * 1/(1-x), [0, q_] )
+  rhs = (mu*D*(k+1)/k**2 * (1-q_)/q_ - math.log(q_) )*Beta_q_ + (mu*D/k*(1-q_) - q_)/(n-k*q_) + 1/(n-k)
+  r = -2*D/k**2 + 1/mu*rhs
+  print("k= {}, r= {}".format(k, r) )
+  return r
+
+  # q_k = 1 - math.exp(-mu*(d+D/k) )
+  # q_k_1 = 1 - math.exp(-mu*(d+D/(k-1) ) )
+  # # B_diff = sympy.mpmath.quad(lambda x: x**(k-1) * 1/(1-x), [0, q_k_1] ) - \
+  # #         sympy.mpmath.quad(lambda x: x**k * 1/(1-x), [0, q_k] )
+  # B_diff = q_k**k/k # q_k_1**k/k
+  # r = 2*D*(1/k - 1/(k-1) ) + 1/mu*(B_diff + math.log((n-k*q_k)/(n-(k-1)*q_k_1) ) + 1/(n-k+1) )
+  # print("k= {}, r= {}".format(k, r) )
+  # return r
+
+# ####################  X_i ~ Exp(mu), (k, \Delta)  ####################### #
+def E_C_exp_k(mu, d, k, w_cancel=False):
+  if w_cancel:
+    return k/mu
+  q = 1 - math.exp(-mu*d)
+  return k/mu*(2-q)
+
+def E_T_exp_k(mu, d, k):
+  q = 1 - math.exp(-mu*d)
+  
+  E = 0
+  for r in range(k+1):
+    E += H(k-r)* binomial(k,r) * q**r * (1-q)**(k-r)
+  return H(k)/mu - 1/2/mu*E
+
+def E_T_exp_k_approx(mu, d, k):
+  q = 1 - math.exp(-mu*d)
+  # return 1/2/mu*(H(k) - math.log(1-q) )
+  
+  # return 1/2/mu*(2*H(k) - H(math.ceil(k-k*q) ) )
+  n = k-k*q
+  # H_k_kq = math.log(n) + 0.5772156649 + 1/2/n
+  H_k_kq = sympy.mpmath.quad(lambda x: (1-x**n)/(1-x), [0, 1] )
+  return 1/2/mu*(2*H(k) - H_k_kq)
+
+# ####################  X_i ~ D/k + Exp(mu), (k, \Delta)  ####################### #
+def E_T_shiftedexp_k(mu, d, k):
+  return D/k + E_T_exp_k(mu, d, k)
 
 if __name__ == "__main__":
   plot_Pr_T_g_t_G_1red()

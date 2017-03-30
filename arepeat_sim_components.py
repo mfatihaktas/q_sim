@@ -43,7 +43,31 @@ def plot_pareto():
   plot.savefig("plot_pareto.png")
   plot.gcf().clear()
 
-# ##################  Send l > k any k is enough, X_i ~ Exp(mu), send n-l more after d  ################ #
+# #####################  (k, \Delta)  ################### #
+def sim_arepeat_k(task_t_rv, d, k, num_run=1000):
+  stat_id__trial_stat_l_m = {'E_T': [], 'E_C': [], 'E_C_wc': [] }
+  for i in range(num_run):
+    i__t_l_m = {i:[(0, task_t_rv.gen_sample() ) ] for i in range(k) }
+    job_compl_t = max([t_l[0][1] for i,t_l in i__t_l_m.items() ] )
+    if job_compl_t > d:
+      for i,t_l in i__t_l_m.items():
+        if t_l[0][1] > d:
+          t_l.append((d, d + task_t_rv.gen_sample() ) )
+    
+    E_T = max([min([t[1] for t in t_l] ) for i,t_l in i__t_l_m.items() ] )
+    stat_id__trial_stat_l_m['E_T'].append(E_T)
+    stat_id__trial_stat_l_m['E_C'].append(
+      sum([sum([t[1]-t[0] for t in t_l] ) for i,t_l in i__t_l_m.items() ] ) )
+    E_C_wc = 0
+    for i,t_l in i__t_l_m.items():
+      compl_t = min([t[1] for t in t_l] )
+      for t in t_l:
+        E_C_wc += min(compl_t, t[1] )-t[0]
+    stat_id__trial_stat_l_m['E_C_wc'].append(E_C_wc)
+  
+  return stat_id__trial_stat_l_m
+
+# ##################  (l, k, n, \Delta)  ################ #
 def sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=1000):
   if l < k:
     l = k
@@ -56,14 +80,12 @@ def sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=1000):
     compl_t_l.sort(key=lambda tup: tup[1] )
     if compl_t_l[k-1][1] > d:
       compl_t_l += [(d, d + task_t_rv.gen_sample() ) for i in range(n-l) ]
-    compl_t_l.sort(key=lambda tup: tup[1] )
+      compl_t_l.sort(key=lambda tup: tup[1] )
     
     E_T = compl_t_l[k-1][1]
     stat_id__trial_stat_l_m['E_T'].append(E_T)
     stat_id__trial_stat_l_m['E_C'].append(sum([t[1]-t[0] for t in compl_t_l] ) )
-    stat_id__trial_stat_l_m['E_C_wc'].append(
-      sum([min(t[1], E_T)-t[0] for t in compl_t_l] ) )
-      # sum([(t[1] > E_T)*(E_T-t[0] ) + (t[1] <= E_T)*(t[1]-t[0] ) for t in compl_t_l] ) )
+    stat_id__trial_stat_l_m['E_C_wc'].append(sum([min(t[1], E_T)-t[0] for t in compl_t_l] ) ) # sum([(t[1] > E_T)*(E_T-t[0] ) + (t[1] <= E_T)*(t[1]-t[0] ) for t in compl_t_l] ) )
   
   return stat_id__trial_stat_l_m
 

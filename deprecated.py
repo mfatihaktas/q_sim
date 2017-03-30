@@ -282,6 +282,46 @@ def plot_exp_dist(mu_arg, func = None):
   # plot.ylabel("F(x)")
   # plot.savefig("plot_exp_dist_mu_{}.png".format(mu_arg) )
 
+def plot_binomial_dist__approx():
+  n = 15
+  p = 0.4
+  def comp_dist(k):
+    if k > n:
+      return 0
+    sum_ = 0
+    for i in range(k, n+1):
+      sum_ += binomial(n, i) * p**i * (1-p)**(n-i)
+    return sum_
+  def dist(k):
+    if k > n:
+      return 0
+    sum_ = 0
+    for i in range(0, k+1):
+      sum_ += binomial(n, i) * p**i * (1-p)**(n-i)
+    return sum_
+  def chernoff_bound_on_upper_tail(k):
+    p_ = k/n
+    print("p_= {}".format(p_) )
+    return math.exp(n*((p_*math.log(p/p_) ) + (1-p_)*math.log((1-p)/(1-p_) ) ) )
+  
+  k_l, dist_l, approx_dist_l = [], [], []
+  # for k in range(0, n+2):
+  for k in range(int(p*n), n):
+    k_l.append(k)
+    dist_l.append(comp_dist(k) )
+    approx_dist_l.append(chernoff_bound_on_upper_tail(k) )
+  marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
+  # print("k_l= {}".format(pprint.pformat(k_l) ) )
+  plot.plot(k_l, approx_dist_l, color='red', label=r'$Pr\{N \leq k\}_{UB}$', marker=next(marker), linestyle='', mew=2)
+  plot.plot(k_l, dist_l, color='black', label=r'$Pr\{N \leq k\}$', marker=next(marker), linestyle='', mew=2)
+  plot.xlabel(r'$k$')
+  plot.ylabel("E[T] (s)")
+  plot.title(r'n= {}, p= {}'.format(n, p) )
+  plot.savefig("plot_binomial_dist__approx_n_{}.png".format(n) )
+  plot.gcf().clear()
+  log(WARNING, "done; n= {}, p= {}".format(n, p) )
+
+
 if __name__ == "__main__":
   # random.seed(33)
   # test_simplex()
