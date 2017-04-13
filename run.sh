@@ -37,6 +37,8 @@ elif [ $1 = 'c' ]; then
 elif [ $1 = 'd' ]; then
   # rm -r __pycache__; rm *.png; $PYTHON det_models.py
   rm -r __pycache__; $PYTHON deneme.py
+elif [ $1 = 'dep' ]; then
+  rm -r __pycache__; $PYTHON deprecated.py
 elif [ $1 = 'a' ]; then
   rm -r __pycache__; $PYTHON arepeat_models.py
   # rm -r __pycache__; $PYTHON arepeat_sim_components.py

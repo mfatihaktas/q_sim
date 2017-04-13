@@ -1,4 +1,4 @@
-import inspect, math, sympy
+import inspect, math, sympy, scipy
 
 INFO = 0
 DEBUG = 1
@@ -40,6 +40,9 @@ def log(dlevel, log):
 def list_to_str(l):
   return ",".join("%s" % e for e in l)
 
+def H_cont(n):
+  return sympy.mpmath.quad(lambda x: (1-x**n)/(1-x), [0, 1] )
+
 def H(n):
   if n == 0:
     return 0
@@ -75,7 +78,15 @@ def binomial(n, k):
     return math.factorial(n)/math.factorial(k)/math.factorial(n-k)
 
 def I(u_l, m, n):
-  return B(m, n, u_l=u_l)/B(m, n)
+  # return B(m, n, u_l=u_l)/B(m, n)
+  return scipy.special.betainc(m, n, u_l)
 
 def B(m, n, u_l=1):
   return sympy.mpmath.quad(lambda x: x**(m-1) * (1-x)**(n-1), [0, u_l] )
+  # if u_l == 1:
+  #   return scipy.special.beta(m, n)
+  # else:
+  #   return I(u_l, m, n)*B(m, n)
+
+def G(z):
+  return scipy.special.gamma(z)

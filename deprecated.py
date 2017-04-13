@@ -321,10 +321,21 @@ def plot_binomial_dist__approx():
   plot.gcf().clear()
   log(WARNING, "done; n= {}, p= {}".format(n, p) )
 
+def sum_of_harmonics():
+  k = 10
+  mu = 1
+  
+  def E_C(n):
+    sum_ = sum([H(n-i) for i in range(1, k+1) ] )
+    return 1/mu*(k*H(n) - sum_ + (n-k)*(H(n)-H(n-k) ) )
+  
+  for n in range(k, 4*k):
+    print("n= {}, E_C= {}".format(n, E_C(n) ) )
 
 if __name__ == "__main__":
   # random.seed(33)
   # test_simplex()
   # plot_exp_dist(0)
-  simplex_t_1__zero_state()
+  # simplex_t_1__zero_state()
+  sum_of_harmonics()
   

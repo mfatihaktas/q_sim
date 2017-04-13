@@ -44,7 +44,7 @@ def plot_pareto():
   plot.gcf().clear()
 
 # #####################  (k, \Delta)  ################### #
-def sim_arepeat_k(task_t_rv, d, k, num_run=1000):
+def sim_arepeat_k(task_t_rv, d, k, c=1, num_run=1000):
   stat_id__trial_stat_l_m = {'E_T': [], 'E_C': [], 'E_C_wc': [] }
   for i in range(num_run):
     i__t_l_m = {i:[(0, task_t_rv.gen_sample() ) ] for i in range(k) }
@@ -52,7 +52,8 @@ def sim_arepeat_k(task_t_rv, d, k, num_run=1000):
     if job_compl_t > d:
       for i,t_l in i__t_l_m.items():
         if t_l[0][1] > d:
-          t_l.append((d, d + task_t_rv.gen_sample() ) )
+          for i in range(c):
+            t_l.append((d, d + task_t_rv.gen_sample() ) )
     
     E_T = max([min([t[1] for t in t_l] ) for i,t_l in i__t_l_m.items() ] )
     stat_id__trial_stat_l_m['E_T'].append(E_T)
@@ -62,13 +63,13 @@ def sim_arepeat_k(task_t_rv, d, k, num_run=1000):
     for i,t_l in i__t_l_m.items():
       compl_t = min([t[1] for t in t_l] )
       for t in t_l:
-        E_C_wc += min(compl_t, t[1] )-t[0]
+        E_C_wc += min(compl_t, t[1])-t[0]
     stat_id__trial_stat_l_m['E_C_wc'].append(E_C_wc)
   
   return stat_id__trial_stat_l_m
 
 # ##################  (l, k, n, \Delta)  ################ #
-def sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=1000):
+def sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=1000, w_relaunch=False):
   if l < k:
     l = k
   log(DEBUG, "k= {}, l= {}, n= {}".format(k, l, n) )
@@ -76,10 +77,13 @@ def sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=1000):
   #   return 1
   stat_id__trial_stat_l_m = {'E_T': [], 'E_C': [], 'E_C_wc': [] }
   for i in range(num_run):
-    compl_t_l = [(0, task_t_rv.gen_sample() ) for i in range(l) ]
+    compl_t_l = [[0, task_t_rv.gen_sample() ] for i in range(l) ]
     compl_t_l.sort(key=lambda tup: tup[1] )
     if compl_t_l[k-1][1] > d:
-      compl_t_l += [(d, d + task_t_rv.gen_sample() ) for i in range(n-l) ]
+      if w_relaunch:
+        for t in compl_t_l:
+          if t[1] > d: t[1] = d + task_t_rv.gen_sample()
+      compl_t_l += [[d, d + task_t_rv.gen_sample() ] for i in range(n-l) ]
       compl_t_l.sort(key=lambda tup: tup[1] )
     
     E_T = compl_t_l[k-1][1]
