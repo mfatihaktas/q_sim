@@ -354,10 +354,12 @@ def E_C_shiftedexp_k_n(D, mu, d, k, n, w_cancel=False):
 
 # ####################  X_i ~ Pareto(loc, a), (l=k, k, n=k, \Delta)  ####################### #
 def E_T_pareto_k_n(loc, a, d, k, n, w_relaunch=True):
-  q = (d > loc)*(1 - (loc/d)**a)
   if d == 0:
-    return loc*math.factorial(n)/math.factorial(n-k)*G(n-k+1-1/a)/G(n+1-1/a)
-  elif n == k:
+    # return loc*math.factorial(n)/math.factorial(n-k)*G(n-k+1-1/a)/G(n+1-1/a)
+    return loc*(G(n+1)/G(n-k+1) )*(G(n-k+1-1/a)/G(n+1-1/a) )
+  """
+  q = (d > loc)*(1 - (loc/d)**a)
+  if n == k:
     if not w_relaunch:
       return loc*G(1-1/a)*G(k+1)/G(k+1-1/a)
     else:
@@ -374,6 +376,7 @@ def E_T_pareto_k_n(loc, a, d, k, n, w_relaunch=True):
         sum_ += (loc*G(n-r+1)*G(n-k+1-1/a)/G(n-r+1-1/a)/G(n-k+1) - \
                  loc*G(k-r+1)*G(1-1/a)/G(k-r+1-1/a) ) * binomial(k,r) * q**r * (1-q)**(k-r)
       return sum_ + E_T_pareto_k_n(loc, a, d, k, n=k)
+  """
 
 def E_T_pareto_k_n_approx(loc, a, d, k, n, w_relaunch=True):
   q = (d > loc)*(1 - (loc/d)**a)
@@ -392,11 +395,29 @@ def E_T_pareto_k_n_approx(loc, a, d, k, n, w_relaunch=True):
 
 def E_C_pareto_k_n(loc, a, d, k, n, w_relaunch=True, w_cancel=True):
   if w_cancel and d == 0:
-    return loc*n/(1-1/a) + \
-           G(n+1)/G(n+1-1/a)*G(n-k+1-1/a)/G(n-k)*loc*(1/(n-k) - 1/(1-1/a) )
+    # return loc*n/(1-1/a) + \
+    #       (G(n+1)/G(n+1-1/a) )*(G(n-k+1-1/a)/G(n-k) )*loc/(1-a)
+    # return loc*n/(a-1) * (a - (G(n)/G(n-k) )*(G(n-k+1-1/a)/G(n+1-1/a) ) )
+    
+    # if n == k:
+    #   log(WARNING, "loc= {}, a= {}, d= {}, k= {}, n= {}".format(loc, a, d, k, n) )
+    #   return loc*G(k+1)*G(1-1/a)/G(k+1-1/a)
+    
+    E_C = 0
+    a_ = 1/a
+    Q = loc*(G(n+1)/G(n+1-a_) )
+    for i in range(1, k+1):
+      E_C += loc*(G(n+1)/G(n+1-i) )*(G(n-i-1/a+1)/G(n-1/a+1) )
+      # E_C += loc*(G(n+1)/G(n-1/a+1) )*(n-i+1)**(-1/a) * (1 + a_*(a_+1)/2/(n-i+1) )
+    
+    # E_C = loc*(G(n+1)/G(n-1/a+1) )*(n-k/2+1)**(-1/a) * (1 + a_*(a_+1)/2/(n-k/2+1) )
+    
+    # E_C = Q*(G(n+1-a_)/G(n)/(1-a_) - G(n-k+1-a_)/G(n-k)/(1-a_) )
+    
+    return E_C + (n-k)*Q*(G(n-k+1-a_)/G(n-k+1) )
 
 # ####################  Wrappers, (l, k, n, \Delta)  ####################### #
-def E_T_k_l_n(task_t, D, mu, a, loc, d, k, l, n):
+def E_T_k_l_n(task_t, D, mu, loc, a, d, k, l, n):
   if task_t == "Exp":
     if l == k: return E_T_exp_k_n(mu, d, k, n)
     else: return E_T_exp_k_l_n(mu, d, k, l, n)
@@ -404,16 +425,16 @@ def E_T_k_l_n(task_t, D, mu, a, loc, d, k, l, n):
     if l == k: return E_T_shiftedexp_k_n(D, mu, d, k, n)
     else: return E_T_shiftedexp_k_l_n(D, mu, d, k, l, n)
   elif task_t == "Pareto":
-    pass
+    return E_T_pareto_k_n(loc, a, d, k, n)
 
-def E_C_k_l_n(task_t, D, mu, a, loc, d, k, l, n, w_cancel, approx=False):
+def E_C_k_l_n(task_t, D, mu, loc, a, d, k, l, n, w_cancel, approx=False):
   if task_t == "Exp":
     if l == k: return E_C_exp_k_n(mu, d, k, l, n, w_cancel)
     else: return E_C_exp_k_l_n(mu, d, k, l, n, w_cancel)
   elif task_t == "SExp":
     return E_C_shiftedexp_k_l_n(D, mu, d, k, l, n, w_cancel)
   elif task_t == "Pareto":
-    pass
+    return E_C_pareto_k_n(loc, a, d, k, n, w_cancel=w_cancel)
 
 # ####################  X_i ~ Exp(mu), (k, \Delta, c)  ####################### #
 def E_T_exp_k_c(mu, d, k, c):
@@ -461,32 +482,35 @@ def E_C_shiftedexp_k_c(D, mu, d, k, c, w_cancel=False):
       # D + k/mu*(2-q-math.exp(-mu*d) )
 
 # ####################  X_i ~ Pareto(loc, a), (k, \Delta, c)  ####################### #
-def E_T_pareto_k_c(a, loc, d, k, c):
+def E_T_pareto_k_c(loc, a, d, k, c):
   if d == 0:
-    return loc*math.factorial(k)*G(1-1/(c+1)/a)/G(k+1-1/(c+1)/a)
+    # return loc*math.factorial(k)*G(1-1/(c+1)/a)/G(k+1-1/(c+1)/a)
+    return loc*G(k+1)*G(1-1/(c+1)/a)/G(k+1-1/(c+1)/a)
 
-def E_C_pareto_k_c(a, loc, d, k, c, w_cancel=False):
-  q = 0 if d <= l else 1 - (l/d)**a
+def E_C_pareto_k_c(loc, a, d, k, c, w_cancel=False):
+  if w_cancel and d == 0:
+    # log(WARNING, "loc= {}, a= {}, d= {}, k= {}, c= {}".format(loc, a, d, k, c) )
+    return k*(c+1) * a*(c+1)*loc/(a*(c+1)-1)
+  
+  q = 0 if d <= loc else 1 - (loc/d)**a
   if not w_cancel:
-    return (c*(1-q)+1)*(a*l/(a-1) )
+    return (c*(1-q)+1)*(a*loc/(a-1) )
   else:
-    if d == 0:
-      return k*(c+1) * a*(c+1)*loc/(a*(c+1)-1)
     def tail(x):
-      if x <= l: return 1
-      else: return (l/x)**a
+      if x <= loc: return 1
+      else: return (loc/x)**a
     def proxy(x): return tail(x)*tail(x+d)/tail(d)
     if c == 1:
-      if d <= l:
+      if d <= loc:
         E_X__X_leq_d = 0
         E_Y = sympy.mpmath.quad(proxy, [0, sympy.mpmath.inf] )
         return k*(q*E_X__X_leq_d + (1-q)*(2*E_Y + d) )
       else:
-        E_X__X_leq_d = l*a/(a-1)*(1 - (l/d)**(a-1) )/(1 - (l/d)**a)
+        E_X__X_leq_d = loc*a/(a-1)*(1 - (loc/d)**(a-1) )/(1 - (loc/d)**a)
         E_Y = sympy.mpmath.quad(proxy, [0, sympy.mpmath.inf] )
         return k*(q*E_X__X_leq_d + (1-q)*(2*E_Y + d) )
 
-def E_C_pareto_k_c_approx(a, loc, d, k, w_cancel=True):
+def E_C_pareto_k_c_approx(loc, a, d, k, w_cancel=True):
   q = 0 if d <= l else 1 - (l/d)**a
   def tail(x):
     if x <= l: return 1
@@ -530,23 +554,23 @@ def E_C_pareto_k_c_approx(a, loc, d, k, w_cancel=True):
       return k*(q*E_X__X_leq_d + (1-q)*(2*E_Y + d) )
 
 # ####################  Wrappers, (k, \Delta, c)  ####################### #
-def E_T_k_c(task_t, D, mu, a, loc, d, k, c):
+def E_T_k_c(task_t, D, mu, loc, a, d, k, c):
   if task_t == "Exp":
     return E_T_exp_k_c(mu, d, k, c)
   elif task_t == "SExp":
     return E_T_shiftedexp_k_c(D, mu, d, k, c)
   elif task_t == "Pareto":
-    return E_T_pareto_k_c(D, mu, d, k, c)
+    return E_T_pareto_k_c(loc, a, d, k, c)
 
-def E_C_k_c(task_t, D, mu, a, loc, d, k, c, w_cancel, approx=False):
+def E_C_k_c(task_t, D, mu, loc, a, d, k, c, w_cancel, approx=False):
   if task_t == "Exp":
     return E_C_exp_k_c(mu, d, k, c, w_cancel)
   elif task_t == "SExp":
     return E_C_shiftedexp_k_c(D, mu, d, k, c, w_cancel)
   elif task_t == "Pareto":
     if approx:
-      return E_C_pareto_k_c_approx(a, loc, d, k, w_cancel)
-    return E_C_pareto_k_c(a, loc, d, k, w_cancel)
+      return E_C_pareto_k_c_approx(loc, a, d, k, c, w_cancel)
+    return E_C_pareto_k_c(loc, a, d, k, c, w_cancel)
 
 if __name__ == "__main__":
   plot_Pr_T_g_t_G_1red()

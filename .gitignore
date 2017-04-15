@@ -1,5 +1,6 @@
 *.log
 *.png
+*.png
 .zed*
 # Byte-compiled / optimized / DLL files
 __pycache__/
