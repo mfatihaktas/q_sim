@@ -42,6 +42,8 @@ elif [ $1 = 'dep' ]; then
 elif [ $1 = 'a' ]; then
   rm -r __pycache__; $PYTHON arepeat_models.py
   # rm -r __pycache__; $PYTHON arepeat_sim_components.py
+elif [ $1 = 'g' ]; then
+  rm -r __pycache__; $PYTHON google_data.py
 elif [ $1 = 'f' ]; then
   rm -r __pycache__; rm *.png; $PYTHON fun.py
 # elif [ $1 = 'd' ]; then

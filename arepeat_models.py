@@ -1,8 +1,10 @@
 import matplotlib
 matplotlib.use('Agg')
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 import matplotlib.pyplot as plot
 import matplotlib.cm as cm # cm.rainbow
-import sys, pprint, random, math, numpy, simpy, getopt, itertools, sympy
+import sys, pprint, random, math, numpy, simpy, getopt, itertools, sympy, textwrap
 
 from rvs import *
 from patch import *
@@ -182,7 +184,7 @@ def plot_Pr_T_g_t_G_1red():
     for t in numpy.arange(0, 5*task_t_rv.mean(), 0.1):
       d__x_l_m[d].append(t)
       d__y_l_m[d].append(Pr_T_g_t(k, d, t) )
-  marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )  
+  marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
   color = iter(cm.rainbow(numpy.linspace(0, 1, 6) ) )
   for d in numpy.arange(D, 5*D, D):
     m = next(marker)
@@ -395,26 +397,108 @@ def E_T_pareto_k_n_approx(loc, a, d, k, n, w_relaunch=True):
 
 def E_C_pareto_k_n(loc, a, d, k, n, w_relaunch=True, w_cancel=True):
   if w_cancel and d == 0:
-    # return loc*n/(1-1/a) + \
-    #       (G(n+1)/G(n+1-1/a) )*(G(n-k+1-1/a)/G(n-k) )*loc/(1-a)
-    # return loc*n/(a-1) * (a - (G(n)/G(n-k) )*(G(n-k+1-1/a)/G(n+1-1/a) ) )
+    return loc*n/(a-1) * (a - (G(n)/G(n-k) )*(G(n-k+1-1/a)/G(n+1-1/a) ) )
     
-    # if n == k:
-    #   log(WARNING, "loc= {}, a= {}, d= {}, k= {}, n= {}".format(loc, a, d, k, n) )
-    #   return loc*G(k+1)*G(1-1/a)/G(k+1-1/a)
-    
-    E_C = 0
-    a_ = 1/a
-    Q = loc*(G(n+1)/G(n+1-a_) )
-    for i in range(1, k+1):
-      E_C += loc*(G(n+1)/G(n+1-i) )*(G(n-i-1/a+1)/G(n-1/a+1) )
-      # E_C += loc*(G(n+1)/G(n-1/a+1) )*(n-i+1)**(-1/a) * (1 + a_*(a_+1)/2/(n-i+1) )
-    
-    # E_C = loc*(G(n+1)/G(n-1/a+1) )*(n-k/2+1)**(-1/a) * (1 + a_*(a_+1)/2/(n-k/2+1) )
-    
-    # E_C = Q*(G(n+1-a_)/G(n)/(1-a_) - G(n-k+1-a_)/G(n-k)/(1-a_) )
-    
-    return E_C + (n-k)*Q*(G(n-k+1-a_)/G(n-k+1) )
+    # E_C = 0
+    # a_ = 1/a
+    # Q = loc*(G(n+1)/G(n+1-a_) )
+    # for i in range(1, k+1):
+    #   E_C += loc*(G(n+1)/G(n+1-i) )*(G(n-i-1/a+1)/G(n-1/a+1) )
+    # return E_C + (n-k)*Q*(G(n-k+1-a_)/G(n-k+1) )
+
+def plot_pareto_zerodelay_red():
+  loc = 3
+  d = 0
+  def reduction_in_E_T_for_same_E_C_w_red(red_type, loc, a, k):
+    E_T_wo_red, E_T = 0, 0
+    if red_type == 'coded':
+      E_T_wo_red = E_T_pareto_k_n(loc, a, d, k, n=k)
+      E_C_wo_red = E_C_pareto_k_n(loc, a, d, k, n=k)
+      
+      n_ = k+1
+      while 1:
+        E_C = E_C_pareto_k_n(loc, a, d, k, n_)
+        # print("n_= {}, E_C_wo_red= {}, E_C= {}".format(n_, E_C_wo_red, E_C) )
+        if math.isnan(E_C):
+          return reduction_in_E_T_for_same_E_C_w_red__approx(red_type, loc, a, k)
+        elif E_C >= E_C_wo_red:
+          # print("breaking at n_= {}".format(n_) )
+          break
+        # print("n_= {}".format(n_) )
+        n_ += 1
+      E_T = E_T_pareto_k_n(loc, a, d, k, n_-1)
+    elif red_type == 'reped':
+      E_T_wo_red = E_T_pareto_k_c(loc, a, d, k, c=0)
+      E_C_wo_red = E_C_pareto_k_c(loc, a, d, k, c=0)
+      
+      c_ = 1
+      while 1:
+        E_C = E_C_pareto_k_c(loc, a, d, k, c_)
+        # print("c_= {}, E_C_wo_red= {}, E_C= {}".format(c_, E_C_wo_red, E_C) )
+        if math.isnan(E_C) or math.isinf(E_C):
+          return None
+        elif E_C >= E_C_wo_red:
+          # print("breaking at c_= {}".format(c_) )
+          break
+        c_ += 1
+      E_T = E_T_pareto_k_c(loc, a, d, k, c_-1)
+    # return E_T_wo_red - E_T
+    return (E_T_wo_red - E_T)/E_T_wo_red
+  
+  def reduction_in_E_T_for_same_E_C_w_red__approx(red_type, loc, a, k):
+    if red_type == 'coded':
+      E_T_wo_red = E_T_pareto_k_n(loc, a, d, k, n=k)
+      # return E_T_wo_red - loc*a
+      return max(E_T_wo_red - loc*a, 0)/E_T_wo_red
+    elif red_type == 'reped':
+      E_T_wo_red = E_T_pareto_k_c(loc, a, d, k, c=0)
+      # E_T = loc*math.factorial(k)*G(1/a)/G(k+1/a)
+      c_ = max(math.floor(1/(a-1) - 1), 0)
+      E_T = E_T_pareto_k_c(loc, a, d, k, c_) # exact
+      return max(E_T_wo_red - E_T, 0)/E_T_wo_red
+  
+  # def threshold_on_tail_for_latency_reduction_at_no_cost(red_type, a):
+  #   if red_type == 'reped':
+  #     return 1.5
+  #   elif red_type == 'coded':
+  #     return (a + math.factorial(k)*G(1-1/a)/G(k+1-1/a) )**(1/k)
+  
+  def plot_(red_type, k):
+    x_l, y_l, y_approx_l = [], [], []
+    for a in numpy.arange(1.05, 3.5, 0.05):
+      x_l.append(a)
+      y_l.append(reduction_in_E_T_for_same_E_C_w_red(red_type, loc, a, k) )
+      # y_approx_l.append(reduction_in_E_T_for_same_E_C_w_red__approx(red_type, loc, a, k) )
+    # plot.axvline(x=threshold_on_tail_for_latency_reduction_at_no_cost(red_type),
+    #             color=color, alpha=0.5, linestyle='--')
+    legend = "Replicated" if red_type == 'reped' else "Coded"
+    plot.plot(x_l, y_l, label=r'{},$k={}$'.format(legend, k), color=next(dark_color), marker=next(marker), mew=2, zorder=0, linestyle=':')
+    # plot.plot(x_l, y_approx_l, label=r'{},$k={}$, approx'.format(legend, k), color=next(dark_color), marker=next(marker), mew=2, zorder=1, linestyle='')
+  
+  plot_('reped', k=10)
+  # plot_('reped', k=20)
+  # plot_('reped', k=40)
+  plot_('reped', k=50)
+  
+  plot_('coded', k=10)
+  # plot_('coded', k=20)
+  # plot_('coded', k=40)
+  plot_('coded', k=50)
+  
+  # plot_('coded', k=100)
+  
+  plot.legend()
+  plot.title(r'$X \sim Pareto(\lambda={}, \alpha)$'.format(loc) )
+  plot.xlabel(r'Tail index $\alpha$', fontsize=12)
+  plot.ylabel('\n'.join(textwrap.wrap(r'Maximum percetange reduction in $E[T]$ at no added cost', 40) ),
+              fontsize=12)
+  fig = plot.gcf()
+  def_size = fig.get_size_inches()
+  fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
+  plot.savefig("plot_pareto_zerodelay_red.pdf", bbox_inches='tight')
+  plot.gcf().clear()
+  log(WARNING, "done.")
+  
 
 # ####################  Wrappers, (l, k, n, \Delta)  ####################### #
 def E_T_k_l_n(task_t, D, mu, loc, a, d, k, l, n):
@@ -487,7 +571,7 @@ def E_T_pareto_k_c(loc, a, d, k, c):
     # return loc*math.factorial(k)*G(1-1/(c+1)/a)/G(k+1-1/(c+1)/a)
     return loc*G(k+1)*G(1-1/(c+1)/a)/G(k+1-1/(c+1)/a)
 
-def E_C_pareto_k_c(loc, a, d, k, c, w_cancel=False):
+def E_C_pareto_k_c(loc, a, d, k, c, w_cancel=True):
   if w_cancel and d == 0:
     # log(WARNING, "loc= {}, a= {}, d= {}, k= {}, c= {}".format(loc, a, d, k, c) )
     return k*(c+1) * a*(c+1)*loc/(a*(c+1)-1)
@@ -573,4 +657,5 @@ def E_C_k_c(task_t, D, mu, loc, a, d, k, c, w_cancel, approx=False):
     return E_C_pareto_k_c(loc, a, d, k, c, w_cancel)
 
 if __name__ == "__main__":
-  plot_Pr_T_g_t_G_1red()
+  # plot_Pr_T_g_t_G_1red()
+  plot_pareto_zerodelay_red()

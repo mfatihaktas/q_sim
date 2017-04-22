@@ -1,4 +1,9 @@
-import inspect, math, sympy, scipy
+import inspect, math, sympy, scipy, itertools
+
+dark_color = itertools.cycle(('green', 'red', 'gray', 'blue', 'magenta', 'brown', 'purple', 'goldenrod', 'gold', 'olive', 'orangered', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise', 'darkgray'))
+light_color = itertools.cycle(('silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise'))
+linestyle = itertools.cycle(('-', '--', '-.', ':') )
+marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'D', '<', '>', '1', '2', '3', '4') )
 
 INFO = 0
 DEBUG = 1
