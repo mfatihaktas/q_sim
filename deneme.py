@@ -4,10 +4,8 @@ matplotlib.rcParams['ps.fonttype'] = 42
 # matplotlib.rcParams['ps.useafm'] = True
 # matplotlib.rcParams['pdf.use14corefonts'] = True
 # matplotlib.rcParams['text.usetex'] = True
-
 matplotlib.use('Agg')
 import matplotlib.pyplot as plot
-# import matplotlib.cm as cm # cm.rainbow
 
 from arepeat_models import *
 from arepeat_sim_components import *
@@ -575,42 +573,45 @@ def plot_arepeat_k_n_wrelaunch():
   log(WARNING, "done; k= {}".format(K) )
 
 # ##################  X_i ~ Exp(mu), (k, \Delta)  ################ #
-def plot_arepeat_k():
+def plot_arepeat_k_c():
   K = 10
   D = 30
   mu = 1
   a, loc = 2, 3
-  task_t = "Pareto" # "Exp" # "SExp" # "Pareto"
+  task_t = "Google" # "Exp" # "SExp" # "Pareto"
   task_t_rv, task_t_in_latex = None, None
   
-  if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu), mu= {}'.format(mu)
+  if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu={})'.format(mu)
   elif task_t == "SExp": task_t_in_latex = r'X \sim SExp(D/k, \mu), D= {}, \mu= {}'.format(D, mu)
-  elif task_t == "Pareto": task_t_in_latex = r'X \sim Pareto(\alpha, \lambda), \alpha= {}, \lambda= {}'.format(a, loc)
+  elif task_t == "Pareto": task_t_in_latex = r'X \sim Pareto(\lambda={}, \alpha={})'.format(loc, a)
+  elif task_t == "Google": task_t_in_latex = r'X \sim Google'
   
   def plot_(k):
     if task_t == "Exp": task_t_rv = Exp(mu)
     elif task_t == "SExp": task_t_rv = Exp(mu, D/k)
     elif task_t == "Pareto": task_t_rv = Pareto(a, loc=loc)
+    elif task_t == "Google": task_t_rv = Google(k)
     
     d_l = []
     y_l, y_approx_l, y_sim_l = [], [], []
     u_l = 3*H(K)/mu
-    for d in [*numpy.arange(0, u_l, 0.5)] + [u_l]:
+    for d in numpy.linspace(0, u_l, 10):
+    # for d in [*numpy.arange(0, u_l, 0.5)] + [u_l]:
       d_l.append(d)
       # y_l.append(E_T_k(task_t, D, mu, loc, a, d, k) )
-      y_l.append(E_C_k(task_t, D, mu, loc, a, d, k, w_cancel=True) )
-      y_approx_l.append(E_C_k(task_t, D, mu, loc, a, d, k, w_cancel=True, approx=True) )
-      # y_l.append(E_C_k(task_t, D, mu, loc, a, d, k, w_cancel=False) )
-      stat_id__trial_stat_l_m = sim_arepeat_k(task_t_rv, d, k, num_run=10000)
+      # y_l.append(E_C_k(task_t, D, mu, loc, a, d, k, w_cancel=True) )
+      # y_approx_l.append(E_C_k(task_t, D, mu, loc, a, d, k, w_cancel=True, approx=True) )
+      stat_id__trial_stat_l_m = sim_arepeat_k_c(task_t_rv, d, k, num_run=100000)
       # y_sim_l.append(sum(stat_id__trial_stat_l_m['E_T'] )/len(stat_id__trial_stat_l_m['E_T'] ) )
       y_sim_l.append(sum(stat_id__trial_stat_l_m['E_C_wc'] )/len(stat_id__trial_stat_l_m['E_C_wc'] ) )
       # y_sim_l.append(sum(stat_id__trial_stat_l_m['E_C'] )/len(stat_id__trial_stat_l_m['E_C'] ) )
-    plot.plot(d_l, y_l, label=r'$k={}$'.format(k), color=next(dark_color), linestyle='-', mew=2)
-    plot.plot(d_l, y_approx_l, label=r'$k={}$'.format(k), color=next(light_color), alpha=0.8, marker=next(marker), linestyle='', mew=2)
-    # plot.plot(d_l, y_sim_l, label=r'$k={}$'.format(k), color=next(light_color), alpha=0.8, marker=next(marker), linestyle='', mew=2)
+    # plot.plot(d_l, y_l, label=r'$k={}$'.format(k), color=next(dark_color), linestyle='-', mew=2)
+    # plot.plot(d_l, y_approx_l, label=r'$k={}$'.format(k), color=next(light_color), alpha=0.8, marker=next(marker), linestyle='', mew=2)
+    plot.plot(d_l, y_sim_l, label=r'$k={}$'.format(k), color=next(light_color), alpha=0.8, marker=next(marker), linestyle='', mew=2)
   
-  for k in range(K, K+1, 3):
-    plot_(k)
+  # for k in range(K, K+1, 3):
+  #   plot_(k)
+  plot_(k=400)
   
   plot.legend()
   # plot.legend(loc='center left', bbox_to_anchor=(0.9, 0.5) )
@@ -622,42 +623,45 @@ def plot_arepeat_k():
   plot.gcf().clear()
   log(WARNING, "done; k= {}".format(K) )
 
-def plot_arepeat_cost_k():
+def plot_arepeat_cost_k_c():
   K = 10
   D = 30
   mu = 1
   a, loc = 2, 3
-  task_t = "SExp" # "Exp" # "SExp" # "Pareto"
+  task_t = "Google" # "Exp" # "SExp" # "Pareto"
   task_t_rv, task_t_in_latex = None, None
   if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu), mu= {}'.format(mu)
   elif task_t == "SExp": task_t_in_latex = r'X \sim SExp(D/k, \mu), D= {}, \mu= {}'.format(D, mu)
   elif task_t == "Pareto": task_t_in_latex = r'X \sim Pareto(\alpha, \lambda), \alpha= {}, \lambda= {}'.format(a, loc)
+  elif task_t == "Google": task_t_in_latex = r'X \sim Google'
   def plot_(k):
     if task_t == "Exp": task_t_rv = Exp(mu)
     elif task_t == "SExp": task_t_rv = Exp(mu, D/k)
     elif task_t == "Pareto": task_t_rv = Pareto(a, loc=loc)
+    elif task_t == "Google": task_t_rv = Google(k)
     
     E_T_l, E_T_sim_l = [], []
     E_Cwcancel_l, E_Cwcancel_approx_l, E_Cwcancel_sim_l = [], [], []
     E_C_l, E_C_approx_l, E_C_sim_l = [], [], []
-    u_l = 3*H(K)/mu
-    for d in [*numpy.arange(0, u_l, 0.5)] + [u_l]:
-      E_T_l.append(E_T_k(task_t, D, mu, loc, a, d, k) )
+    u_l = 2*task_t_rv.mean() # 3*H(K)/mu
+    for d in numpy.linspace(0, u_l, 10):
+      # E_T_l.append(E_T_k(task_t, D, mu, loc, a, d, k) )
       
-      E_Cwcancel_l.append(E_C_k(task_t, D, mu, loc, a, d, k, w_cancel=True) )
-      E_C_l.append(E_C_k(task_t, D, mu, loc, a, d, k, w_cancel=False) )
+      # E_Cwcancel_l.append(E_C_k(task_t, D, mu, loc, a, d, k, w_cancel=True) )
+      # E_C_l.append(E_C_k(task_t, D, mu, loc, a, d, k, w_cancel=False) )
       
-      stat_id__trial_stat_l_m = sim_arepeat_k(task_t_rv, d, k, num_run=10000)
+      stat_id__trial_stat_l_m = sim_arepeat_k_c(task_t_rv, d, k, num_run=10000)
       E_T_sim_l.append(sum(stat_id__trial_stat_l_m['E_T'] )/len(stat_id__trial_stat_l_m['E_T'] ) )
       E_Cwcancel_sim_l.append(sum(stat_id__trial_stat_l_m['E_C_wc'] )/len(stat_id__trial_stat_l_m['E_C_wc'] ) )
       E_C_sim_l.append(sum(stat_id__trial_stat_l_m['E_C'] )/len(stat_id__trial_stat_l_m['E_C'] ) )
-    plot.plot(E_T_l, E_Cwcancel_l, label=r'w-c,$k={}$'.format(k), color=next(dark_color), linestyle='-', mew=2)
-    plot.plot(E_T_sim_l, E_Cwcancel_sim_l, label=r'w-c,$k={}$'.format(k), color=next(light_color), alpha=0.8, marker=next(marker), linestyle='', mew=2)
-    plot.plot(E_T_l, E_C_l, label=r'no-c,$k={}$'.format(k), color=next(dark_color), linestyle='-', mew=2)
-    plot.plot(E_T_sim_l, E_C_sim_l, label=r'no-c,$k={}$'.format(k), color=next(light_color), alpha=0.8, marker=next(marker), linestyle='', mew=2)
+    # plot.plot(E_T_l, E_Cwcancel_l, label=r'w-c,$k={}$'.format(k), color=next(dark_color), linestyle='-', mew=2)
+    plot.plot(E_T_sim_l, E_Cwcancel_sim_l, label=r'w-c,$k={}$'.format(k), color=next(dark_color), marker=next(marker), linestyle=':', mew=2)
+    # plot.plot(E_T_l, E_C_l, label=r'no-c,$k={}$'.format(k), color=next(dark_color), linestyle='-', mew=2)
+    plot.plot(E_T_sim_l, E_C_sim_l, label=r'no-c,$k={}$'.format(k), color=next(dark_color), marker=next(marker), linestyle=':', mew=2)
   
-  for k in range(K, K+7, 3):
-    plot_(k)
+  # for k in range(K, K+7, 3):
+  #   plot_(k)
+  plot_(k=400)
   
   # plot.legend()
   plot.legend(loc='center left', bbox_to_anchor=(0.8, 0.5) )
@@ -674,7 +678,7 @@ def plot_reped_vs_coded(w_cancel):
   D = 30
   mu = 0.5
   a, loc = 2, 3
-  task_t = "Pareto" # "Exp" # "SExp" # "Pareto"
+  task_t = "SExp" # "Exp" # "SExp" # "Pareto"
   task_t_rv, task_t_in_latex = None, None
   if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu), mu= {}'.format(mu)
   elif task_t == "SExp": task_t_in_latex = r'X \sim SExp(D/k, \mu), D= {}, \mu= {}'.format(D, mu)
@@ -714,32 +718,28 @@ def plot_reped_vs_coded(w_cancel):
     u_l = 25 + 1
     if c:
       for d in numpy.arange(0, u_l, 0.5):
-        stat_id__trial_stat_l_m = sim_arepeat_k(task_t_rv, d, k, c, num_run=num_run)
-        E_T_sim_l.append(sum(stat_id__trial_stat_l_m['E_T'] )/len(stat_id__trial_stat_l_m['E_T'] ) )
-        key = 'E_C_wc' if w_cancel else 'E_C'
-        E_C_sim_l.append(sum(stat_id__trial_stat_l_m[key] )/len(stat_id__trial_stat_l_m[key] ) )
+        # stat_id__trial_stat_l_m = sim_arepeat_k_c(task_t_rv, d, k, c, num_run=num_run)
+        # E_T_sim_l.append(sum(stat_id__trial_stat_l_m['E_T'] )/len(stat_id__trial_stat_l_m['E_T'] ) )
+        # key = 'E_C_wc' if w_cancel else 'E_C'
+        # E_C_sim_l.append(sum(stat_id__trial_stat_l_m[key] )/len(stat_id__trial_stat_l_m[key] ) )
         
-        # E_T = E_T_k_c(task_t, D, mu, loc, a, d, k, c)
-        # E_C = E_C_k_c(task_t, D, mu, loc, a, d, k, c, w_cancel=w_cancel)
-        # E_T_l.append(E_T)
-        # E_C_l.append(E_C)
-      # plot.plot(E_T_l, E_C_l, label=r'Rep,$c={}$'.format(c), color=next(dark_color), marker=next(marker), zorder=2, mew=5, linestyle='-')
-      print("Rep:: E_T_sim_l= {}".format(pprint.pformat(E_T_sim_l) ) )
-      print("Rep:: E_C_sim_l= {}".format(pprint.pformat(E_C_sim_l) ) )
-      plot.plot(E_T_sim_l, E_C_sim_l, label=r'Rep,$c={}$'.format(c), color=next(dark_color), marker=next(marker), zorder=2, mew=5, linestyle=':')
+        E_T = E_T_k_c(task_t, D, mu, loc, a, d, k, c)
+        E_C = E_C_k_c(task_t, D, mu, loc, a, d, k, c, w_cancel=w_cancel)
+        E_T_l.append(E_T)
+        E_C_l.append(E_C)
+      plot.plot(E_T_l, E_C_l, label=r'Rep,$c={}$'.format(c), color=next(dark_color), marker=next(marker), ms=10, mew=2, zorder=2, lw=2, linestyle='-')
+      # plot.plot(E_T_sim_l, E_C_sim_l, label=r'Rep,$c={}$'.format(c), color=next(dark_color), marker=next(marker), zorder=2, mew=5, linestyle=':')
     elif n:
       for d in numpy.arange(0, u_l, 0.5):
-        stat_id__trial_stat_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, k, n, num_run=num_run)
-        E_T_sim_l.append(sum(stat_id__trial_stat_l_m['E_T'] )/len(stat_id__trial_stat_l_m['E_T'] ) )
-        key = 'E_C_wc' if w_cancel else 'E_C'
-        E_C_sim_l.append(sum(stat_id__trial_stat_l_m[key] )/len(stat_id__trial_stat_l_m[key] ) )
+        # stat_id__trial_stat_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, k, n, num_run=num_run)
+        # E_T_sim_l.append(sum(stat_id__trial_stat_l_m['E_T'] )/len(stat_id__trial_stat_l_m['E_T'] ) )
+        # key = 'E_C_wc' if w_cancel else 'E_C'
+        # E_C_sim_l.append(sum(stat_id__trial_stat_l_m[key] )/len(stat_id__trial_stat_l_m[key] ) )
         
-        # E_T_l.append(E_T_k_l_n(task_t, D, mu, loc, a, d, k, l, n) )
-        # E_C_l.append(E_C_k_l_n(task_t, D, mu, loc, a, d, k, l, n, w_cancel=w_cancel) )
-      # plot.plot(E_T_l, E_C_l, label=r'MDS,$n={}$'.format(n), color=next(dark_color), marker=next(marker), ms=8, zorder=1, mew=2, linestyle=':')
-      print("MDS:: E_T_sim_l= {}".format(pprint.pformat(E_T_sim_l) ) )
-      print("MDS:: E_C_sim_l= {}".format(pprint.pformat(E_C_sim_l) ) )
-      plot.plot(E_T_sim_l, E_C_sim_l, label=r'MDS,$n={}$'.format(n), color=next(dark_color), marker=next(marker), ms=8, zorder=1, mew=2, linestyle=':')
+        E_T_l.append(E_T_k_l_n(task_t, D, mu, loc, a, d, k, l, n) )
+        E_C_l.append(E_C_k_l_n(task_t, D, mu, loc, a, d, k, l, n, w_cancel=w_cancel) )
+      plot.plot(E_T_l, E_C_l, label=r'Code,$n={}$'.format(n), color=next(dark_color), marker=next(marker), ms=10, mew=2, zorder=1, lw=2, linestyle=':')
+      # plot.plot(E_T_sim_l, E_C_sim_l, label=r'MDS,$n={}$'.format(n), color=next(dark_color), marker=next(marker), ms=8, zorder=1, mew=2, linestyle=':')
   plot_(c=1)
   plot_(c=2)
   plot_(n=K+1)
@@ -756,27 +756,23 @@ def plot_reped_vs_coded(w_cancel):
     E_C_nored = E_C_k_c(task_t, D, mu, loc, a, d=0, k=K, c=0, w_cancel=w_cancel)
     plot.plot([E_T_nored], [E_C_nored], 'o', zorder=3, mew=4, color=ann_color)
     plot.annotate(r'$\Delta \to \infty$', xy=(E_T_nored, E_C_nored), ha='center', va='center', xytext=(E_T_nored+0.35, E_C_nored), color=ann_color, fontsize=12)
-  # elif task_t == "Pareto":
-  #   plot.annotate(r'$\Delta \to \infty$', xy=(E_T_nored, E_C_nored), ha='center', va='center', xytext=(E_T_nored+1.2, E_C_nored), color=ann_color, fontsize=12)
-  # arrowprops=dict(arrowstyle="fancy", #linestyle="dashed",
-  #                 color="0.5", shrinkB=5,
-  #                 connectionstyle="arc3,rad=0.3") )
-                
-  # arrowprops=dict(facecolor='black', shrink=0.01) )
-  
+    axes = plot.gca()
+    axes.set_xlim([3.5, 9.5] )
+    axes.set_ylim([47, 115] )
   # plot.legend()
-  legend = plot.legend(loc='center left', bbox_to_anchor=(0.85, 0.7) )
+  legend = plot.legend(loc='center left', bbox_to_anchor=(0.85, 0.7), fontsize=10)
   frame = legend.get_frame()
   frame.frameon=True
   frame.set_edgecolor('black')
   # legend = plot.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
   plot.title(r'${}, k= {}$'.format(task_t_in_latex, K), fontsize=12)
   plot.xlabel(r'Expected Latency $E[T]$ (s)', fontsize=12)
-  w_cancel_text = "w/ cancel" if w_cancel else "w/o cancel"
-  plot.ylabel(r'Expected Cost {} $E[C]$ (s)'.format(w_cancel_text), fontsize=12)
+  w_cancel_text = "w/ cancel $E[C^c]$" if w_cancel else "w/o cancel $E[C]$"
+  plot.ylabel(r'Expected Cost {} (s)'.format(w_cancel_text), fontsize=12)
   # plot.savefig("plot_reped_vs_coded_{}_k_{}__wcancel_{}.png".format(task_t, K, w_cancel) )
-  # plot.savefig("plot_reped_vs_coded_{}_k_{}__wcancel_{}.png".format(task_t, K, w_cancel), bbox_extra_artists=(legend,), bbox_inches='tight')
-  plot.savefig("plot_reped_vs_coded_{}_k_{}_wcancel_{}.pdf".format(task_t, K, w_cancel), bbox_extra_artists=(legend,), bbox_inches='tight')
+  fig = plot.gcf()
+  # plot.savefig("plot_reped_vs_coded_{}_k_{}__wcancel_{}.png".format(task_t, K, w_cancel), bbox_extra_artists=(legend,), bbox_inches='tight', dpi=fig.dpi)
+  plot.savefig("plot_reped_vs_coded_{}_k_{}_wcancel_{}.pdf".format(task_t, K, w_cancel), bbox_extra_artists=(legend,), bbox_inches='tight', dpi=fig.dpi)
   plot.gcf().clear()
   log(WARNING, "done; k= {}".format(K) )
 
@@ -786,7 +782,7 @@ def plot_reped_vs_coded_nodelay(loc, a):
   D = 30
   mu = 0.5
   # loc, a = 3, 2 # 1.5
-  task_t = "Pareto" # "Exp" # "SExp" # "Pareto"
+  task_t = "SExp" # "Exp" # "SExp" # "Pareto"
   task_t_rv, task_t_in_latex = None, None
   if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu), mu= {}'.format(mu)
   elif task_t == "SExp": task_t_in_latex = r'X \sim SExp(D={}/k, \mu={})'.format(D, mu)
@@ -802,7 +798,7 @@ def plot_reped_vs_coded_nodelay(loc, a):
     if c:
       color = next(dark_color)
       for c_ in range(c+1):
-        # stat_id__trial_stat_l_m = sim_arepeat_k(task_t_rv, d, k, c_, num_run=10000)
+        # stat_id__trial_stat_l_m = sim_arepeat_k_c(task_t_rv, d, k, c_, num_run=10000)
         # E_T_sim_l.append(sum(stat_id__trial_stat_l_m['E_T'] )/len(stat_id__trial_stat_l_m['E_T'] ) )
         # key = 'E_C_wc' if w_cancel else 'E_C'
         # E_C_sim_l.append(sum(stat_id__trial_stat_l_m[key] )/len(stat_id__trial_stat_l_m[key] ) )
@@ -876,7 +872,7 @@ def plot_reped_vs_coded_nodelay(loc, a):
             elif n_ != k and n_ % k == 0:
               plot.plot([E_T], [E_C], 'x', color="blue", mew=mew, zorder=3)
               plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T-2, E_C-2), color=color)
-      plot.plot(E_T_l, E_C_l, label='MDS', color=color, marker=next(marker), mew=1, zorder=1, linestyle=':')
+      plot.plot(E_T_l, E_C_l, label='Coding', color=color, marker=next(marker), mew=1, zorder=1, linestyle=':')
       # plot.plot(E_T_sim_l, E_C_sim_l, label='sim MDS', color=next(light_color), marker=next(marker), linestyle=':', mew=2, zorder=2)
   plot_(c=5)
   plot_(n=6*K)
@@ -932,11 +928,11 @@ if __name__ == "__main__":
   # plot_reped_vs_coded(w_cancel=True)
   # plot_reped_vs_coded_nodelay(loc=3, a=1.2)
   # plot_reped_vs_coded_nodelay(loc=3, a=1.5)
-  plot_reped_vs_coded_nodelay(loc=3, a=1.8)
+  # plot_reped_vs_coded_nodelay(loc=3, a=1.8)
   
   # plot_arepeat_dist_k_n()
   # plot_arepeat_conf_k_n()
   
-  # plot_arepeat_k()
-  # plot_arepeat_cost_k()
+  # plot_arepeat_k_c()
+  plot_arepeat_cost_k_c()
   

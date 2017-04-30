@@ -4,7 +4,7 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 import matplotlib.pyplot as plot
 import matplotlib.cm as cm # cm.rainbow
-import sys, pprint, random, math, numpy, simpy, getopt, itertools, sympy, textwrap
+import sys, pprint, random, math, numpy, getopt, itertools, mpmath, textwrap
 
 from rvs import *
 from patch import *
@@ -60,8 +60,8 @@ def prob_T_k_n_geq_t_approx(mu, d, k, n, t):
       tau = max(0, t - d)
       q_ = 1 - math.exp(-mu*tau)
       
-      return sympy.mpmath.quad(lambda x: x**(k-r-1) * (1-x)**(n-k), [0, q_] ) / \
-             sympy.mpmath.quad(lambda x: x**(k-r-1) * (1-x)**(n-k), [0, 1] )
+      return mpmath.quad(lambda x: x**(k-r-1) * (1-x)**(n-k), [0, q_] ) / \
+             mpmath.quad(lambda x: x**(k-r-1) * (1-x)**(n-k), [0, 1] )
     
     # sum_ = 0
     # for r in range(k):
@@ -126,22 +126,22 @@ def E_T_n_k_w_drop_given_succ_approx(mu, gamma, n, k):
 
 # ##################  X_i ~ G, (l=k, k, n=k+1, \Delta)  ################ #
 def E_T_G_1red(task_t_rv, d, k):
-  E_X_k_k = sympy.mpmath.quad(lambda x: x * k*task_t_rv.cdf(x)**(k-1)*task_t_rv.pdf(x), [0, sympy.mpmath.inf] )
+  E_X_k_k = mpmath.quad(lambda x: x * k*task_t_rv.cdf(x)**(k-1)*task_t_rv.pdf(x), [0, mpmath.inf] )
   return E_X_k_k - \
-        sympy.mpmath.quad(lambda x: k*task_t_rv.cdf(x-d)*(1-task_t_rv.cdf(x))*task_t_rv.cdf(x)**(k-1), [d, sympy.mpmath.inf] )
+        mpmath.quad(lambda x: k*task_t_rv.cdf(x-d)*(1-task_t_rv.cdf(x))*task_t_rv.cdf(x)**(k-1), [d, mpmath.inf] )
   
   # def Pr_T_g_t(t):
   #   t_ = max(d, t)
   #   return (t <= d)*(task_t_rv.cdf(d)**k - task_t_rv.cdf(t)**k) \
   #           + 1 - task_t_rv.cdf(t_)**(k-1) * (k*task_t_rv.cdf(t-d)*(1 - task_t_rv.cdf(t_) ) + task_t_rv.cdf(t_) )
-  # return sympy.mpmath.quad(Pr_T_g_t, [0, sympy.mpmath.inf] )
+  # return mpmath.quad(Pr_T_g_t, [0, mpmath.inf] )
 
 def E_T_G_1red_approx(task_t_rv, d, k):
   # mu = task_t_rv.mean()
   # return task_t_rv.cdf(d+mu) + task_t_rv.var()/2 * task_t_rv.dpdf_dx(d+mu)
-  E_X_k_k = sympy.mpmath.quad(lambda x: x * k*task_t_rv.cdf(x)**(k-1)*task_t_rv.pdf(x), [0, sympy.mpmath.inf] )
+  E_X_k_k = mpmath.quad(lambda x: x * k*task_t_rv.cdf(x)**(k-1)*task_t_rv.pdf(x), [0, mpmath.inf] )
   # return E_X_k_k - \
-  #       sympy.mpmath.quad(lambda x: k*task_t_rv.cdf(x-d)*(1-task_t_rv.cdf(x))*task_t_rv.cdf(x)**(k-1), [d, sympy.mpmath.inf] )
+  #       mpmath.quad(lambda x: k*task_t_rv.cdf(x-d)*(1-task_t_rv.cdf(x))*task_t_rv.cdf(x)**(k-1), [d, mpmath.inf] )
 
 def E_C_G_1red(task_t_rv, d, k, w_cancel=True):
   mu = task_t_rv.mean()
@@ -152,18 +152,18 @@ def E_C_G_1red(task_t_rv, d, k, w_cancel=True):
               + 1 - task_t_rv.cdf(t_)**(k-1) * (k*task_t_rv.cdf(t-d)*(1 - task_t_rv.cdf(t_) ) + task_t_rv.cdf(t_) )
     
     def E_X_k__k_minus_1(k_):
-      return k_*mu - sympy.mpmath.quad(lambda x: x * k_*task_t_rv.cdf(x)**(k_-1)*task_t_rv.pdf(x), [0, sympy.mpmath.inf] )
+      return k_*mu - mpmath.quad(lambda x: x * k_*task_t_rv.cdf(x)**(k_-1)*task_t_rv.pdf(x), [0, mpmath.inf] )
     
-    # E_X_k_k = sympy.mpmath.quad(lambda x: x * k*task_t_rv.cdf(x)**(k-1)*task_t_rv.pdf(x), [0, sympy.mpmath.inf] )
+    # E_X_k_k = mpmath.quad(lambda x: x * k*task_t_rv.cdf(x)**(k-1)*task_t_rv.pdf(x), [0, mpmath.inf] )
     E_T = E_T_G_1red(task_t_rv, d, k)
-    # return k*mu + 2*E_T_G_1red(task_t_rv, d, k) - E_X_k_k - sympy.mpmath.quad(Pr_T_g_t, [0, d] )
+    # return k*mu + 2*E_T_G_1red(task_t_rv, d, k) - E_X_k_k - mpmath.quad(Pr_T_g_t, [0, d] )
     
-    Pr_X_k_k__l__d_plus_X = sympy.mpmath.quad(lambda x: task_t_rv.cdf(d+x)**k*task_t_rv.pdf(x), [0, sympy.mpmath.inf] )
-    Pr_X_k_k_m_1__l__d_plus_X = sympy.mpmath.quad(lambda x: (k*task_t_rv.cdf(d+x)**(k-1)*(1-task_t_rv.cdf(d+x)) + task_t_rv.cdf(d+x)**k)*task_t_rv.pdf(x), [0, sympy.mpmath.inf] )
+    Pr_X_k_k__l__d_plus_X = mpmath.quad(lambda x: task_t_rv.cdf(d+x)**k*task_t_rv.pdf(x), [0, mpmath.inf] )
+    Pr_X_k_k_m_1__l__d_plus_X = mpmath.quad(lambda x: (k*task_t_rv.cdf(d+x)**(k-1)*(1-task_t_rv.cdf(d+x)) + task_t_rv.cdf(d+x)**k)*task_t_rv.pdf(x), [0, mpmath.inf] )
     
     Pr_T_g_d = 1 - task_t_rv.cdf(d)**k
     sum_ = E_X_k__k_minus_1(k) + E_T \
-           + sympy.mpmath.quad(Pr_T_g_t, [d, sympy.mpmath.inf] ) # - max(E_T-d-mu, 0)*(1-Pr_X_k_k__l__d_plus_X)
+           + mpmath.quad(Pr_T_g_t, [d, mpmath.inf] ) # - max(E_T-d-mu, 0)*(1-Pr_X_k_k__l__d_plus_X)
     return min(sum_, E_X_k__k_minus_1(k+1) + E_T_G_1red(task_t_rv, 0, k) )
   else:
     return k*mu + mu*(1 - task_t_rv.cdf(d)**k)
@@ -209,7 +209,7 @@ def E_C_exp_k_l_n(mu, d, k, l, n, w_cancel=False):
 def E_T_exp_k_l_n(mu, d, k, l, n):
   q = 1 - math.exp(-mu*d)
   
-  # E_T = d - sympy.mpmath.quad(lambda x: sum([binomial(l,i)*(1-math.exp(-mu*x) )**i * math.exp(-mu*x)**(l-i) for i in range(k, l+1) ] ), [0, d] )
+  # E_T = d - mpmath.quad(lambda x: sum([binomial(l,i)*(1-math.exp(-mu*x) )**i * math.exp(-mu*x)**(l-i) for i in range(k, l+1) ] ), [0, d] )
   # for r in range(k):
   #   E_T += (H(n-r) - H(n-k) ) * binomial(l,r) * q**r * (1-q)**(l-r)
   # return E_T
@@ -225,10 +225,10 @@ def E_T_exp_k_l_n_approx(mu, d, k, l, n):
   # for r in range(k+1):
   #   E_T += (H(n) - H(n-r) ) * binomial(k,r) * q**r * (1-q)**(k-r)
   
-  # E_T = d - sympy.mpmath.quad(lambda x: sum([binomial(l,i)*(1-math.exp(-mu*x) )**i * math.exp(-mu*x)**(l-i) for i in range(k, l+1) ] ), [0, d] )
+  # E_T = d - mpmath.quad(lambda x: sum([binomial(l,i)*(1-math.exp(-mu*x) )**i * math.exp(-mu*x)**(l-i) for i in range(k, l+1) ] ), [0, d] )
   
   # E_T = d - 1/mu*sum([binomial(l,i)*B(i+1, l-i, u_l=q) for i in range(k, l+1) ] )
-  # E_T = d + 1/mu*math.log(1-q)*I(q,k,l-k+1) - 1/mu/B(k,l-k+1)*sympy.mpmath.quad(lambda x: math.log(1-x)*x**(k-1) * (1-x)**(l-k), [0, q] )
+  # E_T = d + 1/mu*math.log(1-q)*I(q,k,l-k+1) - 1/mu/B(k,l-k+1)*mpmath.quad(lambda x: math.log(1-x)*x**(k-1) * (1-x)**(l-k), [0, q] )
   # E_T = d + 1/mu*math.log(1-q)*I(q,k,l-k+1) - 1/mu/B(k,l-k+1)*sum([-1/i * B(k+i,l-k+1,u_l=q) for i in range(1, 100) ] )
   # E_T = d + 1/mu*math.log(1-q)*I(q,k,l-k+1) - 1/mu/B(k,l-k+1)*sum([-1/i * B(k+i,l-k+1,u_l=q) for i in range(1, 2) ] )
   
@@ -280,7 +280,7 @@ def E_T_exp_k_n(mu, d, k, n):
   for r in range(k+1):
     E_H_n_r += H(n-r) * binomial(k,r) * q**r * (1-q)**(k-r)
   
-  return d - sympy.mpmath.quad(lambda x: (1-math.exp(-mu*x) )**k, [0, d] ) + \
+  return d - mpmath.quad(lambda x: (1-math.exp(-mu*x) )**k, [0, d] ) + \
          1/mu*(E_H_n_r - H(n-k) )
         # 1/mu*sum_
 
@@ -332,11 +332,11 @@ def d_E_T_shiftedexp_k_n_dk(D, mu, d, k, n):
   q_ = 1 - math.exp(-mu*(d+D/k) )
   # return D/k**2 * (-2 + q_**k - k*(1-q_)/(n-k*q_) )
   
-  # Beta_q_k_0 = sympy.mpmath.quad(lambda x: x**(k-1) * 1/(1-x), [0, q_] )
+  # Beta_q_k_0 = mpmath.quad(lambda x: x**(k-1) * 1/(1-x), [0, q_] )
   # rhs = mu*D/k**2 * q_**k - k*Beta_q_k_0 + (mu*D/k*(1-q_) - q_)/(n-k*q_) + 1/(n-k)
   # return -2*D/k**2 + 1/mu*rhs
   
-  Beta_q_ = sympy.mpmath.quad(lambda x: x**k * 1/(1-x), [0, q_] )
+  Beta_q_ = mpmath.quad(lambda x: x**k * 1/(1-x), [0, q_] )
   rhs = (mu*D*(k+1)/k**2 * (1-q_)/q_ - math.log(q_) )*Beta_q_ + (mu*D/k*(1-q_) - q_)/(n-k*q_) + 1/(n-k)
   r = -2*D/k**2 + 1/mu*rhs
   print("k= {}, r= {}".format(k, r) )
@@ -344,8 +344,8 @@ def d_E_T_shiftedexp_k_n_dk(D, mu, d, k, n):
 
   # q_k = 1 - math.exp(-mu*(d+D/k) )
   # q_k_1 = 1 - math.exp(-mu*(d+D/(k-1) ) )
-  # # B_diff = sympy.mpmath.quad(lambda x: x**(k-1) * 1/(1-x), [0, q_k_1] ) - \
-  # #         sympy.mpmath.quad(lambda x: x**k * 1/(1-x), [0, q_k] )
+  # # B_diff = mpmath.quad(lambda x: x**(k-1) * 1/(1-x), [0, q_k_1] ) - \
+  # #         mpmath.quad(lambda x: x**k * 1/(1-x), [0, q_k] )
   # B_diff = q_k**k/k # q_k_1**k/k
   # r = 2*D*(1/k - 1/(k-1) ) + 1/mu*(B_diff + math.log((n-k*q_k)/(n-(k-1)*q_k_1) ) + 1/(n-k+1) )
   # print("k= {}, r= {}".format(k, r) )
@@ -587,11 +587,11 @@ def E_C_pareto_k_c(loc, a, d, k, c, w_cancel=True):
     if c == 1:
       if d <= loc:
         E_X__X_leq_d = 0
-        E_Y = sympy.mpmath.quad(proxy, [0, sympy.mpmath.inf] )
+        E_Y = mpmath.quad(proxy, [0, mpmath.inf] )
         return k*(q*E_X__X_leq_d + (1-q)*(2*E_Y + d) )
       else:
         E_X__X_leq_d = loc*a/(a-1)*(1 - (loc/d)**(a-1) )/(1 - (loc/d)**a)
-        E_Y = sympy.mpmath.quad(proxy, [0, sympy.mpmath.inf] )
+        E_Y = mpmath.quad(proxy, [0, mpmath.inf] )
         return k*(q*E_X__X_leq_d + (1-q)*(2*E_Y + d) )
 
 def E_C_pareto_k_c_approx(loc, a, d, k, w_cancel=True):
@@ -611,29 +611,29 @@ def E_C_pareto_k_c_approx(loc, a, d, k, w_cancel=True):
       # E_Y = l-d + l**a*(l**(1-a) - (l+d)**(1-a) )/(a-1) \
       #       + l**(2*a) * (l*(l+d))**(a-1/2) / (2*a-1)
       
-      # E_Y = l-d + l**a*sympy.mpmath.quad(lambda x: (x+d)**(-a), [l-d, l] ) \
-      #       + l**(2*a)*sympy.mpmath.quad(lambda x: x**(-a) * (x+d)**(-a), [l, sympy.mpmath.inf] )
-      # E_Y = l-d + l**a*sympy.mpmath.quad(lambda x: (x+d)**(-a), [l-d, l] ) \
-      #       + (l**(2*a)*sympy.mpmath.quad(lambda x: x**(-a) * x**(-a), [l, sympy.mpmath.inf] ) \
-      #         + l**(2*a)*sympy.mpmath.quad(lambda x: (x+d)**(-a) * (x+d)**(-a), [l, sympy.mpmath.inf] ) )/2
+      # E_Y = l-d + l**a*mpmath.quad(lambda x: (x+d)**(-a), [l-d, l] ) \
+      #       + l**(2*a)*mpmath.quad(lambda x: x**(-a) * (x+d)**(-a), [l, mpmath.inf] )
+      # E_Y = l-d + l**a*mpmath.quad(lambda x: (x+d)**(-a), [l-d, l] ) \
+      #       + (l**(2*a)*mpmath.quad(lambda x: x**(-a) * x**(-a), [l, mpmath.inf] ) \
+      #         + l**(2*a)*mpmath.quad(lambda x: (x+d)**(-a) * (x+d)**(-a), [l, mpmath.inf] ) )/2
       
-      # E_Y = (sympy.mpmath.quad(proxy_u, [0, sympy.mpmath.inf] ) + sympy.mpmath.quad(proxy_l, [0, sympy.mpmath.inf] ) )/2
-      E_Y = sympy.mpmath.quad(tail_delayed, [0, sympy.mpmath.inf] )
+      # E_Y = (mpmath.quad(proxy_u, [0, mpmath.inf] ) + mpmath.quad(proxy_l, [0, mpmath.inf] ) )/2
+      E_Y = mpmath.quad(tail_delayed, [0, mpmath.inf] )
       
       return k*(q*E_X__X_leq_d + (1-q)*(2*E_Y + d) )
     else:
       E_X__X_leq_d = l*a/(a-1)*(1 - (l/d)**(a-1) )/(1 - (l/d)**a)
       # E_Y = (a*l + d)/2/(a-1)
-      # E_Y = sympy.mpmath.quad(proxy, [0, sympy.mpmath.inf] )
+      # E_Y = mpmath.quad(proxy, [0, mpmath.inf] )
       
-      # E_Y = d**a*sympy.mpmath.quad(lambda x: (x+d)**(-a), [0, l] ) \
-      #       + (l*d)**a*sympy.mpmath.quad(lambda x: x**(-a) * (x+d)**(-a), [l, sympy.mpmath.inf] )
-      # E_Y = d**a*sympy.mpmath.quad(lambda x: (x+d)**(-a), [0, l] ) \
-      #       + ((l*d)**a*sympy.mpmath.quad(lambda x: x**(-a) * x**(-a), [l, sympy.mpmath.inf] )
-      #         + (l*d)**a*sympy.mpmath.quad(lambda x: (x+d)**(-a) * (x+d)**(-a), [l, sympy.mpmath.inf] ) )/2
+      # E_Y = d**a*mpmath.quad(lambda x: (x+d)**(-a), [0, l] ) \
+      #       + (l*d)**a*mpmath.quad(lambda x: x**(-a) * (x+d)**(-a), [l, mpmath.inf] )
+      # E_Y = d**a*mpmath.quad(lambda x: (x+d)**(-a), [0, l] ) \
+      #       + ((l*d)**a*mpmath.quad(lambda x: x**(-a) * x**(-a), [l, mpmath.inf] )
+      #         + (l*d)**a*mpmath.quad(lambda x: (x+d)**(-a) * (x+d)**(-a), [l, mpmath.inf] ) )/2
       
-      # E_Y = (sympy.mpmath.quad(proxy_u, [0, sympy.mpmath.inf] ) + sympy.mpmath.quad(proxy_l, [0, sympy.mpmath.inf] ) )/2
-      E_Y = sympy.mpmath.quad(tail, [0, sympy.mpmath.inf] )
+      # E_Y = (mpmath.quad(proxy_u, [0, mpmath.inf] ) + mpmath.quad(proxy_l, [0, mpmath.inf] ) )/2
+      E_Y = mpmath.quad(tail, [0, mpmath.inf] )
       
       return k*(q*E_X__X_leq_d + (1-q)*(2*E_Y + d) )
 

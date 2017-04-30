@@ -1,9 +1,10 @@
-import inspect, math, sympy, scipy, itertools
+import inspect, math, mpmath, scipy, itertools
 
 dark_color = itertools.cycle(('green', 'red', 'gray', 'blue', 'magenta', 'brown', 'purple', 'goldenrod', 'gold', 'olive', 'orangered', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise', 'darkgray'))
 light_color = itertools.cycle(('silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise'))
 linestyle = itertools.cycle(('-', '--', '-.', ':') )
-marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'D', '<', '>', '1', '2', '3', '4') )
+marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', '<', '>', 'd', '1' , '2', '3', '4') )
+skinny_marker_l = ['x', '+', '1', '2', '3', '4']
 
 INFO = 0
 DEBUG = 1
@@ -46,7 +47,7 @@ def list_to_str(l):
   return ",".join("%s" % e for e in l)
 
 def H_cont(n):
-  return sympy.mpmath.quad(lambda x: (1-x**n)/(1-x), [0, 1] )
+  return mpmath.quad(lambda x: (1-x**n)/(1-x), [0, 1] )
 
 def H(n):
   if n == 0:
@@ -87,7 +88,7 @@ def I(u_l, m, n):
   return scipy.special.betainc(m, n, u_l)
 
 def B(m, n, u_l=1):
-  return sympy.mpmath.quad(lambda x: x**(m-1) * (1-x)**(n-1), [0, u_l] )
+  return mpmath.quad(lambda x: x**(m-1) * (1-x)**(n-1), [0, u_l] )
   # if u_l == 1:
   #   return scipy.special.beta(m, n)
   # else:

@@ -44,7 +44,7 @@ def plot_pareto():
   plot.gcf().clear()
 
 # #####################  (k, \Delta)  ################### #
-def sim_arepeat_k(task_t_rv, d, k, c=1, num_run=1000):
+def sim_arepeat_k_c(task_t_rv, d, k, c=1, num_run=1000):
   stat_id__trial_stat_l_m = {'E_T': [], 'E_C': [], 'E_C_wc': [] }
   for i in range(num_run):
     i__t_l_m = {i:[(0, task_t_rv.gen_sample() ) ] for i in range(k) }

@@ -92,8 +92,7 @@ def test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l=[], w_sys=True, mixed
             rgroup_l.append([7, 8] )
         sym__rgroup_l_map[sym] = rgroup_l
       pg = MT_PacketGenerator(env, _id="p_gen",
-                             adist=lambda: random.expovariate(arr_rate),
-                             sdist=lambda: 1,
+                             adist=lambda: random.expovariate(arr_rate), sdist=lambda: 1,
                              sym_l=sym_l)
         
       log(WARNING, "sym__rgroup_l_map=\n {}".format(pprint.pformat(sym__rgroup_l_map) ) )
@@ -103,8 +102,7 @@ def test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l=[], w_sys=True, mixed
       pg.out = a_q
     else:
       pg = PacketGenerator(env, _id="p_gen",
-                           adist=lambda: random.expovariate(arr_rate),
-                           sdist=lambda: 1,
+                           adist=lambda: random.expovariate(arr_rate), sdist=lambda: 1,
                            sym=SIMPLEX_TRAFF_SYM)
       a_q = AVQ("a_q", env, k, r, t, qid_l, qmu_l, w_sys=w_sys)
       # aq_monitor = AVQMonitor(env, aq=a_q, poll_dist=lambda: 0.1)
@@ -154,57 +152,45 @@ def test_simplex_q(num_f_run, arr_rate, mu, k, r, t, qmu_l=[], w_sys=True, mixed
   
 def plot_winning_freqs():
   k, r, t = 2, 2, 1
-  mu = 1.0
-  # Inner bound on the arr_rate for stability
-  def beta(x, y):
-    return math.gamma(x)*math.gamma(y)/math.gamma(x+y)
-  E_S_sm = 1/(mu*r)*beta(t+1, 1/r)
-  arr_rate_ub = 1/E_S_sm
+  mu = 1
+  arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu, w_sys=True)
   print("plot_winning_freqs:: k= {}, r= {}, t= {}, mu= {}, arr_rate_ub={}".format(k, r, t, mu, arr_rate_ub) )
   arr_rate_l = []
   qid__win_freq_l_map = {}
-  # for arr_rate in numpy.arange(0.1, 1.05, 0.1):
-  # for arr_rate in numpy.arange(0.1, 2.0, 0.2):
-  # for arr_rate in numpy.arange(0.05, arr_rate_ub*1.25, 0.05):
-  for arr_rate in numpy.arange(0.05, arr_rate_ub*1.1, arr_rate_ub/10):
+  for arr_rate in numpy.linspace(0.05, arr_rate_ub*1.1, 10):
     env = simpy.Environment()
     pg = PacketGenerator(env, _id="p_gen",
-                         adist=lambda: random.expovariate(arr_rate),
-                         sdist=lambda: 1)
+                         adist=lambda: random.expovariate(arr_rate), sdist=lambda: 1,
+                         sym=SIMPLEX_TRAFF_SYM)
     num_q = 1 + t*r
-    qid_l = ["{}".format(i) for i in range(1, num_q + 1) ]
+    qid_l = ["{}".format(i) for i in range(num_q) ]
     a_q = AVQ("a_q", env, k, r, t, qid_l, qserv_dist_l=[mu for i in range(num_q) ] )
     
     pg.out = a_q
     pg.init()
     # aq_monitor = AVQMonitor(env, aq=a_q, poll_dist=lambda: 1)
     
-    # env.run(until=500)
-    env.run(until=50000)
+    env.run(until=500) # 50000
     
     total_num_wins = sum([n for i, n in a_q.join_sink.qid__num_win_map.items() ] )
     qid__win_freq_map = {i:float(n)/total_num_wins for i, n in a_q.join_sink.qid__num_win_map.items() }
     print("arr_rate= {}, qid__win_freq_map= {}".format(arr_rate, pprint.pformat(qid__win_freq_map) ) )
     
     arr_rate_l.append(arr_rate)
-    q_counter = 0
     for qid, win_freq in qid__win_freq_map.items():
       if qid not in qid__win_freq_l_map:
         qid__win_freq_l_map[qid] = []
-        q_counter += 1
       qid__win_freq_l_map[qid].append(win_freq)
   
-  ax = plot.gca()
-  ax.grid(True)
-  ax.set_prop_cycle(cycler('color', ['k', 'r', 'b'] ) ) # + cycler('lw', [1, 1, 1, 1] )
-  qid__latex_symbol_map = {"1":"s", "2":"{1,1}", "3":"{1,2}"} # ["\\gamma", "\\alpha", "\\beta"]
+  plot.axhline(y=0.6, label=r'lower-bound, $w_0$', c=next(dark_color), lw=2, ls='--')
+  plot.axhline(y=0.4, label=r'upper-bound, $w_1$,$w_2$', c=next(dark_color), lw=2, ls='--')
   for qid, win_freq_l in qid__win_freq_l_map.items():
-    plot.plot(arr_rate_l, win_freq_l, 'o-', label=r'$w_{}$'.format(qid__latex_symbol_map[qid] ) )
+    plot.plot(arr_rate_l, win_freq_l, label=r'sim,$w_{}$'.format(qid), color=next(dark_color), ms=8, mew=2, ls=':')
   plot.legend()
   plot.xlabel(r'$\lambda$')
   plot.ylabel("Winning frequency")
   plot.title(r'$\mu$= {}'.format(mu) )
-  plot.savefig("plot_winning_freqs_avq.png")
+  plot.savefig("plot_winning_freqs.png")
 
 def plot_simplex(num_q):
   w_sys = True # False
@@ -504,8 +490,8 @@ if __name__ == "__main__":
   
   # test_simplex_q(num_f_run=1, arr_rate=0.1, mu=1, k=2, r=2, t=1, mixed_traff=True)
   
-  # plot_winning_freqs()
-  plot_simplex(num_q)
+  plot_winning_freqs()
+  # plot_simplex(num_q)
   # plot_mds(num_q)
   # plot_mds_n_2(num_q)
   # plot_avq()

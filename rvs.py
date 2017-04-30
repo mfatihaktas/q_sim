@@ -1,4 +1,4 @@
-import math, random, numpy
+import math, random, numpy, csv
 from scipy.stats import *
 from patch import *
 
@@ -79,4 +79,25 @@ class Exp(RV):
   
   def gen_sample(self):
     return self.D + random.expovariate(self.mu)
+
+class Google(RV):
+  def __init__(self, k):
+    RV.__init__(self, l_l=0, u_l=float("inf") )
+    
+    self.k = k
+    self.sample_l = []
+    with open("task_lifetimes_for_jobs_w_num_task_{}.dat".format(k), mode="rt") as f:
+      reader = csv.reader(f)
+      for line in reader:
+        self.sample_l.append(float(line[0] ) )
+    self.sample_l.sort()
+    self.num_sample = len(self.sample_l)
   
+  def __str__(self):
+    return "Google(k= ".format(self.k)
+  
+  def mean(self):
+    return sum(self.sample_l)/self.num_sample
+  
+  def gen_sample(self):
+    return self.sample_l[math.floor(self.num_sample*random.random() ) ]
