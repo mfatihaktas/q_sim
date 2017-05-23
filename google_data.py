@@ -40,7 +40,8 @@ e_to_i = {
 def counter_to_furl(counter):
   part = str(counter)
   part = (5 - len(part) )*'0' + part
-  return "/home/ubuntu/task_events/part-" + part + "-of-00500.csv.gz"
+  # return "/home/ubuntu/task_events/part-" + part + "-of-00500.csv.gz"
+  return "/cac/u01/mfa51/Desktop/google_cluster_data/task_events/part-" + part + "-of-00500.csv.gz"
 
 def deneme():
   job_task_i__sch_finish_time_m = {}
@@ -251,21 +252,66 @@ def plot_task_lifetime_hist(k):
   plot.gcf().clear()
   log(WARNING, "done.")
 
+def pplot_task_lifetime_hist(k):
+  lifetime_l = []
+  with open("task_lifetimes_for_jobs_w_num_task_{}.dat".format(k), mode="rt") as f:
+    reader = csv.reader(f)
+    for line in reader:
+      lifetime_l.append(float(line[0] )/60/60)
+  
+  lifetime_l = numpy.sort(lifetime_l)
+  print("len(lifetime_l)= {}".format(len(lifetime_l) ) )
+  # 
+  # results, edges = numpy.histogram(lifetime_l, bins=50, normed=True)
+  # binWidth = edges[1] - edges[0]
+  # plot.bar(edges[:-1], results*binWidth, binWidth)
+  
+  # plot.xlabel("Task execution time (hour)")
+  # plot.ylabel("Fraction of tasks")
+  # plot.title(r'Execution trace of the same job with ${}$ tasks'.format(k) )
+  
+  x_l = lifetime_l[::-1]
+  y_l = numpy.arange(lifetime_l.size)/lifetime_l.size
+  # plot.yscale('log')
+  plot.step(x_l, y_l, 'bo', lw=1, linestyle=':')
+  # plot.xlabel(r'$x$ (hour)')
+  # plot.ylabel(r'$Pr\{X > x\}$')
+  plot.xlabel(r'Task lifetime (hour)', fontsize=13)
+  plot.ylabel(r'Tail distribution', fontsize=13)
+  # plot.title(r'Empirical tail distribution of task exection time for jobs with {} tasks'.format(k) )
+  plot.title(r'Jobs with {} tasks'.format(k), fontsize=13)
+  
+  fig = plot.gcf()
+  def_size = fig.get_size_inches()
+  print("def_size= {}".format(def_size) )
+  # fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.4)
+  fig.set_size_inches(4, 3)
+  fig.tight_layout()
+  # plot.savefig("pplot_task_lifetime_hist_k_{}.pdf".format(k) )
+  plot.savefig("pplot_task_lifetime_hist_k_{}.png".format(k) )
+  fig.clear()
+
 if __name__ == "__main__":
   # Uncomment with caution!
   # write_num_tasks_per_job()
   # do_possible_merges_in_num_tasks()
   
+  # write_jobs_w_num_task(num_task=15)
   # write_jobs_w_num_task(num_task=400)
   # write_jobs_w_num_task(num_task=1000)
   # write_jobs_w_num_task(num_task=1050)
   
+  # write_task_lifetimes(num_task=15)
   # write_task_lifetimes(num_task=400)
   # write_task_lifetimes(num_task=1000)
   # write_task_lifetimes(num_task=1050)
   
   # plot_num_tasks_hist()
-  plot_task_lifetime_hist(k=400)
-  plot_task_lifetime_hist(k=1000)
-  plot_task_lifetime_hist(k=1050)
+  # plot_task_lifetime_hist(k=15)
+  # plot_task_lifetime_hist(k=400)
+  # plot_task_lifetime_hist(k=1000)
+  # plot_task_lifetime_hist(k=1050)
   
+  pplot_task_lifetime_hist(k=400)
+  pplot_task_lifetime_hist(k=1000)
+  pplot_task_lifetime_hist(k=1050)

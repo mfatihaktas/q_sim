@@ -34,6 +34,15 @@ def E_T_sys__mds_n_2(l, mu, n):
   return E_S + (l/2)*E_S_2/(1 - l*E_S)
 
 # ------------------------------------  MDS: Full-Data Download  ---------------------------------- #
+def mds_inner_bound_on_arr_rate(mu, n, k):
+  if n == k and k == 2:
+    return mu
+  sm_mds_n_k_E_S = 1/mu * (H(n) - H(n-k) )
+  return 1/sm_mds_n_k_E_S
+
+def mds_exact_bound_on_arr_rate(mu, n, k):
+  return n*mu/k
+
 def E_T_mds_n_r_2(l, mu, n, r):
   # Exact when n is divided into (r,2)'s where each arriving job is sent to one uniformly, independently
   return E_T_mds_n_2(r/n * l, mu, r)
@@ -45,58 +54,95 @@ def E_T_mds_n_2_no_task_cancel_lb(l, mu, n, l_s):
   # Arriving jobs are split into n but once the job is completed, remaining tasks don't get cancelled
   return 1/(l_s + l) * (H(n) - H(n-2) )
 
-def E_T_mds_n_k(l, mu, n, k, l_s=None):
-  if n == 1:
-    return 0
-  elif k == 1:
+def E_S_mds_type_i(mu, n, k, i): # i in [0, k-1]
+  return 1/mu * (H(n-i) - H(n-k) )
+def E_S_2_mds_type_i(mu, n, k, i): # i in [0, k-1]
+  return 1/mu**2 * (H_2(n-i) - H_2(n-k) ) + E_S_mds_type_i(mu, n, k, i)**2
+
+def plot_moments_for_types():
+  mu = 1
+  n, k = 20, 15
+  gamma = mu
+  i_l = []
+  E_S_mds_type_i_l, E_S_2_mds_type_i_l = [], []
+  E_S_rep_t_l, E_S_2_rep_t_l = [], []
+  for i in range(1, k):
+    i_l.append(i)
+    E_S_mds_type_i_l.append(E_S_mds_type_i(mu, n, k, i) )
+    E_S_2_mds_type_i_l.append(E_S_2_mds_type_i(mu, n, k, i) )
+    # E_S_rep_t_l.append(1/(t+1)/mu)
+    # E_S_2_rep_t_l.append(2/((t+1)*mu)**2 )
+  plot.plot(i_l, E_S_mds_type_i_l, color=next(dark_color), label=r'$E[S], simplex$', marker=next(marker), linestyle=':', mew=2)
+  plot.plot(i_l, E_S_2_mds_type_i_l, color=next(dark_color), label=r'$E[S^2]$, simplex', marker=next(marker), linestyle=':', mew=2)
+  # plot.plot(i_l, E_S_rep_t_l, color=next(dark_color), label=r'$E[S]$, rep', marker=next(marker), linestyle=':', mew=2)
+  # plot.plot(i_l, E_S_2_rep_t_l, color=next(dark_color), label=r'$E[S^2]$, rep', marker=next(marker), linestyle=':', mew=2)
+  
+  plot.legend()
+  plot.xlabel(r'$i$')
+  plot.ylabel("")
+  plot.title(r'$mu= {}, n= {}, k= {}$'.format(mu, n, k) )
+  fig = plot.gcf()
+  def_size = fig.get_size_inches()
+  fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.4)
+  fig.tight_layout()
+  plot.savefig("plot_moments_for_types.pdf")
+  plot.gcf().clear()
+  log(WARNING, "done.")
+
+def E_T_mds_n_k(l, mu, n, k, p_i_l=[], l_s=None, naive=False, incremental=False):
+  if k == 1:
     return 1/(n*mu - l)
   elif k == 2:
     return E_T_mds_n_2(l, mu, n, l_s)
+  else:
+    E_S_mds_type_i_l, E_S_2_mds_type_i_l = [], []
+    for i in range(k):
+      E_S_mds_type_i_l.append(E_S_mds_type_i(mu, n, k, i) )
+      E_S_2_mds_type_i_l.append(E_S_2_mds_type_i(mu, n, k, i) )
+    # p_i_l = [1/k for i in range(k) ]
+    
+    if len(p_i_l) == 0:
+      E_X = 1/l
+      E_S_min = sum(E_S_mds_type_i_l)/len(E_S_mds_type_i_l)
+      ro_max = E_S_min/E_X
+      
+      t = k-1
+      p_0 = (1-ro_max)/(1-ro_max**(t+1) )
+      def p_i(i):
+        if naive:
+          return 1/(t+1)
+        else:
+          return ro_max**i * p_0
+      p_i_l = [p_i(i) for i in range(t+1) ]
+      # Improves estimates of ro_m's incrementally
+      if incremental:
+        ro_i_l = []
+        for i in range(t+1):
+          # print("i= {}".format(i) )
+          A = sum([numpy.prod(ro_i_l[:j] ) for j in range(i+1) ] )
+          
+          E_Y = E_X - E_S_min
+          B = (t-i)*numpy.prod(ro_i_l[:i] )
+          # print("A= {}, B= {}, (E_X-E_Y*A)/B/E_Y= {}".format(A, B, (E_X-E_Y*A)/B/E_Y) )
+          ro_i = min((E_X-E_Y*A)/B/E_Y, 1)/2
+          ro_i_l.append(ro_i)
+          p_0 = 1/(sum([numpy.prod(ro_i_l[:j] ) for j in range(i+1) ] ) + numpy.prod(ro_i_l[:i+1] )*(t-i) )
+          for i_ in range(t+1):
+            p_i_l[i_] = numpy.prod(ro_i_l[:i_] )*p_0
+          # print("p_0= {}, ro_i_l= {}, p_i_l= {}".format(p_0, ro_i_l, p_i_l) )
+    E_S = sum([E_S_mds_type_i_l[i]*p_i for i,p_i in enumerate(p_i_l) ] )
+    E_S_2 = sum([E_S_2_mds_type_i_l[i]*p_i for i,p_i in enumerate(p_i_l) ] )
+    E_T = E_S + l*E_S_2/2/(1-l*E_S)
+    if E_T < 0 or E_T > 30: return None
+    return E_T
   
 def E_T_mds_n_2(l, mu, n, l_s=None):
-  # """
   if n == 2:
-    # if l_s is not None:
-    #   mu = mu - l_s
-    # ro = l/mu
-    # return (12 - ro)/(8*(mu - l) )
-    
-    # A LB
-    # ro = l/mu
-    # return (12 - ro)/(8*(mu - l) ) - 1/(mu - l) + 1/(mu - l_s - l)
     # An approximation
     if l_s is not None:
       l = l + l_s
     ro = l/mu
     return (12 - ro)/(8*(mu - l) )
-    
-    # if l_s is not None:
-    #   ro = l/mu
-    #   # return (12 - ro)/(8*(mu - l) ) + 1/(mu - l_s - l)
-    #   return (12 - ro)/(8*(mu - l) ) * (l+l_s)/l
-    '''
-    # W/ High-traffic approximation
-    d = 0.02 # mu/4
-    tau = mu/(mu+d)
-    ro = 2*tau + d/(mu+d)
-    p_0 = 1/(1 + ro/(1-tau) )
-    
-    f_jd = ro*(1 - p_0)
-    f_to_c = ro * ro*p_0
-    f_c = f_to_c/f_jd
-    print("f_c= {}".format(f_c) )
-    
-    E_S_c = 1/mu * H(2)
-    E_S_c_2 = 5 / mu**2
-    E_S_p = 1/mu
-    E_S_p_2 = 1 / mu**2
-    
-    E_S = f_c*E_S_c + (1-f_c)*E_S_p
-    E_S_2 = f_c*E_S_c_2 + (1-f_c)*E_S_p_2
-    
-    return E_S + l/2 * E_S_2/(1 - l*E_S)
-    '''
-  # """
   if l_s is None:
     # high-regime assumption
     f_jc = (n - 2)/(n - 1)
@@ -108,7 +154,7 @@ def E_T_mds_n_2(l, mu, n, l_s=None):
       E_S_c = 1/mu * H(2)
     E_S = f_jp*E_S_p + f_jc*E_S_c
     E_S_p_2 = 2 / ((n-1)*mu)**2
-    E_S_c_2 = 1/(mu**2) * (H_2(n) - H_2(n-2) ) + E_S_c**2
+    E_S_c_2 = 1/mu**2 * (H_2(n) - H_2(n-2) ) + E_S_c**2
     E_S_2 = f_jp*E_S_p_2 + f_jc*E_S_c_2
     # mds_E_T = E_S/(1 - l*E_S) # w/ M/M/1 assumption
     mds_E_T = E_S + l/2 * E_S_2/(1 - l*E_S) # w/ M/G/1 assumption
@@ -180,16 +226,11 @@ def E_T_mds_n_k_sm_recur(l, mu, n, k):
     log(ERROR, "Unexpected n= {} <= k= {}".format(n, k) )
     return E_T_mds_n_k_sm(l, mu, n, k)
 
-def mds_inner_bound_on_arr_rate(mu, n, k):
-  if n == k and k == 2:
-    return mu
-  sm_mds_n_k_E_S = 1/mu * (H(n) - H(n-k) )
-  return 1/sm_mds_n_k_E_S
-
-def mds_exact_bound_on_arr_rate(mu, n, k):
-  return n*mu/k
-
 def E_T_mds_n_k_varki_gauri_lb(l, mu, n, k):
   ro = float(l/mu)
   return 1/mu * (H(n) - H(n-k) ) + \
          1/mu * ro*(gen_H(n, ro) - gen_H(n-k, ro) )
+
+if __name__ == "__main__":
+  plot_moments_for_types()
+  

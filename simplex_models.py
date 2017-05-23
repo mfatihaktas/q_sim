@@ -8,27 +8,38 @@ from numpy import linalg
 from patch import *
 # from sim_components import *
 
+def E_T_rep_n_1(arr_rate, mu, n):
+  E_S = 1/n/mu
+  E_S_2 = 2/(n*mu)**2/mu**2
+  
+  E_T = E_S + arr_rate*E_S_2/2/(1-arr_rate*E_S)
+  if E_T < 0 or E_T > 30: return None
+  # if E_T < 0: return None
+  return E_T
+
+def E_T_rep_n_1_split_to_one(arr_rate, mu, n):
+  E_T = 1/(mu - arr_rate/n)
+  if E_T < 0 or E_T > 20: return None
+  return E_T
+
 def E_T_fj_2(arr_rate, mu):
   ro = arr_rate/mu
-  return (12 - ro)/(8*(mu - arr_rate) )
+  E_T = (12 - ro)/(8*(mu - arr_rate) )
+  if E_T < 0: return None
+  return E_T
 
 def simplex_inner_bound_on_arr_rate(r, t, mu, w_sys=True):
   E_S = 1
   if w_sys:
-    def beta(x, y):
-      return math.gamma(x)*math.gamma(y)/math.gamma(x+y)
-    E_S = 1/(mu*r)*beta(t+1, 1/r)
+    E_S = 1/(mu*r)*B(t+1, 1/r)
   else:
     E_S = 1/mu * sum([binomial(t,i) * 2**i*(-1)**(t-i)/(2*t-i) for i in range(t+1) ] )
   
-  return 1/E_S
+  return float(1/E_S)
 
 # -----------------------------------  Simplex w/ split-to-one  ------------------------------- #
 def arr_rate_ub_simplex_split_to_one(t, mu):
-  gamma = mu
-  split_prob_l = [1/(t+1) for g in range(t+1) ]
-  
-  return min(gamma/split_prob_l[0], mu/max(split_prob_l[1:t+1] ) )
+  return mu*(t+1)
 
 def E_T_simplex_split_to_one(t, arr_rate, mu, p_r=None):
   gamma = mu
@@ -41,31 +52,51 @@ def E_T_simplex_split_to_one(t, arr_rate, mu, p_r=None):
         split_prob_l[g] = 1-t*p_r
       else:
         split_prob_l[g] = p_r
-  
   E_T = 0
   for g in range(t+1):
     arr_rate_ = arr_rate*split_prob_l[g]
     if g == 0:
-      E_T += split_prob_l[g] * 1/(gamma-arr_rate_)
+      E_T_mm1 = 1/(gamma-arr_rate_)
+      if E_T_mm1 < 0: return None
+      E_T += split_prob_l[g] * E_T_mm1
     else:
-      E_T += split_prob_l[g] * E_T_fj_2(arr_rate_, mu)
+      E_T_fj = E_T_fj_2(arr_rate_, mu)
+      if E_T_fj == None:
+        return None
+      E_T += split_prob_l[g] * E_T_fj
+  if E_T < 0 or E_T > 20: return None
   return E_T
 
 def plot_E_T_simplex_split_to_one(t, mu):
-  arr_rate_ub = simplex_inner_bound_on_arr_rate(2, t, mu, True)
+  arr_rate_ub = arr_rate_ub_simplex_split_to_one(t, mu)
   
-  color = iter(cm.rainbow(numpy.linspace(0, 1, 4) ) )
-  for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/4):
+  # for arr_rate in numpy.linspace(0.05, arr_rate_ub, 5):
+  for arr_rate in numpy.linspace(0.05, arr_rate_ub, 5):
     p_r_l, E_T_l = [], []
-    for p_r in numpy.arange(0.05, 1, 1/20):
+    for p_r in numpy.linspace(0.05, 1/t, 20):
       p_r_l.append(p_r)
-      E_T_l.append(max(0, E_T_simplex_split_to_one(t, arr_rate, mu, p_r) ) )
-    plot.plot(p_r_l, E_T_l, 'o', color=next(color), label=r't= {}, $\lambda$= {}, $\mu$= {}'.format(t, arr_rate, mu) )
+      E_T_l.append(E_T_simplex_split_to_one(t, arr_rate, mu, p_r=p_r) )
+    l_str = "{0:.2f}".format(arr_rate)
+    plot.plot(p_r_l, E_T_l, label=r'$t= {}, \mu= {}, \lambda= {}$'.format(t, mu, l_str), color=next(dark_color), marker=next(marker) )
     plot.legend()
   plot.xlabel(r'$p_r$')
   plot.ylabel(r'$E[T]$')
-  # plot.title()
   plot.savefig("plot_E_T_simplex_split_to_one.png")
+
+def E_T_simplex_split_to_one_min(t, arr_rate, mu):
+  # print("arr_rate= {}".format(arr_rate) )
+  E_T_pre = None
+  for p_r in numpy.linspace(0.05, 1/t, 100):
+    E_T = E_T_simplex_split_to_one(t, arr_rate, mu, p_r)
+    # print("p_r= {}, E_T= {}".format(p_r, E_T) )
+    if E_T_pre == None:
+      E_T_pre = E_T
+    else:
+      if E_T == None or E_T >= E_T_pre:
+        return E_T_pre
+      else:
+        E_T_pre = E_T
+
 # -----------------------------------------  Simplex(t=1)  ----------------------------------- #
 def simplex_w_one_repair__E_T(arr_rate, mu, c=None):
   if c == None:
@@ -75,7 +106,6 @@ def simplex_w_one_repair__E_T(arr_rate, mu, c=None):
     E_S_p_2 = 0.5/(mu**2)
     E_S = 0.6*E_S_c + 0.4*E_S_p
     E_S_2 = 0.6*E_S_c_2 + 0.4*E_S_p_2
-    # E_T = E_S/(1 - arr_rate*E_S) # w/ M/M/1 assumption
     E_T = E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S) # w/ M/G/1 assumption
     return E_T
   else:
@@ -91,7 +121,7 @@ def simplex_w_one_repair__E_T(arr_rate, mu, c=None):
     E_S_2 = f_c*E_S_c_2 + (1-f_c)*E_S_p_2
     return E_S + arr_rate*E_S_2/2/(1-arr_rate*E_S)
 
-def simplex_w_one_repair__E_T_matrix_analytic(t, arr_rate, mu):
+def E_T_simplex_w_one_repair__matrix_analytic(t, arr_rate, mu):
   l = arr_rate
   a = b = g = mu
   d = a + b + g + l
@@ -174,7 +204,9 @@ def simplex_w_one_repair__E_T_matrix_analytic(t, arr_rate, mu):
   E_N = PI_0_v*numpy.ones((4,1)) - PI_0_v[0, 0] + \
         PI_1_v*((numpy.identity(5)-R)**-2 + (numpy.identity(5)-R)**-1)*numpy.ones((5,1))
   # print("E_N= {}".format(E_N) )
-  return E_N[0, 0]/arr_rate
+  E_T = E_N[0, 0]/arr_rate
+  if E_T > 20: return None
+  return E_T
 
 # -----------------------------------------  Simplex 2 repair  ----------------------------------- #
 def simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu):
@@ -271,17 +303,8 @@ def simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu):
   """
   return state_prob_map
 
-def binomial(x, y):
-  try:
-    binom = factorial(x) // factorial(y) // factorial(x - y)
-  except ValueError:
-    binom = 0
-  return binom
-
 def avq_low_traff_serv_time_first_moment(r, t, mu):
-  def beta(x, y):
-    return math.gamma(x)*math.gamma(y)/math.gamma(x+y)
-  return 1/(mu*r)*beta(t+1, 1/r)
+  return 1/(mu*r)*B(t+1, 1/r)
 
 def avq_low_traff_serv_time_second_moment(r, t, mu):
   second_moment = 0
@@ -292,7 +315,7 @@ def avq_low_traff_serv_time_second_moment(r, t, mu):
     second_moment += binomial(t, j) * (-1)**j * inner_term
   return second_moment
 
-def simplex_w_two_repair__E_T(arr_rate, mu, M):
+def E_T_simplex_t_2(arr_rate, mu, M):
   E_S_c = avq_low_traff_serv_time_first_moment(2, 2, mu)
   E_S_c_2 = avq_low_traff_serv_time_second_moment(2, 2, mu)
   E_S_p_1st = 5/(12*mu)
@@ -325,14 +348,16 @@ def simplex_w_two_repair__E_T(arr_rate, mu, M):
   E_T = E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S)
   return E_T
 
-def simplex_wo_sys_w_two_repair__E_T(arr_rate, mu):
+def E_T_simplex_t_2_wo_sys(arr_rate, mu):
   return 1/(4*mu-arr_rate) + 1/(3*mu-arr_rate) + 2/3/(2*mu-arr_rate)
 
-def simplex_sm_E_T(t, arr_rate, mu, c=None):
+def E_T_simplex_splitmerge(t, arr_rate, mu, c=None):
   if c == None:
     E_S = avq_low_traff_serv_time_first_moment(2, t, mu)
     E_S_2 = avq_low_traff_serv_time_second_moment(2, t, mu)
-    return E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S)
+    E_T = E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S)
+    if E_T < 0 or E_T > 20: return None
+    return E_T
   else:
     if t == 1:
       Cap = 3*mu
@@ -343,12 +368,12 @@ def simplex_sm_E_T(t, arr_rate, mu, c=None):
       log(ERROR, "NOT ready!; t= {}".format(t) )
       return 1
 
-def simplex_wo_sys_sm_E_T(t, arr_rate, mu, c=None):
+def E_T_simplex_splitmerge_wo_sys(t, arr_rate, mu, c=None):
   E_S = 1/mu * sum([binomial(t,i) * 2**i*(-1)**(t-i)/(2*t-i) for i in range(t+1) ] )
   E_S_2 = 2/mu**2 * sum([binomial(t,i) * 2**i*(-1)**(t-i)/(2*t-i) for i in range(t+1) ] )
   return E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S)
   
-def simplex_w_one_repair__parametric_E_T():
+def E_T_simplex_t_1_parametric():
   Cap = 3
   def parametric_E_T(arr_rate, c):
     f_c = 1/(1 + 2/c/(c+2) )
@@ -370,71 +395,7 @@ def simplex_w_one_repair__parametric_E_T():
   plot.xlabel("c")
   plot.ylabel("E[T]")
   plot.title(r'Total service rate= {}'.format(Cap) )
-  plot.savefig("simplex_w_one_repair__parametric_E_T.png")
-
-def simplex_steady_state_prob_hist():
-  k, r, t = 2, 2, 1
-  num_q = int(1 + t*r)
-  qid_l = ["{}".format(i) for i in range(1, num_q + 1) ]
-  qmu_l = [1, 1, 1]
-  def get_state_prob_map(arr_rate):
-    log(WARNING, "arr_rate= {}, k= {}, r= {}, t= {}, qmu_l= {}".format(arr_rate, k, r, t, pprint.pformat(qmu_l) ) )
-    env = simpy.Environment()
-    pg = PacketGenerator(env, _id="p_gen",
-                         adist=lambda: random.expovariate(arr_rate),
-                         sdist=lambda: 1)
-    a_q = AVQ("a_q", env, k, r, t, qid_l, qserv_rate_l=qmu_l)
-    aq_monitor = AVQMonitor(env, aq=a_q, poll_dist=lambda: 0.1)
-    a_q.join_q.out_m = aq_monitor
-    pg.out = a_q
-    env.run(until=50000)
-    
-    # print("aq_monitor.polled_state__counter_map= {}".format(pprint.pformat(aq_monitor.polled_state__counter_map) ) )
-    total_counter = sum([c for rs, c in aq_monitor.polled_state__counter_map.items() ] )
-    state_prob_map = {rs:float(c)/total_counter for rs, c in aq_monitor.polled_state__counter_map.items() }
-    # print("polled_state__counter_map= {}".format(pprint.pformat(polled_state__counter_map) ) )
-    return state_prob_map # ['0,(0,0)']
-  # for arr_rate in numpy.arange(0.05, 1.2, 0.1):
-  color = iter(cm.rainbow(numpy.linspace(0, 1, 20) ) )
-  plot.figure(figsize=(20,10) )
-  for arr_rate in numpy.arange(0.05, 1.3, 0.1):
-  # for arr_rate in numpy.arange(0.05, 0.1, 0.1):
-    state_prob_map = get_state_prob_map(arr_rate)
-    
-    def state(kp, i, j):
-      return "{},({},{})".format(kp, i, j)
-    i__tau_l_map = {}
-    for i in range(10):
-      if i not in i__tau_l_map:
-        i__tau_l_map[i] = []
-      for kp in range(i, 10):
-        s_u, s_l = state(kp, i, 0), state(kp+1, i, 0)
-        if s_u in state_prob_map and s_l in state_prob_map:
-          i__tau_l_map[i].append(state_prob_map[s_l]/state_prob_map[s_u] )
-        # if state(k+1, 0, i) in state_prob_map:
-        #   i__tau_l_map[i].append(state_prob_map[state(k+1, 0, i) ] /state_prob_map[state(k, 0, i) ] )
-    log(WARNING, "i__tau_l_map=\n {}".format(pprint.pformat(i__tau_l_map) ) )
-    #
-    wing_cutoff_i = 2
-    wing_cutoff_sum = 0
-    for s, p in state_prob_map.items():
-      split_l = s.split(",")
-      if int(split_l[1].split("(")[1] ) > wing_cutoff_i or int(split_l[2].split(")")[0] ) > wing_cutoff_i:
-        wing_cutoff_sum += p
-      
-    s_l, p_l = [], []
-    for s, p in state_prob_map.items():
-      if p > 0.01:
-        s_l.append(s)
-        p_l.append(p)
-    plot.bar(range(len(p_l) ), p_l, color=next(color) )
-    plot.xticks([i+0.5 for i in range(len(s_l) ) ], s_l, size='small')
-    plot.xlabel("State")
-    plot.ylabel("Steady-state probability")
-    plot.title(r't= {}, $\lambda$= {}, [$\alpha$, $\beta$, $\gamma$]= {}, sum_on_plot= {}, wing_cutoff_sum= {}'. \
-      format(t, "{0:.2f}".format(arr_rate), pprint.pformat(qmu_l), "{0:.2f}".format(sum(p_l)), "{0:.2f}".format(wing_cutoff_sum) ) )
-    plot.savefig("simplex_steady_state_prob_hist_ar_{0:.2f}.png".format(arr_rate) )
-    plot.clf()
+  plot.savefig("E_T_simplex_t_1_parametric.png")
 
 # ##############################  UB; Simplex(t=2:[sys, MDS(r,2)])  ############################# #
 def E_S_c_avq_sys__mds_r_2(gamma, mu, r):
@@ -490,7 +451,85 @@ def E_T_avq_sys__mds_r_2(arr_rate, gamma, mu, r):
   E_T = E_S + (arr_rate/2)*E_S_2/(1 - arr_rate*E_S)
   return E_T
 
-# ########################################  LB; Simplex(t)  ###################################### #
+# ########################################  Simplex(t)  ###################################### #
+def E_S_type_i(gamma, mu, t, i):
+  return sum([binomial(t-i,j)*2**j * (-1)**(t-i-j) / (gamma+(2*t-i-j)*mu) for j in range(t-i+1) ] )
+def E_S_2_type_i(gamma, mu, t, i):
+  return sum([binomial(t-i,j)*2**j * (-1)**(t-i-j) * 2/(gamma+(2*t-i-j)*mu)**2 for j in range(t-i+1) ] )
+
+def plot_diminishing_return_as_t_incs():
+  mu = 1
+  gamma = mu
+  m_l = []
+  E_S_simplex_type_i_l, E_S_2_simplex_type_i_l = [], []
+  E_S_rep_t_l, E_S_2_rep_t_l = [], []
+  for t in range(1, 20):
+    m_l.append(t)
+    E_S_simplex_type_i_l.append(E_S_type_i(gamma, mu, t, i=t) )
+    E_S_2_simplex_type_i_l.append(E_S_2_type_i(gamma, mu, t, i=t) )
+    E_S_rep_t_l.append(1/(t+1)/mu)
+    E_S_2_rep_t_l.append(2/((t+1)*mu)**2 )
+  plot.plot(m_l, E_S_simplex_type_i_l, color=next(dark_color), label=r'$E[S], simplex$', marker=next(marker), linestyle=':', mew=2)
+  plot.plot(m_l, E_S_2_simplex_type_i_l, color=next(dark_color), label=r'$E[S^2]$, simplex', marker=next(marker), linestyle=':', mew=2)
+  plot.plot(m_l, E_S_rep_t_l, color=next(dark_color), label=r'$E[S]$, rep', marker=next(marker), linestyle=':', mew=2)
+  plot.plot(m_l, E_S_2_rep_t_l, color=next(dark_color), label=r'$E[S^2]$, rep', marker=next(marker), linestyle=':', mew=2)
+  
+  plot.legend()
+  plot.xlabel(r'$t$')
+  plot.ylabel("")
+  plot.title(r'type-$t$ (Fastest) service start, $mu= {}$'.format(mu) )
+  fig = plot.gcf()
+  def_size = fig.get_size_inches()
+  fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.4)
+  fig.tight_layout()
+  plot.savefig("plot_diminishing_return_as_t_incs.pdf")
+  plot.gcf().clear()
+  log(WARNING, "done.")
+
+def E_T_simplex_approx(t, arr_rate, gamma, mu, p_i_l=[], naive=False, incremental=False, arr_rate_ub=False):
+  E_S_simplex_type_i_l, E_S_2_simplex_type_i_l = [], []
+  for i in range(t+1):
+    E_S_simplex_type_i_l.append(E_S_type_i(gamma, mu, t, i) )
+    E_S_2_simplex_type_i_l.append(E_S_2_type_i(gamma, mu, t, i) )
+  
+  if len(p_i_l) == 0:
+    E_X = 1/arr_rate
+    E_S_min = sum(E_S_simplex_type_i_l)/len(E_S_simplex_type_i_l)
+    ro_max = E_S_min/E_X
+    
+    p_0 = (1-ro_max)/(1-ro_max**(t+1) )
+    # if naive:
+    #   p_0 = 1/(1+t*ro_max)
+    def p_i(i):
+      if naive:
+        return 1/(t+1)
+      else:
+        return ro_max**i * p_0
+    p_i_l = [p_i(i) for i in range(t+1) ]
+    # Improves estimates of ro_m's incrementally
+    if incremental:
+      ro_i_l = []
+      for i in range(t+1):
+        # print("i= {}".format(i) )
+        A = sum([numpy.prod(ro_i_l[:j] ) for j in range(i+1) ] )
+        
+        E_Y = E_X - E_S_min
+        B = (t-i)*numpy.prod(ro_i_l[:i] )
+        # print("A= {}, B= {}, (E_X-E_Y*A)/B/E_Y= {}".format(A, B, (E_X-E_Y*A)/B/E_Y) )
+        ro_i = min((E_X-E_Y*A)/B/E_Y, 1)/2
+        ro_i_l.append(ro_i)
+        p_0 = 1/(sum([numpy.prod(ro_i_l[:j] ) for j in range(i+1) ] ) + numpy.prod(ro_i_l[:i+1] )*(t-i) )
+        for i_ in range(t+1):
+          p_i_l[i_] = numpy.prod(ro_i_l[:i_] )*p_0
+        # print("p_0= {}, ro_i_l= {}, p_i_l= {}".format(p_0, ro_i_l, p_i_l) )
+  E_S = sum([E_S_simplex_type_i_l[i]*p_i for i,p_i in enumerate(p_i_l) ] )
+  if arr_rate_ub:
+    return 1/E_S
+  E_S_2 = sum([E_S_2_simplex_type_i_l[i]*p_i for i,p_i in enumerate(p_i_l) ] )
+  E_T = E_S + arr_rate*E_S_2/2/(1-arr_rate*E_S)
+  if E_T < 0 or E_T > 20: return None
+  return E_T
+
 def E_T_simplex_varki_gauri_lb(t, arr_rate, gamma, mu):
   def P_i_next(i):
     return 2*(t-i)*mu/(gamma+(2*t-i)*mu)
@@ -509,147 +548,17 @@ def E_T_simplex_varki_gauri_lb(t, arr_rate, gamma, mu):
   for i in range(t+1):
     E_T = E_T + P_i_next(i)/(mu_i(i) - lambda_i(i) )
   return E_T
-  
-def E_T_simplex_lb(t, arr_rate, gamma, mu, ub=False, naive=False):
-  # def E_S_c(t, gamma, mu):
-  #   return sum([binomial(t,i)*2**i * (-1)**(k-i) / (gamma+(2*k-i)*mu) for i in range(t+1) ] )
-  # def E_S_c_2(t, gamma, mu):
-  #   return sum([binomial(t,i)*2**i * (-1)**(k-i) * 2/(gamma+(2*k-i)*mu)**2 for i in range(t+1) ] )
-  def E_S_p_m(m, t, gamma, mu):
-    return sum([binomial(t-m,i)*2**i * (-1)**(t-m-i) / (gamma+(2*t-m-i)*mu) for i in range(t-m+1) ] )
-  def E_S_p_m_2(m, t, gamma, mu):
-    return sum([binomial(t-m,i)*2**i * (-1)**(t-m-i) * 2/(gamma+(2*t-m-i)*mu)**2 for i in range(t-m+1) ] )
-    
-  # E_S_c = E_S_c(t, gamma, mu)
-  # E_S_c_2 = E_S_c_2(t, gamma, mu)
-  E_S_p_m_l, E_S_p_m_2_l = [], []
-  for m in range(t+1):
-    E_S_p_m_l.append(E_S_p_m(m, t, gamma, mu) )
-    E_S_p_m_2_l.append(E_S_p_m_2(m, t, gamma, mu) )
-  # if t == 1:
-  #   E_S_c = 2/(gamma+mu) - 1/(gamma+2*mu)
-  #   E_S_c_2 = 4/(gamma+mu)**2 - 2/(gamma+2*mu)**2
-  #   E_S_p = 1/(gamma+mu)
-  #   E_S_p_2 = 2/(gamma+mu)**2
-    
-  #   f_c = 0.5
-  #   E_S = f_c*E_S_c + (1-f_c)*E_S_p
-  #   E_S_2 = f_c*E_S_c_2 + (1-f_c)*E_S_p_2
-  #   return E_S + arr_rate*E_S_2/2/(1-arr_rate*E_S)
-  # else:
-  #   log(ERROR, "not implemented!")
-  #   return 1
-  """
-  nu = 2*t*mu+gamma
-  P_01 = 0 # 2*t*mu/nu * mu/nu * (gamma+mu)/nu
-  for i in range(t):
-    prod = 1
-    for j in range(1, i+1):
-      prod *= 2*(t-j)*mu/nu
-    P_01 += prod * (i+1)*mu/nu * (gamma+(i+1)*mu)/nu
-  P_01 *= 2*t*mu/nu
-  # print("_P_01= {}, P_01= {}".format(2*t*mu/nu * mu/nu * (gamma+mu)/nu, P_01) )
-  
-  P_10 = 0 # (gamma+mu)/nu + (1-(2*mu+gamma)/nu)*(2*mu+gamma)/nu
-  for i in range(t):
-    prod = 1
-    for j in range(1, i+1):
-      prod *= (1-(gamma+2*i*mu)/nu)
-    P_10 += prod * (gamma+(i+1)*mu)/nu
-  ro_max = P_01/P_10
-  """
-  E_X = 1/arr_rate
-  E_S_min = sum(E_S_p_m_l)/len(E_S_p_m_l)
-  # E_J_max = E_X/(E_X-E_S_min)
-  # ro_max = 1 - 1/E_J_max
-  # ro_max = compute_ro(t, arr_rate, gamma, mu)
-  # ro_max = min(E_S_min/(E_X-E_S_min), 0.99)
-  # ro_max = min(math.pow(E_S_min/(E_X-E_S_min), 1/t), 0.99)
-  ro_max = E_S_min/E_X
-  # print("ro_max= {}".format(ro_max) )
-  
-  p_0 = (1-ro_max)/(1-ro_max**(t+1) )
-  if naive:
-    p_0 = 1/(1+t*ro_max)
-  def p_m(m):
-    if naive:
-      return 1/(t+1)
-    else:
-      return ro_max**m * p_0
-    # return ro_max**(m != 0) * p_0
-    # if m == t:
-    #  m = m - 1
-    # return 1/2**(m+1)
-  # print("p_0= {}".format(p_0) )
-  p_m_l = (t+1)*[0]
-  for m in range(t+1):
-    p_m_l[m] = p_m(m)
-  # """
-  # Trying to improve lower bound using incremental steps by adjusting ro_m
-  if ub:
-    ro_m_l = []
-    for m in range(t+1):
-      # print("m= {}".format(m) )
-      A = 0
-      for i in range(m+1):
-        A += numpy.prod(ro_m_l[:i] )
-      E_Y = E_X - E_S_min
-      B = (t-m)*numpy.prod(ro_m_l[:m] )
-      # print("A= {}, B= {}, (E_X-E_Y*A)/B/E_Y= {}".format(A, B, (E_X-E_Y*A)/B/E_Y) )
-      ro_m = min((E_X-E_Y*A)/B/E_Y, 1)/2
-      ro_m_l.append(ro_m)
-      p_0 = 1/(sum([numpy.prod(ro_m_l[:i] ) for i in range(m+1) ] ) + numpy.prod(ro_m_l[:m+1] )*(t-m) )
-      for m_ in range(t+1):
-        p_m_l[m_] = numpy.prod(ro_m_l[:m_] )*p_0
-      # print("p_0= {}, ro_m_l= {}, p_m_l= {}".format(p_0, ro_m_l, p_m_l) )
-  # """
-  # E_S = sum(E_S_p_m_l)/len(E_S_p_m_l)
-  # E_S_2 = sum(E_S_p_m_2_l)/len(E_S_p_m_2_l)
-  E_S = sum([E_S_p_m_l[m]*p_m for m,p_m in enumerate(p_m_l) ] )
-  E_S_2 = sum([E_S_p_m_2_l[m]*p_m for m,p_m in enumerate(p_m_l) ] )
-  # E_S = 0.5*E_S_p_m_l[0] + 0.5*sum(E_S_p_m_l[1:] )/t
-  # E_S_2 = 0.5*E_S_p_m_2_l[0] + 0.5*sum(E_S_p_m_2_l[1:] )/t
-  
-  return E_S + arr_rate*E_S_2/2/(1-arr_rate*E_S)
-
-def compute_ro(t, arr_rate, gamma, mu):
-  def E_S_p_m(m, t, gamma, mu):
-    return sum([binomial(t-m,i)*2**i * (-1)**(t-m-i) / (gamma+(2*t-m-i)*mu) for i in range(t-m+1) ] )
-  def E_S_p_m_2(m, t, gamma, mu):
-    return sum([binomial(t-m,i)*2**i * (-1)**(t-m-i) * 2/(gamma+(2*t-m-i)*mu)**2 for i in range(t-m+1) ] )
-  
-  E_S_p_m_l, E_S_p_m_2_l = [], []
-  for m in range(t+1):
-    E_S_p_m_l.append(E_S_p_m(m, t, gamma, mu) )
-    E_S_p_m_2_l.append(E_S_p_m_2(m, t, gamma, mu) )
-  
-  def p_m(m, ro):
-    p_0 = (1-ro)/(1-ro**(t+1) )
-    return ro**m * p_0
-  def E_S(ro):
-    return sum([E_S_p_m_l[m]*p_m(m,ro) for m in range(t+1) ] )
-  
-  E_X = 1/arr_rate
-  E_S_min = E_S_p_m_l[0]
-  ro = 0.99
-  for i in range(10):
-    ro = E_S(ro)/E_X
-    print("i= {}, ro= {}".format(i, ro) )
-  return ro
 
 if __name__ == "__main__":
-  # simplex_w_two_repair__E_T(0.9, 1.0)
-  # simplex_w_one_repair__parametric_E_T()
-  # simplex_steady_state_prob_hist()
-  # E_T_simplex_lb(t=3, arr_rate=0.9, gamma=1, mu=1)
-  # compute_ro(t=3, arr_rate=0.9, gamma=1, mu=1)
-  
   # mu = 1.0
-  # mc_truncation_state_id__state_prob_map_map = {}
+  # mc_truncation_state_id__state_prob_map_iap = {}
   # for mc_truncation_state_id in range(1, 10, 1):
-  #   mc_truncation_state_id__state_prob_map_map[mc_truncation_state_id] = simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu)
-  # log(WARNING, "mc_truncation_state_id__state_prob_map_map= {}".format(pprint.pformat(mc_truncation_state_id__state_prob_map_map) ) )
+  #   mc_truncation_state_id__state_prob_map_iap[mc_truncation_state_id] = simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu)
+  # log(WARNING, "mc_truncation_state_id__state_prob_map_iap= {}".format(pprint.pformat(mc_truncation_state_id__state_prob_map_iap) ) )
   
-  # simplex_w_one_repair__E_T_matrix_analytic(t=3, arr_rate=0.55, mu=1)
-  plot_E_T_simplex_split_to_one(t=3, mu=1)
+  # E_T_simplex_w_one_repair__matrix_analytic(t=3, arr_rate=0.55, mu=1)
+  plot_E_T_simplex_split_to_one(t=1, mu=1)
+  
+  # plot_diminishing_return_as_t_incs()
+  
   

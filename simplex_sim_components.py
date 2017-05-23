@@ -1,32 +1,29 @@
 import simpy, random, copy, pprint
 from simpy.core import BoundClass
 from simpy.resources import base
-from heapq import heappush, heappop
 
 from patch import *
 from deprecated import *
 from sim_components import *
 from mds_sim_components import MDSQ
 
-class MT_PacketGenerator(PacketGenerator):
-  def __init__(self, env, _id, adist, sdist=None, sym_l=None, initial_delay=0, finish=float("inf"), flow_id=0):
-    super().__init__(env, _id, adist, sdist, initial_delay, finish, flow_id)
+class MT_PG(PG):
+  def __init__(self, env, _id, inter_arr_dist, sym_l=None, flow_id=0):
+    super().__init__(env, _id, inter_arr_dist, flow_id)
+    self.sym_l = sym_l
     
     self.sym__n_sent = {}
-    # self.out = None
-    self.action = env.process(self.run())  # starts the run() method as a SimPy process
-
+    env.process(self.run() )
+  
   def run(self):
-    yield self.env.timeout(self.initial_delay)
-    while self.env.now < self.finish:
-      # wait for next transmission
-      yield self.env.timeout(self.adist() )
+    while 1:
+      yield self.env.timeout(self.inter_arr_dist() )
       self.n_sent += 1
       if self.sym_l is not None:
-        sym = self.sym_l[random.randint(0,len(self.sym_l)-1) ]
+        sym = self.sym_l[random.randint(0, len(self.sym_l)-1) ]
         if sym not in self.sym__n_sent:
           self.sym__n_sent[sym] = 0
-        self.sym__n_sent[sym] = self.sym__n_sent[sym] + 1
+        self.sym__n_sent[sym] += 1
         p = Packet(time=self.env.now, size=1, _id=self.n_sent, sym=sym, flow_id=self.flow_id)
       else:
         p = Packet(time=self.env.now, size=1, _id=self.n_sent, flow_id=self.flow_id)
@@ -39,7 +36,6 @@ class MT_JQ(object):
     self.input_qid_l = input_qid_l
     self.sym__rgroup_l_map = sym__rgroup_l_map
     
-    # self.input_id__pq_map = {i: [] for i in input_qid_l}
     self.job_id__p_l_map = {}
     # self.job_id__departed_qid_l_map = {}
     self.qt_l = []
@@ -58,7 +54,6 @@ class MT_JQ(object):
     return "MT_JQ[_id= {}, input_qid_l= {}]".format(self._id, self.input_qid_l)
   
   def state(self):
-    # return [len(pq) for i, pq in self.input_id__pq_map.items() ]
     return None
   
   def check_for_job_completion(self, p):
@@ -85,7 +80,6 @@ class MT_JQ(object):
   def run(self):
     while True:
       p = (yield self.store.get() )
-      # self.input_id__pq_map[p.prev_hop_id].append(p)
       if p.job_id not in self.job_id__p_l_map:
         self.job_id__p_l_map[p.job_id] = []
         # self.job_id__departed_qid_l_map[p.job_id] = []
@@ -101,10 +95,6 @@ class MT_JQ(object):
   def run_c(self):
     while True:
       cp = (yield self.store_c.get() )
-      # for j, pq in self.input_id__pq_map.items():
-      #   for p in pq:
-      #     if p.job_id == cp._id:
-      #       pq.remove(p)
       self.job_id__p_l_map.pop(p.job_id, None)
   
   def put_c(self, cp):
@@ -120,7 +110,7 @@ class MT_JQ(object):
   Ref: When do the Availability Codes Make the Stored Data More Available?
 """
 class AVQ(object): # Availability
-  def __init__(self, _id, env, k, r, t, qid_l, qserv_rate_l, out=None, w_sys=True):
+  def __init__(self, _id, env, k, r, t, qid_l, qmu_l, out=None, w_sys=True):
     self._id = _id
     self.env = env
     self.k = k
@@ -163,26 +153,25 @@ class AVQ(object): # Availability
       for g in range(1, t + 1 + 1):
         q = None
         if g == 1:
-          q = S1_Q(_id=self.qid_l[g-1], env=env, serv_rate=qserv_rate_l[0] )
-          log(DEBUG, "g= {}, q= {}, qserv_rate_l[0]= {}".format(g, q, qserv_rate_l[0]) )
+          q = FCFS(_id=self.qid_l[g-1], env=env, serv_rate=qmu_l[0] )
+          log(DEBUG, "g= {}, q= {}, qmu_l[0]= {}".format(g, q, qmu_l[0]) )
           q.out = self.join_q
         else:
           li = 1+(g-2)*r
           ri = li + r
           # q = MDSQ(_id="".join(["%s," % i for i in qid_l[li:ri] ] ),
           q = MDSQ(_id= self.qid_l[g-1],
-                   env=env, k=k, qid_l=qid_l[li:ri], qserv_rate_l=qserv_rate_l[li:ri], out=self.join_q)
-          log(DEBUG, "g= {}, q= {}, qserv_rate_l[li:ri]= {}".format(g, q, qserv_rate_l[li:ri] ) )
+                   env=env, k=k, qid_l=qid_l[li:ri], qmu_l=qmu_l[li:ri], out=self.join_q)
+          log(DEBUG, "g= {}, q= {}, qmu_l[li:ri]= {}".format(g, q, qmu_l[li:ri] ) )
         self.group_id__q_map[g] = q
     else:
       for g in range(1, t + 1):
         li = (g-1)*r
         ri = li + r
         q = MDSQ(_id="mds{}".format(pprint.pformat(qid_l[li:ri] ) ),
-                 env=env, k=k, qid_l=qid_l[li:ri], qserv_rate_l=qserv_rate_l[li:ri], out=self.join_q)
-        log(DEBUG, "g= {}, q= {}, qserv_rate_l[li:ri]= {}".format(g, q, qserv_rate_l[li:ri] ) )
+                 env=env, k=k, qid_l=qid_l[li:ri], qmu_l=qmu_l[li:ri], out=self.join_q)
+        log(DEBUG, "g= {}, q= {}, qmu_l[li:ri]= {}".format(g, q, qmu_l[li:ri] ) )
         self.group_id__q_map[g] = q
-    
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
     self.out = None
@@ -190,6 +179,7 @@ class AVQ(object): # Availability
     self.action = env.process(self.run_c() )
     
     self.job_id_counter = 0
+    self.type__num_m = (t+1)*[0]
   
   def __repr__(self):
     return "AVQ[k= {}, r= {}, t= {}]".format(self.k, self.r, self.t)
@@ -219,8 +209,20 @@ class AVQ(object): # Availability
   def run_c(self):
     while True:
       cp = (yield self.store_c.get() )
+      # 
+      next_job_id = cp._id + 1
+      type_ = 0
+      for g,q in self.group_id__q_map.items():
+        if g == 1:
+          if not q._in(next_job_id):
+            break
+        else:
+          if q.n_servers_in(next_job_id) < self.r:
+            type_ += 1
+      self.type__num_m[type_] += 1
+      # 
       for g, q in self.group_id__q_map.items():
-        if g != -1 and q._id not in cp.departed_qid_l:
+        if q._id not in cp.departed_qid_l:
           q.put_c(cp.deep_copy() )
   
   def put_c(self, cp):
@@ -228,31 +230,31 @@ class AVQ(object): # Availability
     return self.store_c.put(cp)
 
 class AVQMonitor(object):
-  def __init__(self, env, aq, poll_dist):
-    self.aq = aq
+  def __init__(self, env, q, poll_dist):
+    self.q = q
     self.env = env
     self.poll_dist = poll_dist
     
-    self.t_l = [] # Time steps that the numbers polled from the aq
-    # self.n_l = [] # Num of jobs in the aq
+    self.t_l = [] # Time steps that the numbers polled from the q
+    # self.n_l = [] # Num of jobs in the q
     self.polled_state__counter_map = {}
     self.state__num_found_by_job_departed_map = {}
     self.start_setup__num_found_by_job_departed_map = {}
     
     self.store = simpy.Store(env)
-    self.action = env.process(self.run() )
-    self.action = env.process(self.run_m() )
+    env.process(self.run() )
+    env.process(self.run_m() )
   
   def run(self):
     while True:
       yield self.env.timeout(self.poll_dist() )
       # self.t_l.append(self.env.now)
-      aq_state = self.aq.state()
-      # print("aq_state= {}".format(pprint.pformat(aq_state) ) )
-      sub_qs_state = [max(aq_state) for i in range(len(aq_state) ) ]
+      q_state = self.q.state()
+      # print("q_state= {}".format(pprint.pformat(q_state) ) )
+      sub_qs_state = [max(q_state) for i in range(len(q_state) ) ]
       num_jobs = max(sub_qs_state)
       for i, s in enumerate(sub_qs_state):
-        sub_qs_state[i] -= aq_state[i]
+        sub_qs_state[i] -= q_state[i]
       
       # num_job = max(state)
       # self.n_l.append(num_job)
@@ -266,13 +268,13 @@ class AVQMonitor(object):
     while True:
       p = (yield self.store.get() )
       if p.event_str == MPACKET_JOB_DEPARTED:
-        # state = list_to_str(self.aq.join_q.state() )
-        state = list_to_str(self.aq.state([p._id] ) )
+        # state = list_to_str(self.q.join_q.state() )
+        state = list_to_str(self.q.state([p._id] ) )
         if state not in self.state__num_found_by_job_departed_map:
           self.state__num_found_by_job_departed_map[state] = 0
         self.state__num_found_by_job_departed_map[state] += 1
         
-        state = self.aq.state([p._id] )
+        state = self.q.state([p._id] )
         start_setup = "partial"
         if len(set(state) ) <= 1:
           start_setup = "complete"
@@ -288,13 +290,14 @@ class AVQMonitor(object):
     return self.store.put(p)
   
 # *****************************  Mixed-Traffic Availability Q  ******************************* #
-class MT_AvQ(object):
+class MT_AVQ(object):
   def __init__(self, _id, env, qid_l, qmu_l, sym__rgroup_l_map, w_sys=False, out=None):
     self._id = _id
     self.env = env
     # self.out = out
     
     self.num_q = len(qid_l)
+    self.sym__rgroup_l_map = sym__rgroup_l_map
     
     self.join_sink = JSink(_id, env)
     self.join_sink.out = out
@@ -306,7 +309,7 @@ class MT_AvQ(object):
     self.join_q.out_c = self
     self.join_q.out_m = None # can be set by the caller if desired
     for i, qid in enumerate(qid_l):
-      q = S1_Q(_id=qid, env=env, serv_rate=qmu_l[i] )
+      q = FCFS(_id=qid, env=env, serv_rate=qmu_l[i] )
       log(DEBUG, "i= {}, q= {}".format(i, q) )
       q.out = self.join_q
       self.qid_q_map[i] = q
@@ -314,13 +317,13 @@ class MT_AvQ(object):
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
     self.out = None
-    self.action = env.process(self.run() )
-    self.action = env.process(self.run_c() )
+    env.process(self.run() )
+    env.process(self.run_c() )
     
     self.job_id_counter = 0
   
   def __repr__(self):
-    return "CSQ[qid_l= {}]".format(self.qid_l)
+    return "MT_AVQ[qid_l= {}]".format(self.qid_l)
   
   def state(self, job_id_to_exclude=[]):
     state = []
@@ -345,7 +348,7 @@ class MT_AvQ(object):
     while True:
       cp = (yield self.store_c.get() )
       for g, q in self.qid_q_map.items():
-        if g != -1 and q._id not in cp.departed_qid_l:
+        if q._id not in cp.departed_qid_l:
           q.put_c(cp.deep_copy() )
   
   def put_c(self, cp):
@@ -353,13 +356,13 @@ class MT_AvQ(object):
     return self.store_c.put(cp)
 
 class AVQMonitor(object):
-  def __init__(self, env, aq, poll_dist):
-    self.aq = aq
+  def __init__(self, env, q, poll_dist):
+    self.q = q
     self.env = env
     self.poll_dist = poll_dist
     
-    self.t_l = [] # Time steps that the numbers polled from the aq
-    # self.n_l = [] # Num of jobs in the aq
+    self.t_l = [] # Time steps that the numbers polled from the q
+    # self.n_l = [] # Num of jobs in the q
     self.polled_state__counter_map = {}
     self.state__num_found_by_job_departed_map = {}
     self.start_setup__num_found_by_job_departed_map = {}
@@ -372,12 +375,12 @@ class AVQMonitor(object):
     while True:
       yield self.env.timeout(self.poll_dist() )
       # self.t_l.append(self.env.now)
-      aq_state = self.aq.state()
-      # print("aq_state= {}".format(pprint.pformat(aq_state) ) )
-      sub_qs_state = [max(aq_state) for i in range(len(aq_state) ) ]
+      q_state = self.q.state()
+      # print("q_state= {}".format(pprint.pformat(q_state) ) )
+      sub_qs_state = [max(q_state) for i in range(len(q_state) ) ]
       num_jobs = max(sub_qs_state)
       for i, s in enumerate(sub_qs_state):
-        sub_qs_state[i] -= aq_state[i]
+        sub_qs_state[i] -= q_state[i]
       
       # num_job = max(state)
       # self.n_l.append(num_job)
@@ -391,13 +394,13 @@ class AVQMonitor(object):
     while True:
       p = (yield self.store.get() )
       if p.event_str == MPACKET_JOB_DEPARTED:
-        # state = list_to_str(self.aq.join_q.state() )
-        state = list_to_str(self.aq.state([p._id] ) )
+        # state = list_to_str(self.q.join_q.state() )
+        state = list_to_str(self.q.state([p._id] ) )
         if state not in self.state__num_found_by_job_departed_map:
           self.state__num_found_by_job_departed_map[state] = 0
         self.state__num_found_by_job_departed_map[state] += 1
         
-        state = self.aq.state([p._id] )
+        state = self.q.state([p._id] )
         start_setup = "partial"
         if len(set(state) ) <= 1:
           start_setup = "complete"

@@ -1,9 +1,9 @@
 import inspect, math, mpmath, scipy, itertools
 
-dark_color = itertools.cycle(('green', 'red', 'gray', 'blue', 'magenta', 'brown', 'purple', 'goldenrod', 'gold', 'olive', 'orangered', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise', 'darkgray'))
+dark_color = itertools.cycle(('green', 'black', 'red', 'blue', 'purple', 'gray', 'brown', 'magenta', 'goldenrod', 'gold', 'olive', 'orangered', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise', 'darkgray'))
 light_color = itertools.cycle(('silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise'))
 linestyle = itertools.cycle(('-', '--', '-.', ':') )
-marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', '<', '>', 'd', '1' , '2', '3', '4') )
+marker = itertools.cycle(('^', 'p', '+', 'x', '*', 'v', '<', '>', 'd', '1' , '2', '3', '4') )
 skinny_marker_l = ['x', '+', '1', '2', '3', '4']
 
 INFO = 0
@@ -82,6 +82,13 @@ def binomial(n, k):
     return 0
   else:
     return math.factorial(n)/math.factorial(k)/math.factorial(n-k)
+
+# def binomial(x, y):
+#   try:
+#     binom = factorial(x) // factorial(y) // factorial(x - y)
+#   except ValueError:
+#     binom = 0
+#   return binom
 
 def I(u_l, m, n):
   # return B(m, n, u_l=u_l)/B(m, n)

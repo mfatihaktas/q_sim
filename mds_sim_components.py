@@ -1,53 +1,38 @@
 import simpy, random, copy, pprint
-from simpy.core import BoundClass
-from simpy.resources import base
-from heapq import heappush, heappop
 
 from sim_components import *
 from patch import *
-from deprecated import *
 
-class MDS_PacketGenerator(PacketGenerator):
-  def __init__(self, env, _id, mds_arr_dist, size_dist=None, initial_delay=0, finish=float("inf"), flow_id=0, sys_arr_dist=None):
-    super().__init__(env, _id, mds_arr_dist, size_dist, initial_delay, finish, flow_id)
-    self.sys_arr_dist = sys_arr_dist
+class MDS_PG(PG):
+  def __init__(self, env, _id, inter_arr_dist):
+    super().__init__(env, _id, inter_arr_dist, flow_id=0)
     
-    self.mds_n_sent = 0
-    self.sys_n_sent = 0
+    self.n_sent = 0
     self.out = None
     
-    self.mds_action = env.process(self.mds_run() )  # starts the run() method as a SimPy process
-    if sys_arr_dist is not None:
-      self.sys_action = env.process(self.sys_run() )
+    env.process(self.run() )
   
   def __repr__(self):
-    return "MDS_PacketGenerator[mds_n_sent= {}, sys_n_sent= {}]".format(self.mds_n_sent, self.sys_n_sent)
+    return "MDS_PG[n_sent= {}]".format(self.n_sent)
   
-  def mds_run(self):
-    yield self.env.timeout(self.initial_delay)
-    while self.env.now < self.finish:
-      yield self.env.timeout(self.arr_dist() )
-      self.mds_n_sent += 1
-      self.out.put(Packet(time=self.env.now, size=1, _id=self.mds_n_sent, sym=MDS_TRAFF_SYM) )
-  
-  def sys_run(self):
-    yield self.env.timeout(self.initial_delay)
-    while self.env.now < self.finish:
-      yield self.env.timeout(self.sys_arr_dist() )
-      self.sys_n_sent += 1
-      self.out.put(Packet(time=self.env.now, size=1, _id=self.sys_n_sent, sym=SYS_TRAFF_SYM) )
+  def run(self):
+    while 1:
+      yield self.env.timeout(self.inter_arr_dist() )
+      self.n_sent += 1
+      self.out.put(Packet(time=self.env.now, size=1, _id=self.n_sent, sym=MDS_TRAFF_SYM) )
   
 # *******************************************  MDSQ  ********************************************* #
-# Fork incoming job to all sub-q's, wait for any k task to complete, cancel the remainings.
+# Split arrivals to all, wait for any k for download, cancel the outstanding remainings.
 class MDSQ(object):
-  def __init__(self, _id, env, k, qid_l, qserv_rate_l, r=None, preempt=False, out=None):
+  # r: split each arrival to randomly any r servers
+  def __init__(self, _id, env, k, qid_l, qmu_l, r=None, preempt=False, out=None):
     self._id = _id
     self.env = env
     self.n = len(qid_l)
     self.r = r
     self.k = k
     self.qid_l = qid_l
-    self.qserv_rate_l = qserv_rate_l
+    self.qmu_l = qmu_l
     self.preempt = preempt
     # self.out = out
     
@@ -59,7 +44,7 @@ class MDSQ(object):
     self.id_q_map = {}
     for i in range(self.n):
       qid = qid_l[i]
-      m1_q = S1_Q(_id=qid, env=env, serv_rate=qserv_rate_l[i] )
+      m1_q = FCFS(_id=qid, env=env, serv_rate=qmu_l[i] )
       m1_q.out = self.join_q
       self.id_q_map[qid] = m1_q
     
@@ -69,9 +54,9 @@ class MDSQ(object):
     self.action = env.process(self.run_c() )
     
     self.job_id_counter = 0
+    self.type__num_m = k*[0]
   
   def __repr__(self):
-    # return "MDSQ[k= {}, qid_l= [{}] ]".format(self.k, ",".join(self.qid_l) )
     return "MDSQ[k= {}, qid_l= {} ]".format(self.k, self.qid_l)
   
   def length(self):
@@ -83,6 +68,12 @@ class MDSQ(object):
     for i, q in self.id_q_map.items():
       state += q.state(job_id_to_exclude)
     return state
+  
+  def n_servers_in(self, _id):
+    n = 0
+    for i,q in self.id_q_map.items():
+      if q._in(_id): n += 1
+    return n
   
   def run(self):
     while True:
@@ -110,35 +101,16 @@ class MDSQ(object):
       p.job_id = self.job_id_counter
     return self.store.put(p)
   
-  # def put(self, p):
-  #   sim_log(DEBUG, self.env, self, "recved", p)
-  #   if p.entrance_time is None:
-  #     p.entrance_time = self.env.now
-  #   if p.job_id is None:
-  #     self.job_id_counter += 1
-  #     p.job_id = self.job_id_counter
-  #   # return self.store.put(p)
-  #   self.qid_to_split_l = []
-  #   if p.sym == MDS_TRAFF_SYM:
-  #     if self.r is None:
-  #       self.qid_to_split_l = self.qid_l
-  #     else:
-  #       while len(self.qid_to_split_l) < self.r:
-  #         qid = self.qid_l[random.randint(0, self.n-1) ]
-  #         if qid not in self.qid_to_split_l:
-  #           self.qid_to_split_l.append(qid)
-  #   elif p.sym == SYS_TRAFF_SYM:
-  #     # self.qid_to_split_l = self.qid_l
-  #     self.qid_to_split_l.append(self.qid_l[random.randint(0, self.n-1) ] )
-  #   else:
-  #     log(ERROR, "Unexpected p.sym= {}".format(p.sym) )
-  #     return 1
-  #   for qid in self.qid_to_split_l:
-  #     self.id_q_map[qid].put(p, preempt=self.preempt)
-  
   def run_c(self):
     while True:
       cp = (yield self.store_c.get() )
+      # 
+      next_job_id = cp._id + 1
+      type_ = self.n - self.n_servers_in(next_job_id)
+      if type_ == self.n: # next job is not in
+        type_ = 0
+      self.type__num_m[type_] += 1
+      # 
       for i, q in self.id_q_map.items():
         if q._id not in cp.departed_qid_l:
           q.put_c(cp)

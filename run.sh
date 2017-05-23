@@ -13,25 +13,29 @@ done
 echo "SIM_NODES= $SIM_NODES"
 
 MATLAB=/cac/u01/mfa51/Desktop/matlab_2016/install_/bin/./matlab
-PYTHON=python3 # ~/Desktop/Python-3.5.1/install/bin/python3
+PYTHON=~/Desktop/Python-3.5.1/install/bin/python3
 MPIRUN=/cac/u01/mfa51/Desktop/openmpi-1.10.2/install/bin/mpirun
 PKILL=/usr/bin/pkill
 
 if [ $1 = 'e' ]; then
   # LOG_F="$1.log"
   # rm -r __pycache__; $PYTHON exp.py < /dev/null 2>&1 | tee $LOG_F
-  # rm -r __pycache__; rm *.png; $PYTHON exp.py --num_q=3
-  rm -r __pycache__; $PYTHON exp.py --num_q=3
+  # rm -r __pycache__; rm *.png; $PYTHON exp.py
+  rm -r __pycache__; $PYTHON simplex_exp.py
+elif [ $1 = 'x' ]; then
+  rm -r __pycache__; $PYTHON mixed_exp.py
 elif [ $1 = 'm' ]; then
   # $MATLAB -r "run exp.m; quit"
-  # rm -r __pycache__; rm *.png; $PYTHON mds_exp.py --num_q=3 # > mds_exp.log
+  # rm -r __pycache__; rm *.png; $PYTHON mds_exp.py # > mds_exp.log
   if [ -z "$2" ]; then
-    rm -r __pycache__; $PYTHON mds_exp.py --num_q=3
+    rm -r __pycache__; $PYTHON mds_exp.py
   else
-    rm -r __pycache__; $PYTHON mds_exp.py --num_q=3 & # > mds_exp.log
+    rm -r __pycache__; $PYTHON mds_exp.py & # > mds_exp.log
   fi
+elif [ $1 = 'mm' ]; then
+  rm -r __pycache__; $PYTHON mds_models.py
 elif [ $1 = 's' ]; then
-  rm -r __pycache__; rm *.png; $PYTHON simplex_models.py
+  rm -r __pycache__; $PYTHON simplex_models.py
 elif [ $1 = 'c' ]; then
   rm -r __pycache__; $PYTHON codes_stability.py
 elif [ $1 = 'd' ]; then
@@ -40,12 +44,13 @@ elif [ $1 = 'd' ]; then
 elif [ $1 = 'dep' ]; then
   rm -r __pycache__; $PYTHON deprecated.py
 elif [ $1 = 'a' ]; then
-  rm -r __pycache__; $PYTHON arepeat_models.py
   # rm -r __pycache__; $PYTHON arepeat_sim_components.py
+  # rm -r __pycache__; $PYTHON arepeat_models.py
+  rm -r __pycache__; $PYTHON arepeat_exp.py
 elif [ $1 = 'g' ]; then
   rm -r __pycache__; $PYTHON google_data.py
 elif [ $1 = 'f' ]; then
-  rm -r __pycache__; rm *.png; $PYTHON fun.py
+  rm -r __pycache__; $PYTHON fun.py
 # elif [ $1 = 'd' ]; then
 #   rm -r __pycache__; rm *.png; $PYTHON deprecated.py
 elif [ $1 = 'me' ]; then
