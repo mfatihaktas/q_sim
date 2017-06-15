@@ -16,6 +16,11 @@ class Pareto(RV):
   def __str__(self):
     return "Pareto(a= {}, loc= {})".format(self.a, self.loc)
   
+  def tail(self, x):
+    if x <= self.l_l:
+      return 1
+    return (self.loc/x)**self.a
+  
   def cdf(self, x):
     if x <= self.l_l:
       return 0
@@ -60,6 +65,11 @@ class Exp(RV):
   
   def __str__(self):
     return "Exp(D= {0:.2f}, mu= {0:.2f})".format(self.D, self.mu)
+  
+  def tail(self, x):
+    if x <= self.l_l or x < self.D:
+      return 1
+    return math.exp(-self.mu*(x - self.D) )
   
   def cdf(self, x):
     if x <= self.l_l or x < self.D:

@@ -1,6 +1,6 @@
 import inspect, math, mpmath, scipy, itertools
 
-dark_color = itertools.cycle(('green', 'black', 'red', 'blue', 'purple', 'gray', 'brown', 'magenta', 'goldenrod', 'gold', 'olive', 'orangered', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise', 'darkgray'))
+dark_color = itertools.cycle(('green', 'red', 'goldenrod', 'blue', 'purple', 'gray', 'brown', 'magenta', 'goldenrod', 'gold', 'olive', 'orangered', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise', 'darkgray'))
 light_color = itertools.cycle(('silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise'))
 linestyle = itertools.cycle(('-', '--', '-.', ':') )
 marker = itertools.cycle(('^', 'p', '+', 'x', '*', 'v', '<', '>', 'd', '1' , '2', '3', '4') )

@@ -107,7 +107,7 @@ class MT_JQ(object):
   A file consists of k-pieces and mapped to n code-words with an MDS code.
   The (r, t)-availability ensures that each systematic node can be regenerated using one of the t
   disjoint repair groups of other storage nodes, each of size at most r (typically << k)
-  Ref: When do the Availability Codes Make the Stored Data More Available?
+  [When do the Availability Codes Make the Stored Data More Available?]
 """
 class AVQ(object): # Availability
   def __init__(self, _id, env, k, r, t, qid_l, qmu_l, out=None, w_sys=True):

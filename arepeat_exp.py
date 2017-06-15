@@ -685,7 +685,7 @@ def plot_reped_vs_coded(w_cancel):
   task_t = "SExp" # "Exp" # "SExp" # "Pareto"
   task_t_rv, task_t_in_latex = None, None
   if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu), mu= {}'.format(mu)
-  elif task_t == "SExp": task_t_in_latex = r'X \sim D={}/k={} + Exp(\mu={})'.format(D, K, mu) # r'X \sim SExp(D/k, \mu), D= {}, \mu= {}'.format(D, mu)
+  elif task_t == "SExp": task_t_in_latex = r'X \sim D/k + Exp(\mu), D={}, k={}, \mu={}'.format(D, K, mu)
   elif task_t == "Pareto": task_t_in_latex = r'X \sim Pareto(\lambda={}, \alpha={})'.format(loc, a)
   ann_color = 'black'
   def plot_d_extremes(c=0, n=0):
@@ -698,7 +698,7 @@ def plot_reped_vs_coded(w_cancel):
         E_T_l.append(E_T)
         E_C_l.append(E_C)
         if c_ == c:
-          plot.annotate(r'$\Delta=0$', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T, E_C-3), color=ann_color, fontsize=12)
+          plot.annotate(r'$\Delta=0$', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T, E_C-10), color=ann_color, fontsize=20)
       plot.plot(E_T_l, E_C_l, color=ann_color, alpha=0.6, linestyle='--')
     if n:
       E_T_l.clear()
@@ -709,7 +709,7 @@ def plot_reped_vs_coded(w_cancel):
         E_T_l.append(E_T)
         E_C_l.append(E_C)
         if n_ == n:
-          plot.annotate(r'$\Delta=0$', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T, E_C-3), color=ann_color, fontsize=12)
+          plot.annotate(r'$\Delta=0$', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T, E_C-5), color=ann_color, fontsize=20)
       plot.plot(E_T_l, E_C_l, color=ann_color, alpha=0.6, linestyle='--')
   
   def plot_(k=K, n=0, c=0):
@@ -721,6 +721,7 @@ def plot_reped_vs_coded(w_cancel):
     E_T_l, E_T_sim_l, E_C_l, E_C_sim_l = [], [], [], []
     num_run = 100000
     u_l = 25 + 1
+    color = next(dark_color)
     if c:
       for d in numpy.arange(0, u_l, 0.5):
         # stat_id__trial_stat_l_m = sim_arepeat_k_c(task_t_rv, d, k, c, num_run=num_run)
@@ -732,7 +733,10 @@ def plot_reped_vs_coded(w_cancel):
         E_C = E_C_k_c(task_t, D, mu, loc, a, d, k, c, w_cancel=w_cancel)
         E_T_l.append(E_T)
         E_C_l.append(E_C)
-      plot.plot(E_T_l, E_C_l, label=r'Rep,$c={}$'.format(c), color=next(dark_color), marker=next(marker), ms=10, mew=2, zorder=2, lw=2, linestyle='-')
+        if d == 0:
+          plot.annotate(r'$c={}$'.format(c), ha='center', va='center', xy=(E_T, E_C), xytext=(E_T-0.3, E_C), color=color, fontsize=12)
+      plot.plot(E_T_l, E_C_l, color=color, marker=next(marker), ms=10, mew=2, zorder=2, lw=2, linestyle='-')
+      # plot.plot(E_T_l, E_C_l, label=r'Rep,$c={}$'.format(c), color=next(dark_color), marker=next(marker), ms=10, mew=2, zorder=2, lw=2, linestyle='-')
       # plot.plot(E_T_sim_l, E_C_sim_l, label=r'Rep,$c={}$'.format(c), color=next(dark_color), marker=next(marker), zorder=2, mew=5, linestyle=':')
     elif n:
       for d in numpy.arange(0, u_l, 0.5):
@@ -740,44 +744,48 @@ def plot_reped_vs_coded(w_cancel):
         # E_T_sim_l.append(sum(stat_id__trial_stat_l_m['E_T'] )/len(stat_id__trial_stat_l_m['E_T'] ) )
         # key = 'E_C_wc' if w_cancel else 'E_C'
         # E_C_sim_l.append(sum(stat_id__trial_stat_l_m[key] )/len(stat_id__trial_stat_l_m[key] ) )
-        
-        E_T_l.append(E_T_k_l_n(task_t, D, mu, loc, a, d, k, l, n) )
-        E_C_l.append(E_C_k_l_n(task_t, D, mu, loc, a, d, k, l, n, w_cancel=w_cancel) )
-      plot.plot(E_T_l, E_C_l, label=r'Code,$n={}$'.format(n), color=next(dark_color), marker=next(marker), ms=9, mew=2, zorder=1, lw=2, linestyle=':')
-      # plot.plot(E_T_sim_l, E_C_sim_l, label=r'MDS,$n={}$'.format(n), color=next(dark_color), marker=next(marker), ms=8, zorder=1, mew=2, linestyle=':')
-  # plot_(c=1)
-  # plot_(c=2)
-  # plot_(c=3)
-  # plot_d_extremes(c=3, n=3*K)
-  plot_(n=K+1)
-  for n in range(K+2, 2*K+1, 2):
-    plot_(n=n)
-  plot_(n=int(2.5*K) )
-  plot_(n=3*K)
-  plot_d_extremes(n=3*K)
-  # plot_d_extremes(c=2, n=3*K)
+        E_T = E_T_k_l_n(task_t, D, mu, loc, a, d, k, l, n)
+        E_C = E_C_k_l_n(task_t, D, mu, loc, a, d, k, l, n, w_cancel=w_cancel)
+        E_T_l.append(E_T)
+        E_C_l.append(E_C)
+        if d == 0:
+          plot.annotate(r'$n={}$'.format(n), ha='center', va='center', xy=(E_T, E_C), xytext=(E_T-0.4, E_C), color=color, fontsize=12)
+      # label=r'Code,$n={}$'.format(n)
+      plot.plot(E_T_l, E_C_l, color=color, marker=next(marker), ms=9, mew=2, zorder=1, lw=2, linestyle=':')
+      # plot.plot(E_T_sim_l, E_C_sim_l, label=r'Code,$n={}$'.format(n), color=next(dark_color), marker=next(marker), ms=8, zorder=1, mew=2, linestyle=':')
+  plot_(c=1)
+  plot_(c=2)
+  plot_(c=3)
+  plot_d_extremes(c=3)
+  
+  # plot_(n=K+1)
+  # plot_(n=K+2)
+  # for n in range(K+5, 3*K+1, 5):
+  #   plot_(n=n)
+  # plot_d_extremes(n=3*K)
   #
   if task_t == "SExp":
     E_T_nored = E_T_k_c(task_t, D, mu, loc, a, d=0, k=K, c=0)
     E_C_nored = E_C_k_c(task_t, D, mu, loc, a, d=0, k=K, c=0, w_cancel=w_cancel)
     plot.plot([E_T_nored], [E_C_nored], 'o', zorder=3, mew=4, color=ann_color)
-    plot.annotate(r'$\Delta \to \infty$', xy=(E_T_nored, E_C_nored), ha='center', va='center', xytext=(E_T_nored+0.35, E_C_nored), color=ann_color, fontsize=12)
+    plot.annotate(r'$\Delta \to \infty$', xy=(E_T_nored, E_C_nored), ha='center', va='center', xytext=(E_T_nored+0.5, E_C_nored), color=ann_color, fontsize=20)
     axes = plot.gca()
-    # axes.set_xlim([3.5, 9.5] )
+    # axes.set_xlim([3.2, 9.2] )
+    axes.set_xlim([3.9, 9.2] ) # for only rep
     # axes.set_ylim([47, 115] )
   # legend = plot.legend()
-  legend = plot.legend(loc='center left', bbox_to_anchor=(0.85, 0.7), fontsize=10)
-  frame = legend.get_frame()
-  frame.frameon=True
-  frame.set_edgecolor('black')
-  # legend = plot.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+  # # legend = plot.legend(loc='center left', bbox_to_anchor=(0.85, 0.7), fontsize=10)
+  # frame = legend.get_frame()
+  # frame.frameon=True
+  # frame.set_edgecolor('black')
   plot.title(r'${}$'.format(task_t_in_latex), fontsize=12)
   plot.xlabel(r'Expected Latency $E[T]$ (s)', fontsize=12)
   # w_cancel_text = "w/ cancel $E[C^c]$" if w_cancel else "w/o cancel $E[C]$"
   w_cancel_text = r'$E[C]$'
   plot.ylabel(r'Expected Cost {} (s)'.format(w_cancel_text), fontsize=12)
   fig = plot.gcf()
-  plot.savefig("plot_reped_vs_coded_{}_k_{}.pdf".format(task_t, K, w_cancel), bbox_extra_artists=(legend,), bbox_inches='tight', dpi=fig.dpi)
+  # plot.savefig("plot_reped_vs_coded_{}_k_{}.pdf".format(task_t, K, w_cancel), bbox_extra_artists=(legend,), bbox_inches='tight', dpi=fig.dpi)
+  plot.savefig("plot_reped_vs_coded_{}_k_{}.pdf".format(task_t, K, w_cancel), bbox_inches='tight', dpi=fig.dpi)
   plot.gcf().clear()
   log(WARNING, "done; k= {}".format(K) )
 
@@ -787,7 +795,7 @@ def plot_reped_vs_coded_nodelay(loc, a):
   D = 30
   mu = 0.5
   # loc, a = 3, 2 # 1.5
-  task_t = "SExp" # "Exp" # "SExp" # "Pareto"
+  task_t = "Pareto" # "Exp" # "SExp" # "Pareto"
   task_t_rv, task_t_in_latex = None, None
   if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu), mu= {}'.format(mu)
   elif task_t == "SExp": task_t_in_latex = r'X \sim SExp(D={}/k, \mu={})'.format(D, mu)
@@ -864,9 +872,12 @@ def plot_reped_vs_coded_nodelay(loc, a):
               # elif n_ == k+3:
               #   plot.plot([E_T], [E_C], 'x', color="blue", mew=mew, zorder=3)
               #   plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T-3.5, E_C-5), color=color)
+            elif n_ == 40 or n_ == 60:
+              plot.plot([E_T], [E_C], 'x', color="blue", mew=mew, zorder=3)
+              plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T-4, E_C+1), color=color)
             elif n_ != k and n_ % k == 0:
               plot.plot([E_T], [E_C], 'x', color="blue", mew=mew, zorder=3)
-              plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T-5, E_C-2), color=color)
+              plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T-4, E_C-2), color=color)
           elif a == 2:
             if n_ > K and n_ < k+3:
               plot.plot([E_T], [E_C], 'x', color="blue", mew=mew, zorder=3)
@@ -889,27 +900,61 @@ def plot_reped_vs_coded_nodelay(loc, a):
   elif task_t == "Pareto":
     plot.axhline(y=E_C_nored, color='k', alpha=0.4, linestyle='--')
     if a == 1.2:
-      plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T_nored, E_C_nored), xytext=(E_T_nored-12, E_C_nored+3) )
+      plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T_nored, E_C_nored), xytext=(E_T_nored-20, E_C_nored+3) )
     elif a == 1.5:
-      plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T_nored, E_C_nored), xytext=(E_T_nored-4, E_C_nored+3) )
+      plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T_nored, E_C_nored), xytext=(E_T_nored-6, E_C_nored+3) )
     elif a == 2:
       plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T_nored, E_C_nored), xytext=(E_T_nored-1.2, E_C_nored+3) )
   plot.legend()
   # plot.legend(loc='lower right')
   w_cancel_text = "w/ cancel" if w_cancel else "no cancel"
   plot.title(r'${}, k= {}$'.format(task_t_in_latex, K) )
-  plot.xlabel(r'Expected Latency $E[T]$ (s)', fontsize=12)
-  if w_cancel:
-    plot.ylabel(r'Expected Cost w/ cancel $E[C^c]$ (s)', fontsize=12)
-  else:
-    plot.ylabel(r'Expected Cost w/o cancel $E[C]$ (s)', fontsize=12)
+  # plot.xlabel(r'Expected Latency $E[T]$ (s)', fontsize=12)
+  plot.xlabel(r'$E[T]$', fontsize=12)
+  # if w_cancel:
+  #   plot.ylabel(r'Expected Cost w/ cancel $E[C^c]$ (s)', fontsize=12)
+  # else:
+  #   plot.ylabel(r'Expected Cost w/o cancel $E[C]$ (s)', fontsize=12)
+  plot.ylabel(r'$E[C]$', fontsize=12)
   fig = plot.gcf()
+  fig.tight_layout()
   def_size = fig.get_size_inches()
   fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
   # plot.savefig("plot_reped_vs_coded_nodelay_{}_k_{}__a_{}.png".format(task_t, K, a) )
-  plot.savefig("plot_reped_vs_coded_nodelay_{}_k_{}_a_{}.pdf".format(task_t, K, a), bbox_inches='tight')
+  if task_t == "Pareto":
+    plot.savefig("plot_reped_vs_coded_nodelay_{}_k_{}_a_{}_.pdf".format(task_t, K, a) )
+  else:
+    plot.savefig("plot_reped_vs_coded_nodelay_{}_k_{}.pdf".format(task_t, K) )
   plot.gcf().clear()
   log(WARNING, "done; k= {}".format(K) )
+
+def plot_compare_tails():
+  exp_rv = Exp(mu=0.5, D=1)
+  pareto_rv = Pareto(a=1.6, loc=1)
+  
+  x_l = []
+  exp_tail_l, pareto_tail_l = [], []
+  for x in numpy.linspace(1, 20, 100):
+    x_l.append(x)
+    exp_tail_l.append(exp_rv.tail(x) )
+    pareto_tail_l.append(pareto_rv.tail(x) )
+  plot.plot(x_l, exp_tail_l, label=r'$Exp$', color='red', lw=1, linestyle='-')
+  plot.plot(x_l, pareto_tail_l, label=r'$Pareto$', color='green', lw=1, linestyle='-')
+  fig = plot.gcf()
+  def_size = fig.get_size_inches()
+  fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.4)
+  plot.legend(fontsize=14)
+  
+  plot.xlim([1, 21] )
+  plot.xlabel(r'$x$', fontsize=14)
+  plot.ylabel(r'$Pr\{X > x\}$', fontsize=14)
+  fig.tight_layout()
+  ax = plot.gca()
+  ax.text(6, 0.6, r'Exp: $e^{-\mu x}$', fontsize=16, color='red')
+  ax.text(6, 0.4, r'Pareto: $(\lambda/x)^{\alpha}$ for $x \geq \lambda$', fontsize=16, color='green')
+  plot.savefig("plot_compare_tails.pdf")
+  fig.clear()
+  log(WARNING, "done.")
 
 if __name__ == "__main__":
   # plot_prob_N_d()
@@ -930,10 +975,11 @@ if __name__ == "__main__":
   # plot_arepeat_k_n()
   # plot_arepeat_cost_k_n()
   # plot_arepeat_k_n_wrelaunch()
-  plot_reped_vs_coded(w_cancel=True)
+  # plot_reped_vs_coded(w_cancel=True)
   # plot_reped_vs_coded_nodelay(loc=3, a=1.2)
-  # plot_reped_vs_coded_nodelay(loc=3, a=1.5)
-  # plot_reped_vs_coded_nodelay(loc=3, a=1.8)
+  plot_reped_vs_coded_nodelay(loc=3, a=1.5)
+  
+  # plot_compare_tails()
   
   # plot_arepeat_dist_k_n()
   # plot_arepeat_conf_k_n()

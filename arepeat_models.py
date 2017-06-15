@@ -471,19 +471,15 @@ def plot_pareto_zerodelay_red():
       # y_approx_l.append(reduction_in_E_T_for_same_E_C_w_red__approx(red_type, loc, a, k) )
     # plot.axvline(x=threshold_on_tail_for_latency_reduction_at_no_cost(red_type),
     #             color=color, alpha=0.5, linestyle='--')
-    legend = "Replicated" if red_type == 'reped' else "Coded"
+    legend = "Replication" if red_type == 'reped' else "Coding"
     plot.plot(x_l, y_l, label=r'{},$k={}$'.format(legend, k), color=next(dark_color), marker=next(marker), mew=2, zorder=0, linestyle=':')
     # plot.plot(x_l, y_approx_l, label=r'{},$k={}$, approx'.format(legend, k), color=next(dark_color), marker=next(marker), mew=2, zorder=1, linestyle='')
   
   plot_('reped', k=10)
-  # plot_('reped', k=20)
-  # plot_('reped', k=40)
-  plot_('reped', k=50)
+  # plot_('coded', k=10)
   
-  plot_('coded', k=10)
-  # plot_('coded', k=20)
-  # plot_('coded', k=40)
-  plot_('coded', k=50)
+  # plot_('reped', k=50)
+  # plot_('coded', k=50)
   
   # plot_('coded', k=100)
   
@@ -659,3 +655,4 @@ def E_C_k_c(task_t, D, mu, loc, a, d, k, c, w_cancel, approx=False):
 if __name__ == "__main__":
   # plot_Pr_T_g_t_G_1red()
   plot_pareto_zerodelay_red()
+  

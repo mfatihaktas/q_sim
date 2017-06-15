@@ -184,6 +184,33 @@ class Q(object):
     self.env = env
     self.num_s = num_s
 
+def dolly_slowdown_dist(): # Kristen et al. A Better Model for Job Redundancy: Decoupling Server Slowdown and Job Size
+  u = random.uniform(0, 1)
+  if u <= 0.23: return 1
+  u -= 0.23
+  if u <= 0.14: return 2
+  u -= 0.14
+  if u <= 0.09: return 3
+  u -= 0.09
+  if u <= 0.03: return 4
+  u -= 0.03
+  if u <= 0.08: return 5
+  u -= 0.08
+  if u <= 0.1: return 6
+  u -= 0.1
+  if u <= 0.04: return 7
+  u -= 0.04
+  if u <= 0.14: return 8
+  u -= 0.14
+  if u <= 0.12: return 9
+  u -= 0.12
+  if u <= 0.021: return 10
+  u -= 0.021
+  if u <= 0.007: return 11
+  u -= 0.007
+  if u <= 0.002: return 12
+  return 12 # for safety
+
 class FCFS(Q): # First Come First Serve
   def __init__(self, _id, env, serv_rate, serv_dist=None, rate=None, q_limit=None, debug=False):
     super().__init__(_id, env, 1)

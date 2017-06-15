@@ -513,20 +513,14 @@ def plot_simplex_vs_rep():
   log(WARNING, "done; scheduling= {}, t= {}".format(scheduling, t) )
 
 def plot_simplex():
-  w_sys = True
-  t, r, k = 1, 2, 2
+  mixed_traff, w_sys = False, True
+  t, r, k = 3, 2, 2
   mu = 1
   gamma = mu
-  if t == 1:
-    arr_rate_ub = 1.6
-  elif t == 3:
-    arr_rate_ub = 2.4
-  elif t == 7:
-    arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu, w_sys=True)
-    arr_rate_ub = float(1.1*arr_rate_ub)
-  else:
-    arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu, w_sys)
-  mixed_traff = False
+  if t == 1: arr_rate_ub = 1.6
+  elif t == 3: arr_rate_ub = 2.4
+  elif t == 7: arr_rate_ub = float(1.1*simplex_inner_bound_on_arr_rate(r, t, mu, w_sys=True) )
+  else: arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu, w_sys)
   log(WARNING, "w_sys= {}, t= {}, r= {}, k= {}, mu= {}, arr_rate_ub= {}, mixed_traff= {}".format(w_sys, t, r, k, mu, arr_rate_ub, mixed_traff) )
   
   E_T_simplex_sm_l, E_T_sim_simplex_l, E_T_simplex_l, E_T_simplex_alt_l, E_T_simplex_matrix_analytic_l = [], [], [], [], []
@@ -653,7 +647,6 @@ def plot_simplex():
     # E_T_simplex_varki_gauri_lb_l.append(E_T_simplex_varki_gauri_lb(t, arr_rate, gamma, mu) )
   arr_rate_mixed_traff_l = []
   for arr_rate in [*numpy.linspace(0.05, 0.8*arr_rate_ub, 5, endpoint=False), *numpy.linspace(0.8*arr_rate_ub, 1.1*arr_rate_ub, 10) ]:
-  # for arr_rate in numpy.linspace(arr_rate_ub, 1.1*arr_rate_ub, 3):
     arr_rate_mixed_traff_l.append(arr_rate)
     if sim_simplex_mixed_traff:
       E_T_sim_simplex_mixed_traff_l.append(test_avq(num_f_run, arr_rate, mu, k, r, t, w_sys=w_sys, mixed_traff=True) )
@@ -667,7 +660,7 @@ def plot_simplex():
     E_T_simplex_best_approx_l.append(E_T_simplex_approx(t, ar, gamma, mu, incremental=True) )
     
     plot.plot(arr_rate_l, E_T_sim_simplex_l, label="Rep-to-all, simulation", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-    plot.plot(arr_rate_approx_l, E_T_simplex_best_approx_l, label="Rep-to-all, approx", zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
+    plot.plot(arr_rate_approx_l, E_T_simplex_best_approx_l, label="Rep-to-all, M/G/1 approximation", zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
   def plot_rep_to_all():
     log(WARNING, "E_T_sim_simplex_l= {}".format(pprint.pformat(E_T_sim_simplex_l) ) )
     label = 'Simulation, fixed-arrivals' if mixed_traff else 'Simulation'
@@ -699,7 +692,7 @@ def plot_simplex():
       E_T_simplex_sto_l.append(E_T_simplex_split_to_one_min(t, arr_rate, mu) )
     # log(WARNING, "E_T_sim_simplex_l= {}".format(pprint.pformat(E_T_sim_simplex_l) ) )
     # plot.plot(arr_rate_l, E_T_sim_simplex_l, 'k', label=r'Replicate-to-all', marker=next(marker), linestyle=':', mew=mew, ms=ms)
-    plot.plot(arr_rate_sto_l, E_T_simplex_sto_l, 'b', label=r'Select-one', marker=next(marker), linestyle=':', mew=mew, ms=ms)
+    plot.plot(arr_rate_sto_l, E_T_simplex_sto_l, 'b', label=r'Select-one, exact expression', marker=next(marker), linestyle=':', mew=mew, ms=ms)
   # plot_rep_to_all()
   plot_poster()
   plot_split_to_one()
@@ -714,78 +707,6 @@ def plot_simplex():
   fig.tight_layout()
   plot.savefig("plot_simplex_t_{}.pdf".format(t) )
   # plot.savefig("plot_simplex__t_{}.png".format(t) )
-  log(WARNING, "done; t= {}, r= {}, k= {}".format(t, r, k) )
-
-def plot_simplex_w_varying_serv_rate_alloc(num_q):
-  k, r, t = 2, 2, 1 # 2
-  mu = 1.0
-  arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu)
-  arr_rate = mu
-  log(WARNING, "k= {}, r= {}, t= {}, mu= {}, arr_rate_ub={}".format(k, r, t, mu, arr_rate_ub) )
-  
-  Cap = num_q*mu
-  def qmu_l(c):
-    mu_ = Cap/(c+2)
-    gamma = c*mu_
-    return [gamma, mu_, mu_]
-  color = iter(cm.rainbow(numpy.linspace(0, 1, 10) ) )
-  # for c in numpy.arange(0.05, 1, 0.1):
-  for arr_rate in numpy.linspace(0.2, mu, 3):
-    c_l = []
-    E_T_simplex_sm_l, sim_hetero_E_T_simplex_l = [], []
-    hetero_E_T_simplex_l = []
-    for c in numpy.linspace(0.25, 5, 10):
-      c_l.append(c)
-      # sim
-      E_T_simplex_sm_l.append(E_T_simplex_sn(t, arr_rate, mu, c) )
-      
-      num_f_run = 3
-      sim_hetero_simplex_E_T = test_avq(num_f_run, arr_rate, mu, k, r, t, qmu_l(c) )
-      sim_hetero_E_T_simplex_l.append(sim_hetero_simplex_E_T)
-      
-      hetero_E_T_simplex_l.append(simplex_w_one_repair__E_T(arr_rate, mu, c) )
-    plot.plot(c_l, E_T_simplex_sm_l, 'o', color=next(color), label="SM-Simplex $\lambda={0:0.2f}$".format(arr_rate) )
-    plot.plot(c_l, sim_hetero_E_T_simplex_l, 'o', color=next(color), label=r'Simplex $\lambda={0:0.2f}$'.format(arr_rate) )
-    plot.plot(c_l, hetero_E_T_simplex_l, 'o', color=next(color), label=r'LB-Simplex $\lambda={0:0.2f}$'.format(arr_rate) )
-    
-  plot.xlabel("c")
-  plot.ylabel("E[T] (s)")
-  plot.title(r'Simplex(t:{}), heterogeneous servers; $c=\gamma/\mu$'.format(t) )
-  plot.savefig("plot_simplex_w_varying_serv_rate_alloc__t_{}.png".format(t) )
-  log(WARNING, "done; n= {} k= {} t= {}".format(num_q, k, t) )
-
-def plot_avq():
-  w_sys = True
-  simplex_t, simplex_r, simplex_k = 3, 2, 2
-  t, r, k = 1, simplex_t*simplex_r, simplex_k
-  mu = 1.0
-  gamma = mu
-  arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu)
-  log(WARNING, "w_sys= {}, t= {}, r= {}, k= {}, mu= {}, arr_rate_ub={}".format(w_sys, t, r, k, mu, arr_rate_ub) )
-  
-  arr_rate_l = []
-  sim_E_T_avq_l, E_T_avq_l = [], []
-  sim_E_T_simplex_l, E_T_simplex_sm_l= [], []
-  # for arr_rate in numpy.arange(0.05, arr_rate_ub, arr_rate_ub/10):
-  for arr_rate in numpy.arange(0.05, 1.26, 0.2):
-  # for arr_rate in numpy.arange(0.05, 1.0, 0.2):
-    arr_rate_l.append(arr_rate)
-    # sim
-    num_f_run = 1
-    # sim_E_T_avq_l.append(test_avq(num_f_run, arr_rate, mu, k, r, t, w_sys=w_sys) )
-    sim_E_T_simplex_l.append(test_avq(num_f_run, arr_rate, mu, simplex_k, simplex_r, simplex_t, w_sys=w_sys) )
-    
-    E_T_simplex_sm_l.append(E_T_simplex_sn(simplex_t, arr_rate, mu) )
-    E_T_avq_l.append(E_T_avq_sys__mds_r_2(arr_rate, gamma, mu, r) )
-  
-  plot.plot(arr_rate_l, E_T_simplex_sm_l, 'ro', label="SM-Simplex(t:{},r:{},k:{})".format(simplex_t, simplex_r, simplex_k) )
-  plot.plot(arr_rate_l, sim_E_T_simplex_l, 'ko', label="Simplex(t:{},r:{},k:{})".format(simplex_t, simplex_r, simplex_k) )
-  plot.plot(arr_rate_l, E_T_avq_l, 'go', label="UB-AVQ(t:{},r:{},k:{})".format(t, r, k) )
-  # plot.plot(arr_rate_l, sim_E_T_avq_l, 'ko', label="avq [t:{},r:{},k:{}]".format(t, r, k) )
-  plot.xlabel(r'$\lambda$')
-  plot.ylabel("E[T] (s)")
-  plot.title(r't= {}, r= {}, k= {}, $\gamma$= {}, $\mu$= {}'.format(t, r, k, gamma, mu) )
-  plot.savefig("plot_avq__t_{}_r_{}.png".format(t, r) )
   log(WARNING, "done; t= {}, r= {}, k= {}".format(t, r, k) )
 
 def get_opts(argv):
@@ -805,13 +726,7 @@ if __name__ == "__main__":
   # log(WARNING, "opt_map= {}".format(pprint.pformat(opt_map) ) )
   # num_q = int(opt_map["--num_q"] )
   
-  # test_avq(num_f_run=1, arr_rate=0.1, mu=1, k=2, r=2, t=1, mixed_traff=True)
-  
   # plot_winning_freqs()
-  # plot_simplex()
-  plot_simplex_vs_rep()
+  plot_simplex()
+  # plot_simplex_vs_rep()
   
-  # plot_mds(num_q)
-  # plot_n_mds_2(num_q)
-  # plot_avq()
-  # plot_simplex_w_varying_serv_rate_alloc(num_q)

@@ -2,7 +2,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plot
 import matplotlib.cm as cm # cm.rainbow
-import numpy, math
+import numpy, math, collections
 from simplex_sim_components import *
 
 def eg_pgen_psink():
@@ -243,44 +243,68 @@ def test_simplex(arr_rate=None):
   print("start_setup__freq_found_by_job_departed_map= {}".format(pprint.pformat(start_setup__freq_found_by_job_departed_map) ) )
   # """
 
+def plot_simplex_w_varying_serv_rate_alloc(num_q):
+  k, r, t = 2, 2, 1 # 2
+  mu = 1.0
+  arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu)
+  arr_rate = mu
+  log(WARNING, "k= {}, r= {}, t= {}, mu= {}, arr_rate_ub={}".format(k, r, t, mu, arr_rate_ub) )
+  
+  Cap = num_q*mu
+  def qmu_l(c):
+    mu_ = Cap/(c+2)
+    gamma = c*mu_
+    return [gamma, mu_, mu_]
+  color = iter(cm.rainbow(numpy.linspace(0, 1, 10) ) )
+  # for c in numpy.arange(0.05, 1, 0.1):
+  for arr_rate in numpy.linspace(0.2, mu, 3):
+    c_l = []
+    E_T_simplex_sm_l, sim_hetero_E_T_simplex_l = [], []
+    hetero_E_T_simplex_l = []
+    for c in numpy.linspace(0.25, 5, 10):
+      c_l.append(c)
+      # sim
+      E_T_simplex_sm_l.append(E_T_simplex_sn(t, arr_rate, mu, c) )
+      
+      num_f_run = 3
+      sim_hetero_simplex_E_T = test_avq(num_f_run, arr_rate, mu, k, r, t, qmu_l(c) )
+      sim_hetero_E_T_simplex_l.append(sim_hetero_simplex_E_T)
+      
+      hetero_E_T_simplex_l.append(simplex_w_one_repair__E_T(arr_rate, mu, c) )
+    plot.plot(c_l, E_T_simplex_sm_l, 'o', color=next(color), label="SM-Simplex $\lambda={0:0.2f}$".format(arr_rate) )
+    plot.plot(c_l, sim_hetero_E_T_simplex_l, 'o', color=next(color), label=r'Simplex $\lambda={0:0.2f}$'.format(arr_rate) )
+    plot.plot(c_l, hetero_E_T_simplex_l, 'o', color=next(color), label=r'LB-Simplex $\lambda={0:0.2f}$'.format(arr_rate) )
+    
+  plot.xlabel("c")
+  plot.ylabel("E[T] (s)")
+  plot.title(r'Simplex(t:{}), heterogeneous servers; $c=\gamma/\mu$'.format(t) )
+  plot.savefig("plot_simplex_w_varying_serv_rate_alloc__t_{}.png".format(t) )
+  log(WARNING, "done; n= {} k= {} t= {}".format(num_q, k, t) )
+
 def simplex_t_1__zero_state():
   arr_rate__zero_state_prob_map = {}
   for arr_rate in numpy.arange(0.1, 1.3, 0.1):
     arr_rate__zero_state_prob_map[arr_rate] = test_simplex(arr_rate)
   log(WARNING, "arr_rate__zero_state_prob_map= {}".format(pprint.pformat(arr_rate__zero_state_prob_map) ) )
 
-def plot_exp_dist(mu_arg, func = None):
-  # for mu in [2.0, 1.0, 0.00001]:
-  #   exp_density = lambda: random.expovariate(mu)
-  #   # exp_density = lambda: -math.log(1.0-random.random() )/mu
-  #   data = [exp_density() for i in range(10000) ]
-  #   plot.hist(data, bins='auto')
-  #   plot.title(r'mu= {}'.format(mu) )
-  #   plot.savefig("plot_exp_dist_mu_{}.png".format(mu) )
-  
-  if func == None:
-    data = [random.expovariate(mu_arg) for i in range(10000) ]
+def plot_dist(dist=None):
+  N = 10000 * 100
+  if dist == None:
+    data = [random.expovariate(1) for i in range(N) ]
   else:
-    data = [func() for i in range(10000) ]
+    data = [dist() for i in range(N) ]
   plot.clf()
-  plot.hist(data, bins='auto')
-  plot.title(r'mu= {}'.format(mu_arg) )
-  plot.savefig("plot_exp_dist_mu_{}.png".format(mu_arg) )
   
-  # def exp_cum_dist(mu, x):
-  #   return 1 - math.exp(-mu*x)
+  # plot.hist(data, bins='auto', normed=True)
   
-  # # mu_list = numpy.linspace(1, 100, 10)
-  # mu_list = numpy.logspace(-3, 2, 10)
-  # x_list = numpy.arange(0.01, 4, 0.01)
-  # color = iter(cm.rainbow(numpy.linspace(0, 1, len(mu_list) ) ) )
-  # for mu in mu_list:
-  #   F_x_list = [exp_cum_dist(mu, x) for x in x_list]
-  #   plot.plot(x_list, F_x_list, '.', color=next(color), label=r'$\mu$={}'.format(mu) )
-  #   plot.legend()
-  # plot.xlabel("x")
-  # plot.ylabel("F(x)")
-  # plot.savefig("plot_exp_dist_mu_{}.png".format(mu_arg) )
+  # w_l = numpy.ones_like(data)/float(len(data) )
+  # plot.hist(data, weights=w_l)
+  
+  plot.hist(data, bins=numpy.arange(min(data)-0.5, max(data)-0.5, 1), normed=True)
+  d_f_m = {d:f/len(data) for d,f in collections.Counter(data).items() }
+  print("d_f_m= {}".format(d_f_m) )
+  
+  plot.savefig("plot_dist.png")
 
 def plot_binomial_dist__approx():
   n = 15
@@ -335,7 +359,10 @@ def sum_of_harmonics():
 if __name__ == "__main__":
   # random.seed(33)
   # test_simplex()
-  # plot_exp_dist(0)
+  
+  # plot_dist()
+  plot_dist(dist=dolly_slowdown_dist)
+  
   # simplex_t_1__zero_state()
-  sum_of_harmonics()
+  # sum_of_harmonics()
   
