@@ -78,16 +78,14 @@ def plot_simplex_steady_state_prob_hist():
     plot.savefig("plot_simplex_steady_state_prob_hist_ar_{0:.2f}.png".format(arr_rate) )
     plot.clf()
 
-def test_avq(num_f_run, arr_rate, mu, k, r, t, qmu_l=[], w_sys=True, mixed_traff=False,
-             p_i_l= [] ):
+def test_avq(num_f_run, arr_rate, mu, k, r, t, serv="Exp", w_sys=True, mixed_traff=False, p_i_l= [] ):
+  num_q = int(1 + t*r) if w_sys else int(t*r)
+  qmu_l = num_q*[mu]
+  
   E_T_f_sum = 0
   for f in range(num_f_run):
     log(WARNING, "arr_rate= {}, mu= {}, k= {}, r= {}, t= {}, qmu_l= {}, w_sys= {}, mixed_traff= {}". \
         format(arr_rate, mu, k, r, t, pprint.pformat(qmu_l), w_sys, mixed_traff) )
-    
-    num_q = int(1 + t*r) if w_sys else int(t*r)
-    qid_l = range(num_q)
-    if len(qmu_l) == 0: qmu_l = num_q*[mu]
     
     env = simpy.Environment()
     if mixed_traff:
@@ -124,13 +122,13 @@ def test_avq(num_f_run, arr_rate, mu, k, r, t, qmu_l=[], w_sys=True, mixed_traff
         sym__rgroup_l_map[sym] = rgroup_l
       pg = MT_PG(env, _id="pg", inter_arr_dist=lambda: random.expovariate(arr_rate), sym_l=sym_l)
       log(WARNING, "sym__rgroup_l_map=\n {}".format(pprint.pformat(sym__rgroup_l_map) ) )
-      avq = MT_AVQ("mt_avq", env, qid_l, qmu_l, sym__rgroup_l_map)
+      avq = MT_AVQ("mt_avq", env, qmu_l, sym__rgroup_l_map)
       # monitor = AVQMonitor(env, aq=avq, poll_dist=lambda: 0.1)
       # avq.join_q.out_m = monitor
       pg.out = avq
     else:
       pg = PG(env, _id="pg", inter_arr_dist=lambda: random.expovariate(arr_rate) )
-      avq = AVQ("avq", env, k, r, t, qid_l, qmu_l, w_sys=w_sys)
+      avq = AVQ("avq", env, k, r, t, qmu_l, serv, w_sys=w_sys)
       # monitor = AVQMonitor(env, aq=avq, poll_dist=lambda: 0.1)
       # avq.join_q.out_m = monitor
       pg.out = avq
@@ -149,8 +147,8 @@ def test_avq(num_f_run, arr_rate, mu, k, r, t, qmu_l=[], w_sys=True, mixed_traff
     qid__win_freq_map = {i:float(n)/total_n_wins for i, n in avq.join_sink.qid__num_win_map.items() }
     print("qid__win_freq_map= {}".format(pprint.pformat(qid__win_freq_map) ) )
     if not mixed_traff:
-      total_n_types = sum(avq.type__num_m)
-      p_i_l[:] = [n/total_n_types for t,n in enumerate(avq.type__num_m) ]
+      total_n_types = sum(avq.servtype__num_m)
+      p_i_l[:] = [n/total_n_types for t,n in enumerate(avq.servtype__num_m) ]
       print("p_i_l= {}".format(p_i_l) )
     """
     print("\n")
@@ -179,7 +177,7 @@ def test_avq(num_f_run, arr_rate, mu, k, r, t, qmu_l=[], w_sys=True, mixed_traff
     """
   E_T = E_T_f_sum/num_f_run
   print(">> E_T= {}".format(E_T) )
-  if E_T > 30: return None
+  if E_T > 1000: return None
   return E_T
   
 def plot_winning_freqs():
@@ -237,6 +235,7 @@ def plot_winning_freqs():
 
 def plot_simplex_vs_rep():
   t = 3
+  serv = "Exp"
   mu = 1 # serv rate at each server for simplex
   if t == 1: arr_rate_ub = 1.6
   elif t == 3: arr_rate_ub = 2.4
@@ -415,7 +414,7 @@ def plot_simplex_vs_rep():
     for arr_rate in [*numpy.linspace(0.05, 0.8*arr_rate_ub, 5, endpoint=False), *numpy.linspace(0.8*arr_rate_ub, arr_rate_ub, 10) ]:
       arr_rate_simplex_l.append(arr_rate)
       if sim_simplex_reqed:
-        E_T_sim_simplex_l.append(test_avq(num_f_run, arr_rate, mu, k=2, r=2, t=t, w_sys=True, mixed_traff=mixed_traff) )
+        E_T_sim_simplex_l.append(test_avq(num_f_run, arr_rate, mu, k=2, r=2, t=t, serv=serv, w_sys=True, mixed_traff=mixed_traff) )
     print("E_T_sim_simplex_l= {}".format(pprint.pformat(E_T_sim_simplex_l) ) )
     # E_T_sim_simplex_l = [e*n for e in E_T_sim_simplex_l]
     c = next(dark_color)
@@ -514,14 +513,18 @@ def plot_simplex_vs_rep():
 
 def plot_simplex():
   mixed_traff, w_sys = False, True
-  t, r, k = 3, 2, 2
+  t, r, k = 1, 2, 2
+  serv = "Dolly" # "Exp"
   mu = 1
   gamma = mu
-  if t == 1: arr_rate_ub = 1.6
-  elif t == 3: arr_rate_ub = 2.4
-  elif t == 7: arr_rate_ub = float(1.1*simplex_inner_bound_on_arr_rate(r, t, mu, w_sys=True) )
-  else: arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu, w_sys)
-  log(WARNING, "w_sys= {}, t= {}, r= {}, k= {}, mu= {}, arr_rate_ub= {}, mixed_traff= {}".format(w_sys, t, r, k, mu, arr_rate_ub, mixed_traff) )
+  if serv == "Exp":
+    if t == 1: arr_rate_ub = 1.6
+    elif t == 3: arr_rate_ub = 2.4
+    elif t == 7: arr_rate_ub = float(1.1*simplex_inner_bound_on_arr_rate(r, t, mu, w_sys=True) )
+    else: arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu, w_sys)
+  elif serv == "Dolly":
+    if t == 1: arr_rate_ub = 0.28
+  log(WARNING, "w_sys= {}, t= {}, r= {}, k= {}, mu= {}, serv= {}, arr_rate_ub= {}, mixed_traff= {}".format(w_sys, t, r, k, mu, serv, arr_rate_ub, mixed_traff) )
   
   E_T_simplex_sm_l, E_T_sim_simplex_l, E_T_simplex_l, E_T_simplex_alt_l, E_T_simplex_matrix_analytic_l = [], [], [], [], []
   E_T_simplex_best_approx_l, E_T_simplex_better_approx_l, E_T_simplex_naive_approx_l, E_T_simplex_varki_gauri_lb_l = [], [], [], []
@@ -529,7 +532,7 @@ def plot_simplex():
   E_T_sim_simplex_mixed_traff_l = []
   
   sim_simplex = False
-  if w_sys and t == 1:
+  if w_sys and t == 11:
     E_T_sim_simplex_l= [
       0.6775872854372559,
       0.7909557937247363,
@@ -621,14 +624,15 @@ def plot_simplex():
   else:
     sim_simplex_mixed_traff = True
   
-  num_f_run = 2
-  arr_rate_l, arr_rate_approx_l = [], []
+  num_f_run = 3
+  arr_rate_l = []
   for arr_rate in [*numpy.linspace(0.05, 0.8*arr_rate_ub, 5, endpoint=False), *numpy.linspace(0.8*arr_rate_ub, arr_rate_ub, 10) ]:
+  # for arr_rate in numpy.linspace(0.05, 0.1, 1):
     arr_rate_l.append(arr_rate)
     
     p_i_l= []
     if sim_simplex:
-      E_T_sim_simplex_l.append(test_avq(num_f_run, arr_rate, mu, k, r, t, w_sys=w_sys, p_i_l=p_i_l) )
+      E_T_sim_simplex_l.append(test_avq(num_f_run, arr_rate, mu, k, r, t, serv=serv, w_sys=w_sys, p_i_l=p_i_l) )
     # E_T_simplex_sim_based_approx_l.append(E_T_simplex_approx(t, arr_rate, gamma, mu, p_i_l=p_i_l) )
     
     E_T_simplex_sm_l.append(E_T_simplex_splitmerge(t, arr_rate, mu) )
@@ -645,6 +649,7 @@ def plot_simplex():
     E_T_simplex_better_approx_l.append(E_T_simplex_approx(t, arr_rate, gamma, mu) )
     E_T_simplex_best_approx_l.append(E_T_simplex_approx(t, arr_rate, gamma, mu, incremental=True) )
     # E_T_simplex_varki_gauri_lb_l.append(E_T_simplex_varki_gauri_lb(t, arr_rate, gamma, mu) )
+  
   arr_rate_mixed_traff_l = []
   for arr_rate in [*numpy.linspace(0.05, 0.8*arr_rate_ub, 5, endpoint=False), *numpy.linspace(0.8*arr_rate_ub, 1.1*arr_rate_ub, 10) ]:
     arr_rate_mixed_traff_l.append(arr_rate)
@@ -666,6 +671,7 @@ def plot_simplex():
     label = 'Simulation, fixed-arrivals' if mixed_traff else 'Simulation'
     plot.plot(arr_rate_l, E_T_sim_simplex_l, label=label, marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
     # plot.plot(arr_rate_l, E_T_simplex_sim_based_approx_l, label=r'Sim-based approximation', marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+    """
     if mixed_traff:
       log(WARNING, "E_T_sim_simplex_mixed_traff_l= {}".format(pprint.pformat(E_T_sim_simplex_mixed_traff_l) ) )
       plot.plot(arr_rate_mixed_traff_l, E_T_sim_simplex_mixed_traff_l, label=r'Simulation, mixed-arrivals', marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
@@ -682,6 +688,7 @@ def plot_simplex():
     # stab_lim = E_T_simplex_approx(t, arr_rate, gamma, mu, incremental=True, arr_rate_ub=True)
     # plot.axvline(stab_lim, label="Stability limit", color='black', linestyle='--')
     # plot.gca().set_xlim([0, stab_lim+0.1] )
+    """
   def plot_split_to_one():
     arr_rate_ub = 0.9*arr_rate_ub_simplex_split_to_one(t, mu)
     log(WARNING, "w_sys= {}, t= {}, mu= {}, arr_rate_ub={}".format(w_sys, t, r, k, mu, arr_rate_ub) )
@@ -693,9 +700,9 @@ def plot_simplex():
     # log(WARNING, "E_T_sim_simplex_l= {}".format(pprint.pformat(E_T_sim_simplex_l) ) )
     # plot.plot(arr_rate_l, E_T_sim_simplex_l, 'k', label=r'Replicate-to-all', marker=next(marker), linestyle=':', mew=mew, ms=ms)
     plot.plot(arr_rate_sto_l, E_T_simplex_sto_l, 'b', label=r'Select-one, exact expression', marker=next(marker), linestyle=':', mew=mew, ms=ms)
-  # plot_rep_to_all()
-  plot_poster()
-  plot_split_to_one()
+  plot_rep_to_all()
+  # plot_poster()
+  # plot_split_to_one()
   plot.legend(prop={'size':11})
   plot.xlabel(r'Arrival rate $\lambda$ (Request/sec)', fontsize=12)
   plot.ylabel(r'Average download time (sec)', fontsize=13)

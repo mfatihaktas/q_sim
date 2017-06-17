@@ -110,27 +110,21 @@ class MT_JQ(object):
   [When do the Availability Codes Make the Stored Data More Available?]
 """
 class AVQ(object): # Availability
-  def __init__(self, _id, env, k, r, t, qid_l, qmu_l, out=None, w_sys=True):
+  def __init__(self, _id, env, k, r, t, qmu_l, serv, out=None, w_sys=True):
     self._id = _id
     self.env = env
     self.k = k
     self.r = r
     self.t = t
-    self.qid_l = qid_l
-    # self.out = out
+    self.out = out
     self.w_sys = w_sys
     
-    self.num_q = len(qid_l)
-    if w_sys and self.num_q != (1 + t*r):
-      log(ERROR, "w_sys= {}, self.num_q= {} != (1 + t*r)= {}".format(w_sys, self.num_q, 1+t*r) )
-      return 1
-    elif not w_sys and self.num_q != t*r:
-      log(ERROR, "w_sys= {}, self.num_q= {} != t*r= {}".format(w_sys, self.num_q, t*r ) )
-      return 1
     self.join_sink = JSink(_id, env)
     self.join_sink.out = out
-    self.group_id__q_map = {}
+    self.id__q_map = {}
     
+    num_q = int(1 + t*r) if w_sys else int(t*r)
+    qid_l = [i for i in range(num_q) ]
     self.qid_l = []
     if w_sys:
       for g in range(1, t + 1 + 1):
@@ -153,7 +147,7 @@ class AVQ(object): # Availability
       for g in range(1, t + 1 + 1):
         q = None
         if g == 1:
-          q = FCFS(_id=self.qid_l[g-1], env=env, serv_rate=qmu_l[0] )
+          q = FCFS(_id=self.qid_l[g-1], env=env, rate=qmu_l[0], serv=serv)
           log(DEBUG, "g= {}, q= {}, qmu_l[0]= {}".format(g, q, qmu_l[0]) )
           q.out = self.join_q
         else:
@@ -161,25 +155,24 @@ class AVQ(object): # Availability
           ri = li + r
           # q = MDSQ(_id="".join(["%s," % i for i in qid_l[li:ri] ] ),
           q = MDSQ(_id= self.qid_l[g-1],
-                   env=env, k=k, qid_l=qid_l[li:ri], qmu_l=qmu_l[li:ri], out=self.join_q)
+                   env=env, k=k, qid_l=qid_l[li:ri], qmu_l=qmu_l[li:ri], out=self.join_q, serv=serv)
           log(DEBUG, "g= {}, q= {}, qmu_l[li:ri]= {}".format(g, q, qmu_l[li:ri] ) )
-        self.group_id__q_map[g] = q
+        self.id__q_map[g] = q
     else:
       for g in range(1, t + 1):
         li = (g-1)*r
         ri = li + r
-        q = MDSQ(_id="mds{}".format(pprint.pformat(qid_l[li:ri] ) ),
-                 env=env, k=k, qid_l=qid_l[li:ri], qmu_l=qmu_l[li:ri], out=self.join_q)
+        q = MDSQ(_id="mds{}".format(list(qid_l[li:ri] ) ),
+                 env=env, k=k, qid_l=qid_l[li:ri], qmu_l=qmu_l[li:ri], serv=serv, out=self.join_q)
         log(DEBUG, "g= {}, q= {}, qmu_l[li:ri]= {}".format(g, q, qmu_l[li:ri] ) )
-        self.group_id__q_map[g] = q
+        self.id__q_map[g] = q
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
-    self.out = None
     self.action = env.process(self.run() ) # starts the run() method as a SimPy process
     self.action = env.process(self.run_c() )
     
     self.job_id_counter = 0
-    self.type__num_m = (t+1)*[0]
+    self.servtype__num_m = (t+1)*[0]
   
   def __repr__(self):
     return "AVQ[k= {}, r= {}, t= {}]".format(self.k, self.r, self.t)
@@ -187,7 +180,7 @@ class AVQ(object): # Availability
   
   def state(self, job_id_to_exclude=[]):
     state = []
-    for g, q in self.group_id__q_map.items():
+    for g, q in self.id__q_map.items():
       state += q.state(job_id_to_exclude)
     
     return state
@@ -195,7 +188,7 @@ class AVQ(object): # Availability
   def run(self):
     while True:
       p = (yield self.store.get() )
-      for g, q in self.group_id__q_map.items():
+      for g, q in self.id__q_map.items():
         if g != -1:
           q.put(p.deep_copy() )
       
@@ -212,16 +205,14 @@ class AVQ(object): # Availability
       # 
       next_job_id = cp._id + 1
       type_ = 0
-      for g,q in self.group_id__q_map.items():
+      for g, q in self.id__q_map.items():
         if g == 1:
-          if not q._in(next_job_id):
-            break
+          if not q._in(next_job_id): break
         else:
-          if q.n_servers_in(next_job_id) < self.r:
-            type_ += 1
-      self.type__num_m[type_] += 1
+          if q.n_servers_in(next_job_id) < self.r: type_ += 1
+      self.servtype__num_m[type_] += 1
       # 
-      for g, q in self.group_id__q_map.items():
+      for g, q in self.id__q_map.items():
         if q._id not in cp.departed_qid_l:
           q.put_c(cp.deep_copy() )
   
@@ -291,32 +282,31 @@ class AVQMonitor(object):
   
 # *****************************  Mixed-Traffic Availability Q  ******************************* #
 class MT_AVQ(object):
-  def __init__(self, _id, env, qid_l, qmu_l, sym__rgroup_l_map, w_sys=False, out=None):
+  def __init__(self, _id, env, qmu_l, sym__rgroup_l_map, w_sys=False, out=None):
     self._id = _id
     self.env = env
-    # self.out = out
-    
-    self.num_q = len(qid_l)
     self.sym__rgroup_l_map = sym__rgroup_l_map
+    self.out = out
+    
+    self.num_q = int(1 + t*r) if w_sys else int(t*r)
+    self.qid_l = range(num_q)
     
     self.join_sink = JSink(_id, env)
     self.join_sink.out = out
     self.qid_q_map = {}
     
-    self.qid_l = qid_l
     self.join_q = MT_JQ(_id=_id, env=env, input_qid_l=self.qid_l, sym__rgroup_l_map=sym__rgroup_l_map)
     self.join_q.out = self.join_sink
     self.join_q.out_c = self
     self.join_q.out_m = None # can be set by the caller if desired
     for i, qid in enumerate(qid_l):
-      q = FCFS(_id=qid, env=env, serv_rate=qmu_l[i] )
+      q = FCFS(_id=qid, env=env, rate=qmu_l[i] )
       log(DEBUG, "i= {}, q= {}".format(i, q) )
       q.out = self.join_q
       self.qid_q_map[i] = q
     
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
-    self.out = None
     env.process(self.run() )
     env.process(self.run_c() )
     

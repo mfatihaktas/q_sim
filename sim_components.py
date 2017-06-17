@@ -105,7 +105,7 @@ class JSink(object): # Join
         self.qid__num_win_map[p.winner_id] = 0
       self.qid__num_win_map[p.winner_id] += 1
       
-      if self.out is not None:
+      if self.out is not None: 
         self.out.put(p)
   
   def put(self, p):
@@ -186,40 +186,37 @@ class Q(object):
 
 def dolly_slowdown_dist(): # Kristen et al. A Better Model for Job Redundancy: Decoupling Server Slowdown and Job Size
   u = random.uniform(0, 1)
-  if u <= 0.23: return 1
+  if u <= 0.23: return 1 + u/100
   u -= 0.23
-  if u <= 0.14: return 2
+  if u <= 0.14: return 2 + u/100
   u -= 0.14
-  if u <= 0.09: return 3
+  if u <= 0.09: return 3 + u/100
   u -= 0.09
-  if u <= 0.03: return 4
+  if u <= 0.03: return 4 + u/100
   u -= 0.03
-  if u <= 0.08: return 5
+  if u <= 0.08: return 5 + u/100
   u -= 0.08
-  if u <= 0.1: return 6
+  if u <= 0.1: return 6 + u/100
   u -= 0.1
-  if u <= 0.04: return 7
+  if u <= 0.04: return 7 + u/100
   u -= 0.04
-  if u <= 0.14: return 8
+  if u <= 0.14: return 8 + u/100
   u -= 0.14
-  if u <= 0.12: return 9
+  if u <= 0.12: return 9 + u/100
   u -= 0.12
-  if u <= 0.021: return 10
+  if u <= 0.021: return 10 + u/100
   u -= 0.021
-  if u <= 0.007: return 11
+  if u <= 0.007: return 11 + u/100
   u -= 0.007
-  if u <= 0.002: return 12
-  return 12 # for safety
+  if u <= 0.002: return 12 + u/100
+  return 12 + u/100 # for safety
 
 class FCFS(Q): # First Come First Serve
-  def __init__(self, _id, env, serv_rate, serv_dist=None, rate=None, q_limit=None, debug=False):
+  def __init__(self, _id, env, rate, serv="Exp"):
     super().__init__(_id, env, 1)
     
-    self.serv_rate = serv_rate
-    self.serv_dist = lambda: random.expovariate(serv_rate)
     self.rate = rate
-    self.q_limit = q_limit
-    self.debug = debug
+    self.serv = serv
     
     self.p_l = []
     self.p_in_serv = None
@@ -240,7 +237,7 @@ class FCFS(Q): # First Come First Serve
     self.action = env.process(self.run_helper() )
   
   def __repr__(self):
-    return "FCFS[_id= {}, mu= {}]".format(self._id, self.serv_rate)
+    return "FCFS[_id= {}, mu= {}]".format(self._id, self.rate)
   
   def length(self):
     return len(self.p_l) + self.busy
@@ -259,7 +256,9 @@ class FCFS(Q): # First Come First Serve
     return [state]
   
   def _in(self, job_id):
-    if job_id == self.p_in_serv.job_id:
+    if not self.busy:
+      return False
+    elif self.p_in_serv.job_id == job_id:
       return True
     for p in self.p_l:
       if job_id == p.job_id:
@@ -281,31 +280,26 @@ class FCFS(Q): # First Come First Serve
       self.wt_l.append(self.env.now - self.p_in_serv.ref_time)
       self.size_n -= 1
       self.busy = True
-      if self.cancel is None:
-        self.cancel = self.env.event()
-      if self.preempt is None:
-        self.preempt = self.env.event()
+      if self.cancel is None: self.cancel = self.env.event()
+      if self.preempt is None: self.preempt = self.env.event()
       
-      exp_clock_start_time = None
-      if self.serv_dist is None:
-        if self.rate is None:
-          log(ERROR, "self.serv_dist is None but self.rate is None too!")
-          return 1
-        log(WARNING, "self.serv_dist is None!")
-        sim_log(WARNING, self.env, self, "starting D-clock! on ", self.p_in_serv)
-        yield (self.cancel | self.preempt | self.env.timeout(self.p_in_serv.size/self.rate) ) # service
-      else:
-        exp_clock_start_time = self.env.now
-        sim_log(DEBUG, self.env, self, "starting Exp-clock on ", self.p_in_serv)
-        yield (self.cancel | self.preempt | self.env.timeout(self.serv_dist() ) ) # service
+      clk_start_time = self.env.now
+      if self.serv == "Det":
+        t = self.p_in_serv.size()/self.rate
+      elif self.serv == "Exp":
+        t = random.expovariate(self.rate)
+      elif self.serv == "Dolly":
+        t = dolly_slowdown_dist()
+      sim_log(DEBUG, self.env, self, "starting {}-clock! on ".format(self.serv), self.p_in_serv)
+      yield (self.cancel | self.preempt | self.env.timeout(t) )
+      
       if self.cancel is None: # task got cancelled
-        sim_log(DEBUG, self.env, self, "cancelling", self.p_in_serv)
-        sim_log(DEBUG, self.env, self, "cancelled Exp-clock on ", self.p_in_serv)
+        sim_log(DEBUG, self.env, self, "cancelled clock on ", self.p_in_serv)
       elif self.preempt is None: # task got preempted
         self.p_l.insert(1, self.p_in_serv)
         sim_log(DEBUG, self.env, self, "preempted ", self.p_in_serv)
       else:
-        sim_log(DEBUG, self.env, self, "done with Exp-clock in {}s on ".format(self.env.now-exp_clock_start_time), self.p_in_serv)
+        sim_log(DEBUG, self.env, self, "serv done in {}s on ".format(self.env.now-clk_start_time), self.p_in_serv)
         self.qt_l.append(self.env.now - self.p_in_serv.ref_time)
         if self.out is not None and self.p_in_serv.sym != SYS_TRAFF_SYM:
           sim_log(DEBUG, self.env, self, "finished serv, forwarding", self.p_in_serv)
@@ -314,33 +308,31 @@ class FCFS(Q): # First Come First Serve
         else:
           sim_log(DEBUG, self.env, self, "finished serv", self.p_in_serv)
       self.busy = False
+      self.p_in_serv = None
   
   def put(self, p, preempt=False):
     self.n_recved += 1
     p.ref_time = self.env.now
     sim_log(DEBUG, self.env, self, "recved", p)
     t_size_n = self.size_n + 1
-    if (self.q_limit is not None and t_size_n > self.q_limit):
-      sim_log(DEBUG, self.env, self, "dropping", p)
-      self.n_dropped += 1
+    # if (self.q_limit is not None and t_size_n > self.q_limit):
+    #   sim_log(DEBUG, self.env, self, "dropping", p)
+    #   self.n_dropped += 1
+    #   return
+    # else:
+    # self.size_n = t_size_n
+    if preempt and self.busy:
+      self.preempt.succeed()
+      self.preempt = None
+      self.p_l.insert(0, p)
+      self.syncer.put(1)
       return
-    else:
-      self.size_n = t_size_n
-      if preempt and self.busy:
-        self.preempt.succeed()
-        self.preempt = None
-        self.p_l.insert(0, p)
-        self.syncer.put(1)
-        return
-      return self.store.put(p)
+    return self.store.put(p)
   
   def run_c(self):
     while True:
       cp = (yield self.store_c.get() )
       if self.p_in_serv is not None and self.p_in_serv.job_id == cp._id:
-        if self.cancel is None:
-          log(ERROR, "self.cancel is None!")
-          return 1
         self.cancel.succeed()
         self.cancel = None
       
