@@ -2,7 +2,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plot
 import matplotlib.cm as cm # cm.rainbow
-import sys, pprint, math, numpy, sympy, simpy, getopt
+import sys, pprint, math, numpy
 from math import factorial
 from numpy import linalg
 from patch import *
@@ -304,16 +304,22 @@ def simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu):
   return state_prob_map
 
 def avq_low_traff_serv_time_first_moment(r, t, mu):
-  return 1/(mu*r)*B(t+1, 1/r)
+  if t == 0:
+    return 1/mu
+  else:
+    return 1/(mu*r)*B(t+1, 1/r)
 
 def avq_low_traff_serv_time_second_moment(r, t, mu):
-  second_moment = 0
-  for j in range(t + 1):
-    inner_term = 0
-    for l in range(r*j + 1):
-      inner_term += (-1)**l * binomial(r*j, l)*(2/(mu**2 * (l+1)**2) )
-    second_moment += binomial(t, j) * (-1)**j * inner_term
-  return second_moment
+  if t == 0:
+    return 2/mu**2
+  else:
+    second_moment = 0
+    for j in range(t + 1):
+      inner_term = 0
+      for l in range(r*j + 1):
+        inner_term += (-1)**l * binomial(r*j, l)*(2/(mu**2 * (l+1)**2) )
+      second_moment += binomial(t, j) * (-1)**j * inner_term
+    return second_moment
 
 def E_T_simplex_t_2(arr_rate, mu, M):
   E_S_c = avq_low_traff_serv_time_first_moment(2, 2, mu)

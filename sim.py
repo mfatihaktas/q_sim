@@ -32,11 +32,13 @@ class Packet(object):
     return p
   
   def __repr__(self):
-    return "Packet[flow_id: {}, _id: {}]".format(self.flow_id, self._id)
+    # return "Packet[flow_id: {}, _id: {}]".format(self.flow_id, self._id)
+    return "Packet[_id: {}, sym: {}]".format(self._id, self.sym)
 
 class CPacket(object): # Control
-  def __init__(self, _id, prev_hop_id=None, departed_qid_l=[]):
+  def __init__(self, _id, sym=None, prev_hop_id=None, departed_qid_l=[]):
     self._id = _id
+    self.sym = sym
     self.prev_hop_id = prev_hop_id
     self.departed_qid_l = departed_qid_l
   
@@ -44,7 +46,8 @@ class CPacket(object): # Control
    return CPacket(self._id, self.prev_hop_id)
   
   def __repr__(self):
-    return "CPacket[_id= {}, prev_hop_id= {}, departed_qid_l= {}]".format(self._id, self.prev_hop_id, self.departed_qid_l)
+    # return "CPacket[_id= {}, prev_hop_id= {}, departed_qid_l= {}]".format(self._id, self.prev_hop_id, self.departed_qid_l)
+    return "CPacket[_id= {}, sym= {}, departed_qid_l= {}]".format(self._id, self.sym, self.departed_qid_l)
 
 MPACKET_JOB_DEPARTED = "job_departed"
 class MPacket(object): # Monitor
@@ -60,23 +63,21 @@ class MPacket(object): # Monitor
 
 # *******************************  PacketGenerator  ****************************** #
 class PG(object): # Packet Generator
-  def __init__(self, env, _id, inter_arr_dist, flow_id=0):
+  def __init__(self, env, _id, arr_rate, flow_id=0):
     self._id = _id
     self.env = env
-    self.inter_arr_dist = inter_arr_dist
+    self.arr_rate = arr_rate
     self.flow_id = flow_id
     
     self.n_sent = 0
     self.out = None
-    self.action = None
   
   def init(self):
-    self.action = self.env.process(self.run() )  # starts the run() method as a SimPy process
+    self.env.process(self.run() ) # starts the run() method as a SimPy process
   
   def run(self):
     while 1:
-      # wait for next transmission
-      yield self.env.timeout(self.inter_arr_dist() )
+      yield self.env.timeout(random.expovariate(self.arr_rate) )
       self.n_sent += 1
       p = Packet(time=self.env.now, _id=self.n_sent, size=1, flow_id=self.flow_id)
       self.out.put(p)
@@ -233,7 +234,7 @@ class FCFS(Q): # First Come First Serve
     self.syncer = simpy.Store(env) # simpy.Resource(env, capacity=1)
     self.out = None
     self.action = env.process(self.run() )  # starts the run() method as a SimPy process
-    self.action = env.process(self.run_c() )
+    # self.action = env.process(self.run_c() )
     self.action = env.process(self.run_helper() )
   
   def __repr__(self):
@@ -295,6 +296,7 @@ class FCFS(Q): # First Come First Serve
       
       if self.cancel is None: # task got cancelled
         sim_log(DEBUG, self.env, self, "cancelled clock on ", self.p_in_serv)
+        
       elif self.preempt is None: # task got preempted
         self.p_l.insert(1, self.p_in_serv)
         sim_log(DEBUG, self.env, self, "preempted ", self.p_in_serv)
@@ -302,7 +304,7 @@ class FCFS(Q): # First Come First Serve
         sim_log(DEBUG, self.env, self, "serv done in {}s on ".format(self.env.now-clk_start_time), self.p_in_serv)
         self.qt_l.append(self.env.now - self.p_in_serv.ref_time)
         if self.out is not None and self.p_in_serv.sym != SYS_TRAFF_SYM:
-          sim_log(DEBUG, self.env, self, "finished serv, forwarding", self.p_in_serv)
+          # sim_log(DEBUG, self.env, self, "finished serv, forwarding", self.p_in_serv)
           self.p_in_serv.prev_hop_id = self._id
           self.out.put(self.p_in_serv)
         else:
@@ -329,20 +331,28 @@ class FCFS(Q): # First Come First Serve
       return
     return self.store.put(p)
   
-  def run_c(self):
-    while True:
-      cp = (yield self.store_c.get() )
-      if self.p_in_serv is not None and self.p_in_serv.job_id == cp._id:
-        self.cancel.succeed()
-        self.cancel = None
+  # def run_c(self):
+  #   while True:
+  #     cp = (yield self.store_c.get() )
+  #     if self.p_in_serv is not None and self.p_in_serv.job_id == cp._id:
+  #       self.cancel.succeed()
+  #       self.cancel = None
       
-      for p in self.p_l:
-        if p.job_id == cp._id:
-          self.p_l.remove(p)
+  #     for p in self.p_l:
+  #       if p.job_id == cp._id:
+  #         self.p_l.remove(p)
   
   def put_c(self, cp):
     sim_log(DEBUG, self.env, self, "recved", cp)
-    return self.store_c.put(cp)
+    # return self.store_c.put(cp)
+    
+    if self.p_in_serv is not None and self.p_in_serv.job_id == cp._id:
+      self.cancel.succeed()
+      self.cancel = None
+    
+    for p in self.p_l:
+      if p.job_id == cp._id:
+        self.p_l.remove(p)
     
 class QMonitor(object):
   def __init__(self, env, q, dist):
@@ -359,4 +369,4 @@ class QMonitor(object):
       yield self.env.timeout(self.dist() )
       
       self.t_l.append(self.env.now)
-      self.n_l.append(len(self.q.store.items) + self.q.busy)
+      self.n_l.append(self.q.length() )

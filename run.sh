@@ -50,9 +50,7 @@ elif [ $1 = 'a' ]; then
 elif [ $1 = 'g' ]; then
   rm -r __pycache__; $PYTHON google_data.py
 elif [ $1 = 'f' ]; then
-  rm -r __pycache__; $PYTHON fun.py
-# elif [ $1 = 'd' ]; then
-#   rm -r __pycache__; rm *.png; $PYTHON deprecated.py
+  rm -r __pycache__; $PYTHON fairness_sim.py
 elif [ $1 = 'me' ]; then
   rm -r __pycache__; rm *.log *.png
   NUM_Q_MIN=3

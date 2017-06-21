@@ -1,6 +1,6 @@
 import simpy, random, copy, pprint
 
-from sim_components import *
+from sim import *
 from patch import *
 
 class MDS_PG(PG):
@@ -36,16 +36,16 @@ class MDSQ(object):
     self.preempt = preempt
     # self.out = out
     
-    self.join_sink = JSink(_id, env)
-    self.join_sink.out = out
-    self.join_q = JQ(_id, env, k, qid_l)
-    self.join_q.out = self.join_sink
-    self.join_q.out_c = self
+    self.jsink = JSink(_id, env)
+    self.jsink.out = out
+    self.jq = JQ(_id, env, k, qid_l)
+    self.jq.out = self.jsink
+    self.jq.out_c = self
     self.id_q_map = {}
     for i in range(self.n):
       qid = qid_l[i]
       q = FCFS(_id=qid, env=env, rate=qmu_l[i], serv=serv)
-      q.out = self.join_q
+      q.out = self.jq
       self.id_q_map[qid] = q
     
     self.store = simpy.Store(env)
@@ -115,7 +115,7 @@ class MDSQ(object):
         if q._id not in cp.departed_qid_l:
           q.put_c(cp)
       if cp.prev_hop_id != self._id: # To avoid inifinite loops forward only when cp comes from a different JQ than self
-        self.join_q.put_c(cp)
+        self.jq.put_c(cp)
   
   def put_c(self, cp):
     sim_log(DEBUG, self.env, self, "recved", cp)
@@ -128,7 +128,7 @@ class MDSQ(object):
   #     if q._id not in cp.departed_qid_l:
   #       q.put_c(cp)
   #   if cp.prev_hop_id != self._id: # To avoid inifinite loops forward only when cp comes from a different JQ than self
-  #     self.join_q.put_c(cp)
+  #     self.jq.put_c(cp)
   
 class MDSQMonitor(object):
   def __init__(self, env, q, poll_dist):

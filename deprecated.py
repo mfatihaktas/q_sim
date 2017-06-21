@@ -3,13 +3,13 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plot
 import matplotlib.cm as cm # cm.rainbow
 import numpy, math, collections
-from simplex_sim_components import *
+from simplex_sim import *
 
 def eg_pgen_psink():
   env = simpy.Environment()
   ps = PacketSink(env, debug=True)  # debugging enable for simple output
-  pg1 = PacketGenerator(env, _id="pg1", adist=lambda: 1.5, sdist=lambda: expovariate(0.01) )
-  pg2 = PacketGenerator(env, _id="pg2", adist=lambda: 2, sdist=lambda: expovariate(0.01) )
+  pg1 = PG(env, _id="pg1", adist=lambda: 1.5, sdist=lambda: expovariate(0.01) )
+  pg2 = PG(env, _id="pg2", adist=lambda: 2, sdist=lambda: expovariate(0.01) )
   
   pg1.out = ps
   pg2.out = ps
@@ -20,7 +20,7 @@ def eg_overloaded_m1_q():
   env = simpy.Environment()
   
   ps = PacketSink(env, debug=True)
-  pg = PacketGenerator(env, _id="pg", adist=lambda: 1.5, sdist=lambda: 100)
+  pg = PG(env, _id="pg", adist=lambda: 1.5, sdist=lambda: 100)
   m1_q = S1_Q(_id=0, env=env, rate=200.0, qlimit_B=300, debug=True)
   
   pg.out = m1_q
@@ -36,41 +36,29 @@ def test_m_m_1():
   
   # ps = PacketSink(env, debug=False, rec_arrivals=True)
   arr_rate = 0.5
-  serv_rate = 1.0
-  pg = PacketGenerator(env, _id="pg",
-                       adist=lambda: random.expovariate(arr_rate),
-                       sdist=lambda: 1.0)
-                      # sdist=lambda: random.expovariate(serv_rate) )
-  # m1_q = S1_Q(_id=0, env=env, rate=1.0) # rate (Bps)
-  m1_q = S1_Q(_id=0, env=env, serv_dist=lambda: random.expovariate(serv_rate) ) # rate (Bps)
-  # qm = QMonitor(env, q=m1_q, dist=lambda: 0.5)
-  qm = QMonitor(env, q=m1_q, dist=lambda: 500)
+  mu = 1.0
+  # pg = PG(env, "pg", arr_rate)
+  pg = MT_PG(env, "pg", arr_rate, ['a', 'b'], pop_sym='a', pop_arr_rate=0.25)
+  # pg = MT_PG(env, "pg", arr_rate, ['a', 'b'], pop_sym=None)
+  q = FCFS(_id=0, env=env, rate=mu)
+  pg.out = q
   
-  pg.out = m1_q
-  # m1_q.out = ps
-  #
-  # env.run(until=8000)
+  qm = QMonitor(env, q=q, dist=lambda: 1)
+  pg.init()
   env.run(until=50000)
-  # env.run(until=500000)
-  # print("Last 10 waits: "  + ", ".join(["{:.3f}".format(x) for x in ps.waits[-10:] ] ) )
-  print("Last 10 in qm.n_list: {}".format(qm.n_list[-10:] ) )
-  # print("Last 10 sink arrival times: " + ", ".join(["{:.3f}".format(x) for x in ps.arrivals[-10:] ] ) )
-  # print("average wait = {:.3f}".format(sum(ps.waits)/len(ps.waits) ) )
-  print("received: {}, dropped {}, sent {}".format(m1_q.n_recved, m1_q.n_dropped, pg.n_sent) )
-  print("loss rate: {}".format(float(m1_q.n_dropped)/m1_q.n_recved) )
-  
-  print("arr_rate= {}, serv_rate= {}".format(arr_rate, serv_rate) )
-  E_N = arr_rate/(serv_rate - arr_rate)
-  print("E[N]= {}, sim_E[N]= {:.3f}".format(E_N, float(sum(qm.n_list) )/len(qm.n_list) ) )
+  # 
+  print("received= {}, dropped= {}, sent= {}".format(q.n_recved, q.n_dropped, pg.n_sent) )
+  print("arr_rate= {}, mu= {}".format(arr_rate, mu) )
+  E_N = arr_rate/(mu - arr_rate)
+  print("E_N= {}, E_N_sim= {:.3f}".format(E_N, float(sum(qm.n_l) )/len(qm.n_l) ) )
   E_T = E_N/arr_rate
-  print("E[T]= {:.3f}, sim_E[T]= {:.3f}".format(E_T, float(sum(m1_q.qt_list) )/len(m1_q.qt_list) ) )
-  E_W = E_T - 1/serv_rate
-  print("E[W]= {:.3f}, sim_E[W]= {:.3f}".format(E_W, float(sum(m1_q.wt_list) )/len(m1_q.wt_list) ) )
+  print("E_T= {:.3f}, E_T_sim= {:.3f}".format(E_T, float(sum(q.qt_l) )/len(q.qt_l) ) )
+  E_W = E_T - 1/mu
+  print("E_W= {:.3f}, E_W_sim= {:.3f}".format(E_W, float(sum(q.wt_l) )/len(q.wt_l) ) )
   
-  # plot.plot(qm.t_list, qm.n_list, 'r-')
-  plot.step(qm.t_list, qm.n_list, 'r-', where='mid', label='mid')
+  # plot.plot(qm.t_l, qm.n_l, 'r-')
+  plot.step(qm.t_l, qm.n_l, 'r-', where='mid', label='mid')
   # plot.axis([0, 6, 0, 20] )
-  # plot.show()
   plot.savefig("m_m_1_q.png")
 
 def test_fj():
@@ -80,16 +68,16 @@ def test_fj():
   for c in range(1):
     env = simpy.Environment()
     arr_rate = 0.5
-    serv_rate = 1.0
-    pg = PacketGenerator(env, _id="p_gen",
+    mu = 1.0
+    pg = PG(env, _id="p_gen",
                          adist=lambda: random.expovariate(arr_rate),
                          sdist=lambda: 1)
     num_q = 2
     # qid_list = ["m1_q_%s" % i for i in range(1, num_q) ]
     qid_list = ["{}".format(i) for i in range(1, num_q + 1) ]
-    qserv_dist_list = [lambda: random.expovariate(serv_rate) for i in range(num_q) ]
-    fj_q = MDSQ("fj_q", env, num_q, qid_list, qserv_dist_list)
-    # mds_1_q = MDSQ("fj_q", env, 1, qid_list, qserv_dist_list)
+    qserv_dist_l = [lambda: random.expovariate(mu) for i in range(num_q) ]
+    fj_q = MDSQ("fj_q", env, num_q, qid_list, qserv_dist_l)
+    # mds_1_q = MDSQ("fj_q", env, 1, qid_list, qserv_dist_l)
     # qm = QMonitor(env, q=m1_q, dist=lambda: 500)
     
     pg.out = fj_q
@@ -101,18 +89,18 @@ def test_fj():
     
     # for num_q= 2
     E_T = None
-    ro = arr_rate/serv_rate
-    E_T_2 = (12 - ro)/(8*(serv_rate - arr_rate) )
+    ro = arr_rate/mu
+    E_T_2 = (12 - ro)/(8*(mu - arr_rate) )
     if num_q == 2:
       E_T = E_T_2
     else:
       x = H_k(num_q)/H_k(2)
       # Approximate Analysis of Fork/Join Synchronization in Parallel Queues
       E_T = (x + (4.0/11.0)*(1-x)*ro)*E_T_2
-    print("num_q= {}, arr_rate= {}, serv_rate= {}".format(num_q, arr_rate, serv_rate) )
-    st_list = fj_q.join_sink.st_list
-    if len(st_list) > 0:
-      sim_E_T = float(sum(st_list) )/len(st_list)
+    print("num_q= {}, arr_rate= {}, mu= {}".format(num_q, arr_rate, mu) )
+    st_l = fj_q.join_sink.st_l
+    if len(st_l) > 0:
+      sim_E_T = float(sum(st_l) )/len(st_l)
       print("E[T]= {:.3f}, sim_E[T]= {:.3f}".format(E_T, sim_E_T) )
       diff_list.append(abs(E_T - sim_E_T) )
   print("diff_list= [{}]".format("".join("%s, " % d for d in diff_list) ) )
@@ -123,18 +111,18 @@ def test_fj():
   qid__win_freq_map = {i:float(n)/total_num_wins for i, n in fj_q.join_sink.qid__num_win_map.items() }
   print("qid__win_freq_map= {}".format(pprint.pformat(qid__win_freq_map) ) )
 
-def test_mds_n_1(arr_rate, serv_rate, num_q):
-  print("test_mds_n_1:: arr_rate= {}, serv_rate= {}, num_q= {}"
-        .format(arr_rate, serv_rate, num_q) )
+def test_mds_n_1(arr_rate, mu, num_q):
+  print("test_mds_n_1:: arr_rate= {}, mu= {}, num_q= {}"
+        .format(arr_rate, mu, num_q) )
   diff_list = []
   for c in range(1):
     env = simpy.Environment()
-    pg = PacketGenerator(env, _id="p_gen",
+    pg = PG(env, _id="p_gen",
                          adist=lambda: random.expovariate(arr_rate),
                          sdist=lambda: 1)
     qid_list = ["{}".format(i) for i in range(1, num_q + 1) ]
-    qserv_dist_list = [lambda: random.expovariate(serv_rate) for i in range(num_q) ]
-    mdsq = MDSQ("mdsq", env, 1, qid_list, qserv_dist_list)
+    qserv_dist_l = [lambda: random.expovariate(mu) for i in range(num_q) ]
+    mdsq = MDSQ("mdsq", env, 1, qid_list, qserv_dist_l)
     # qm = QMonitor(env, q=m1_q, dist=lambda: 500)
     
     pg.out = mdsq
@@ -145,12 +133,12 @@ def test_mds_n_1(arr_rate, serv_rate, num_q):
     # env.run(until=200000)
     
     # for num_q= 2
-    print("num_q= {}, arr_rate= {}, serv_rate= {}".format(num_q, arr_rate, serv_rate) )
-    # ro = arr_rate/serv_rate
-    E_T = 1.0/(num_q*serv_rate - arr_rate)
-    st_list = mdsq.join_sink.st_list
-    if len(st_list) > 0:
-      sim_E_T = float(sum(st_list) )/len(st_list)
+    print("num_q= {}, arr_rate= {}, mu= {}".format(num_q, arr_rate, mu) )
+    # ro = arr_rate/mu
+    E_T = 1.0/(num_q*mu - arr_rate)
+    st_l = mdsq.join_sink.st_l
+    if len(st_l) > 0:
+      sim_E_T = float(sum(st_l) )/len(st_l)
       # print("E[T]= {:.3f}, sim_E[T]= {:.3f}".format(E_T, sim_E_T) )
       diff_list.append(abs(E_T - sim_E_T) )
       return sim_E_T
@@ -205,10 +193,10 @@ def test_simplex(arr_rate=None):
   log(WARNING, "arr_rate= {}, k= {}, r= {}, t= {}, qmu_list= {}".format(arr_rate, k, r, t, pprint.pformat(qmu_list) ) )
   
   env = simpy.Environment()
-  pg = PacketGenerator(env, _id="p_gen",
+  pg = PG(env, _id="p_gen",
                        adist=lambda: random.expovariate(arr_rate),
                        sdist=lambda: 1)
-  a_q = AVQ("a_q", env, k, r, t, qid_list, qserv_rate_list=qmu_list)
+  a_q = AVQ("a_q", env, k, r, t, qid_list, qmu_list=qmu_list)
   aq_monitor = AVQMonitor(env, aq=a_q, poll_dist=lambda: 0.1)
   a_q.join_q.out_m = aq_monitor
   pg.out = a_q
@@ -219,9 +207,9 @@ def test_simplex(arr_rate=None):
   qid__win_freq_map = {i:float(n)/total_num_wins for i, n in a_q.join_sink.qid__num_win_map.items() }
   print("arr_rate= {}, qid__win_freq_map= {}".format(arr_rate, pprint.pformat(qid__win_freq_map) ) )
   
-  st_list = a_q.join_sink.st_list
-  if len(st_list) > 0:
-    print("sim_E_T= {}".format(float(sum(st_list) )/len(st_list)) )
+  st_l = a_q.join_sink.st_l
+  if len(st_l) > 0:
+    print("sim_E_T= {}".format(float(sum(st_l) )/len(st_l)) )
   # """
   print("\n")
   # print("aq_monitor.polled_state__counter_map= {}".format(pprint.pformat(aq_monitor.polled_state__counter_map) ) )
@@ -243,7 +231,7 @@ def test_simplex(arr_rate=None):
   print("start_setup__freq_found_by_job_departed_map= {}".format(pprint.pformat(start_setup__freq_found_by_job_departed_map) ) )
   # """
 
-def plot_simplex_w_varying_serv_rate_alloc(num_q):
+def plot_simplex_w_varying_mu_alloc(num_q):
   k, r, t = 2, 2, 1 # 2
   mu = 1.0
   arr_rate_ub = simplex_inner_bound_on_arr_rate(r, t, mu)
@@ -278,7 +266,7 @@ def plot_simplex_w_varying_serv_rate_alloc(num_q):
   plot.xlabel("c")
   plot.ylabel("E[T] (s)")
   plot.title(r'Simplex(t:{}), heterogeneous servers; $c=\gamma/\mu$'.format(t) )
-  plot.savefig("plot_simplex_w_varying_serv_rate_alloc__t_{}.png".format(t) )
+  plot.savefig("plot_simplex_w_varying_mu_alloc__t_{}.png".format(t) )
   log(WARNING, "done; n= {} k= {} t= {}".format(num_q, k, t) )
 
 def simplex_t_1__zero_state():
@@ -356,12 +344,105 @@ def sum_of_harmonics():
   for n in range(k, 4*k):
     print("n= {}, E_C= {}".format(n, E_C(n) ) )
 
+# **********************************  Fairness First MDSQ  ******************************* #
+class FF_MDSQ(object): # Fairness First
+  def __init__(self, _id, env, qmu_l, serv, sym__rgroup_l_map, sym__sysqid_map, out=None):
+    self._id = _id
+    self.env = env
+    self.sym__rgroup_l_map = sym__rgroup_l_map
+    self.sym__sysqid_map = sym__sysqid_map
+    self.out = out
+    
+    self.num_q = len(qmu_l)
+    self.qid_l = [i for i in range(self.num_q) ]
+    
+    self.jsink = FF_JSink(_id, env)
+    self.jsink.out = out
+    self.id_q_map = {}
+    
+    self.jq = MT_JQ(_id=_id, env=env, input_qid_l=self.qid_l, sym__rgroup_l_map=sym__rgroup_l_map)
+    self.jq.out = self.jsink # data outlet
+    self.jq.out_c = self # control outlet
+    for i, qid in enumerate(self.qid_l):
+      q = FCFS(_id=qid, env=env, rate=qmu_l[i], serv=serv)
+      q.out = self.jq
+      self.id_q_map[qid] = q
+    # 
+    self.store = simpy.Store(env)
+    self.store_c = simpy.Store(env)
+    self.action = env.process(self.run() )
+    self.action = env.process(self.run_c() )
+    
+    self.job_id_counter = 0
+    self.pop_l = []
+  
+  def __repr__(self):
+    return "MT_AVQ[qid_l= {}]".format(self.qid_l)
+  
+  def send_pop(self, p):
+    sys_q = self.id_q_map[self.sym__sysqid_map[p.sym] ]
+    if not sys_q.busy:
+      sys_q.put(p.deep_copy() )
+      for r_l in self.sym__rgroup_l_map[p.sym]:
+        if len(r_l) == 1: continue
+        
+        rep = True
+        for r in r_l:
+          if self.id_q_map[r].busy:
+            rep = False
+        if rep:
+          for r in r_l:
+            self.id_q_map[r].put(p.deep_copy() )
+    else:
+      self.pop_l.append(p.deep_copy() )
+  
+  def run(self):
+    while True:
+      p = (yield self.store.get() )
+      
+      if p.sym == POP_SYM:
+        self.send_pop(p)
+      else:
+        sys_q = self.id_q_map[self.sym__sysqid_map[p.sym] ]
+        if sys_q.p_in_serv is not None and sys_q.p_in_serv.sym == POP_SYM:
+          sys_qid = self.sym__sysqid_map[p.sym]
+          for r_l in self.sym__rgroup_l_map[POP_SYM]:
+            if sys_qid in r_l:
+              for r in r_l:
+                self.id_q_map[r].put_c(CPacket(_id=sys_q.p_in_serv.job_id, prev_hop_id=self._id) )
+                # print("sending cancel to q= {}".format(self.id_q_map[r] ) )
+              
+        sys_q.put(p.deep_copy() )
+  
+  def put(self, p):
+    sim_log(DEBUG, self.env, self, "recved", p)
+    p.entrance_time = self.env.now
+    self.job_id_counter += 1
+    p.job_id = self.job_id_counter
+    return self.store.put(p)
+  
+  def run_c(self):
+    while True:
+      cp = (yield self.store_c.get() )
+      # 
+      if cp.sym == POP_SYM:
+        for g, q in self.id_q_map.items():
+          if q._id not in cp.departed_qid_l:
+            q.put_c(cp.deep_copy() )
+        
+        if len(self.pop_l):
+          self.send_pop(self.pop_l.pop(0) )
+  
+  def put_c(self, cp):
+    sim_log(DEBUG, self.env, self, "recved", cp)
+    return self.store_c.put(cp)
+
 if __name__ == "__main__":
-  # random.seed(33)
+  test_m_m_1()
   # test_simplex()
   
   # plot_dist()
-  plot_dist(dist=dolly_slowdown_dist)
+  # plot_dist(dist=dolly_slowdown_dist)
   
   # simplex_t_1__zero_state()
   # sum_of_harmonics()

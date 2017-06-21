@@ -8,7 +8,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plot
 
 from arepeat_models import *
-from arepeat_sim_components import *
+from arepeat_sim import *
 
 # ##################  Send n any k is enough, X_i ~ Exp(mu), each packet drops ~ Exp(gamma)  ################ #
 def plot_send_n_w_drop():

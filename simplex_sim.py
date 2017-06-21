@@ -1,33 +1,52 @@
 import simpy, random, copy, pprint
-from simpy.core import BoundClass
-from simpy.resources import base
+# from simpy.core import BoundClass
+# from simpy.resources import base
 
-from patch import *
+from sim import *
 from deprecated import *
-from sim_components import *
-from mds_sim_components import MDSQ
+from mds_sim import MDSQ
+from patch import *
 
 class MT_PG(PG):
-  def __init__(self, env, _id, inter_arr_dist, sym_l=None, flow_id=0):
-    super().__init__(env, _id, inter_arr_dist, flow_id)
+  def __init__(self, env, _id, arr_rate, sym_l, flow_id=0, pop_sym=None, pop_arr_rate=None):
+    super().__init__(env, _id, arr_rate, flow_id)
     self.sym_l = sym_l
+    self.pop_sym = pop_sym
+    self.pop_arr_rate = pop_arr_rate
     
     self.sym__n_sent = {}
-    env.process(self.run() )
+  
+  def init(self):
+    self.env.process(self.run() )
+    if self.pop_sym is not None:
+      self.env.process(self.run_pop() )
+  
+  def send(self, p):
+    self.out.put(p)
+    
+    self.n_sent += 1
+    if p.sym not in self.sym__n_sent:
+      self.sym__n_sent[p.sym] = 0
+    self.sym__n_sent[p.sym] += 1
   
   def run(self):
+    sym_l_ = list(self.sym_l)
+    if self.pop_sym is not None:
+      sym_l_.remove(self.pop_sym)
+    
     while 1:
-      yield self.env.timeout(self.inter_arr_dist() )
-      self.n_sent += 1
-      if self.sym_l is not None:
-        sym = self.sym_l[random.randint(0, len(self.sym_l)-1) ]
-        if sym not in self.sym__n_sent:
-          self.sym__n_sent[sym] = 0
-        self.sym__n_sent[sym] += 1
-        p = Packet(time=self.env.now, size=1, _id=self.n_sent, sym=sym, flow_id=self.flow_id)
-      else:
-        p = Packet(time=self.env.now, size=1, _id=self.n_sent, flow_id=self.flow_id)
-      self.out.put(p)
+      yield self.env.timeout(random.expovariate(self.arr_rate) )
+      s = sym_l_[random.randint(0, len(sym_l_)-1) ]
+      
+      p = Packet(time=self.env.now, size=1, _id=self.n_sent, sym=s, flow_id=self.flow_id)
+      self.send(p)
+  
+  def run_pop(self):
+    while 1:
+      yield self.env.timeout(random.expovariate(self.pop_arr_rate) )
+      
+      p = Packet(time=self.env.now, size=1, _id=self.n_sent, sym=self.pop_sym, flow_id=self.flow_id)
+      self.send(p)
 
 class MT_JQ(object):
   def __init__(self, _id, env, input_qid_l, sym__rgroup_l_map):
@@ -37,7 +56,6 @@ class MT_JQ(object):
     self.sym__rgroup_l_map = sym__rgroup_l_map
     
     self.job_id__p_l_map = {}
-    # self.job_id__departed_qid_l_map = {}
     self.qt_l = []
     self.length = 0 # maximum of the lengths of all pq's
     # self.state__num_found_map = {}
@@ -61,15 +79,16 @@ class MT_JQ(object):
     recved_from_qid_l = [p.prev_hop_id for p in p_l]
     rgroup_l = self.sym__rgroup_l_map[p.sym]
     success = False
-    for rgroup in rgroup_l:
+    for rg in rgroup_l:
       success = True
-      for qid in rgroup:
+      for qid in rg:
         if qid not in recved_from_qid_l:
           success = False
       if success:
         break
     if success:
-      self.out_c.put_c(CPacket(_id=p.job_id, prev_hop_id=self._id, departed_qid_l=[p.prev_hop_id for p in p_l] ) )
+      if len(rgroup_l) > 1:
+        self.out_c.put_c(CPacket(_id=p.job_id, sym=p.sym, prev_hop_id=self._id, departed_qid_l=recved_from_qid_l) )
       
       p.winner_id = p.prev_hop_id
       p.prev_hop_id = self._id
@@ -82,9 +101,7 @@ class MT_JQ(object):
       p = (yield self.store.get() )
       if p.job_id not in self.job_id__p_l_map:
         self.job_id__p_l_map[p.job_id] = []
-        # self.job_id__departed_qid_l_map[p.job_id] = []
       self.job_id__p_l_map[p.job_id].append(p)
-      # self.job_id__departed_qid_l_map[p.job_id].append([p.prev_hop_id] )
       self.check_for_job_completion(p)
   
   def put(self, p):
@@ -110,7 +127,7 @@ class MT_JQ(object):
   [When do the Availability Codes Make the Stored Data More Available?]
 """
 class AVQ(object): # Availability
-  def __init__(self, _id, env, k, r, t, qmu_l, serv, out=None, w_sys=True):
+  def __init__(self, _id, env, k, r, t, qmu_l, serv, sching, w_sys=True, out=None):
     self._id = _id
     self.env = env
     self.k = k
@@ -118,9 +135,10 @@ class AVQ(object): # Availability
     self.t = t
     self.out = out
     self.w_sys = w_sys
+    self.sching = sching
     
-    self.join_sink = JSink(_id, env)
-    self.join_sink.out = out
+    self.jsink = JSink(_id, env)
+    self.jsink.out = out
     self.id__q_map = {}
     
     num_q = int(1 + t*r) if w_sys else int(t*r)
@@ -140,7 +158,7 @@ class AVQ(object): # Availability
         ri = li + r
         self.qid_l.append("mds{}".format(qid_l[li:ri] ) )
     self.join_q = JQ(_id=_id, env=env, k=1, input_qid_l=self.qid_l)
-    self.join_q.out = self.join_sink
+    self.join_q.out = self.jsink
     self.join_q.out_c = self
     self.join_q.out_m = None # can be set by the caller if desired
     if w_sys:
@@ -188,10 +206,14 @@ class AVQ(object): # Availability
   def run(self):
     while True:
       p = (yield self.store.get() )
-      for g, q in self.id__q_map.items():
-        if g != -1:
+      if self.sching == "rep-to-all":
+        for i, q in self.id__q_map.items():
           q.put(p.deep_copy() )
-      
+      else: # select-one at random
+        id_l = [i for i,q in self.id__q_map.items() ]
+        i = id_l[random.randint(0, len(id_l)-1) ]
+        self.id__q_map[i].put(p)
+  
   def put(self, p):
     sim_log(DEBUG, self.env, self, "recved", p)
     p.entrance_time = self.env.now
@@ -282,28 +304,28 @@ class AVQMonitor(object):
   
 # *****************************  Mixed-Traffic Availability Q  ******************************* #
 class MT_AVQ(object):
-  def __init__(self, _id, env, qmu_l, sym__rgroup_l_map, w_sys=False, out=None):
+  def __init__(self, _id, env, qmu_l, sym__rgroup_l_map, out=None):
     self._id = _id
     self.env = env
     self.sym__rgroup_l_map = sym__rgroup_l_map
     self.out = out
     
-    self.num_q = int(1 + t*r) if w_sys else int(t*r)
-    self.qid_l = range(num_q)
+    self.num_q = int(1 + t*r)
+    self.qid_l = [i for i in range(self.num_q) ]
     
-    self.join_sink = JSink(_id, env)
-    self.join_sink.out = out
-    self.qid_q_map = {}
+    self.jsink = JSink(_id, env)
+    self.jsink.out = out
+    self.id_q_map = {}
     
     self.join_q = MT_JQ(_id=_id, env=env, input_qid_l=self.qid_l, sym__rgroup_l_map=sym__rgroup_l_map)
-    self.join_q.out = self.join_sink
+    self.join_q.out = self.jsink
     self.join_q.out_c = self
     self.join_q.out_m = None # can be set by the caller if desired
     for i, qid in enumerate(qid_l):
       q = FCFS(_id=qid, env=env, rate=qmu_l[i] )
       log(DEBUG, "i= {}, q= {}".format(i, q) )
       q.out = self.join_q
-      self.qid_q_map[i] = q
+      self.id_q_map[i] = q
     
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
@@ -317,14 +339,14 @@ class MT_AVQ(object):
   
   def state(self, job_id_to_exclude=[]):
     state = []
-    for i, q in self.qid_q_map.items():
+    for i, q in self.id_q_map.items():
       state += q.state(job_id_to_exclude)
     return state
   
   def run(self):
     while True:
       p = (yield self.store.get() )
-      for qid, q in self.qid_q_map.items():
+      for qid, q in self.id_q_map.items():
         q.put(p.deep_copy() )
       
   def put(self, p):
@@ -337,7 +359,7 @@ class MT_AVQ(object):
   def run_c(self):
     while True:
       cp = (yield self.store_c.get() )
-      for g, q in self.qid_q_map.items():
+      for g, q in self.id_q_map.items():
         if q._id not in cp.departed_qid_l:
           q.put_c(cp.deep_copy() )
   

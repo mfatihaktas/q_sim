@@ -6,7 +6,7 @@ from cycler import cycler
 from random import expovariate
 import sys, pprint, math, numpy, simpy, getopt, itertools
 
-from mds_sim_components import *
+from mds_sim import *
 from mds_models import *
 
 def test_m_m_1(num_f_run, arr_rate, mu, long_sim=False):
