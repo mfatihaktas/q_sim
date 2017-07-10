@@ -120,7 +120,7 @@ def do_possible_merges_in_num_tasks():
       ji__num_task_m[ji] += num_task
   with open("num_tasks_merged.dat", mode="wt") as f:
     writer = csv.writer(f, delimiter=',')
-    for ji,num_tasks in ji__num_task_m.items():
+    for ji, num_tasks in ji__num_task_m.items():
       writer.writerow([ji, num_tasks] )
   log(WARNING, "done.")
 
@@ -178,11 +178,28 @@ def write_task_lifetimes(num_task):
   print("writing now...")
   with open("task_lifetimes_for_jobs_w_num_task_{}.dat".format(num_task), mode="wt") as f:
     writer = csv.writer(f, delimiter=',')
-    for entry,sch_fin_tuple in entry__sch_fin_l_m.items():
+    for entry, sch_fin_tuple in entry__sch_fin_l_m.items():
       if sch_fin_tuple[0] < sch_fin_tuple[1]:
-        writer.writerow([sch_fin_tuple[1]-sch_fin_tuple[0] ] )
+        lt = sch_fin_tuple[1] - sch_fin_tuple[0]
+        writer.writerow([lt] )
   log(WARNING, "done.")
 
+def filter_task_lifetimes(num_task):
+  lifetime_l = []
+  with open("task_lifetimes_for_jobs_w_num_task_{}.dat".format(num_task), mode="rt") as f:
+    reader = csv.reader(f)
+    for line in reader:
+      lt = float(line[0] )
+      if lt < 5000:
+        lifetime_l.append(lt)
+  
+  with open("filtered_task_lifetimes_for_jobs_w_num_task_{}.dat".format(num_task), mode="wt") as f:
+    writer = csv.writer(f, delimiter=',')
+    for lt in lifetime_l:
+      writer.writerow([lt] )
+  log(WARNING, "done.")
+
+# ******************************  PLOT  ***************************** #
 def plot_num_tasks_hist():
   num_tasks_l = []
   with open("num_tasks_merged.dat", mode="rt") as f:
@@ -209,7 +226,7 @@ def plot_num_tasks_hist():
 
 def plot_task_lifetime_hist(k):
   lifetime_l = []
-  with open("task_lifetimes_for_jobs_w_num_task_{}.dat".format(k), mode="rt") as f:
+  with open("filtered_task_lifetimes_for_jobs_w_num_task_{}.dat".format(k), mode="rt") as f:
     reader = csv.reader(f)
     for line in reader:
       lifetime_l.append(float(line[0] ) )
@@ -234,14 +251,14 @@ def plot_task_lifetime_hist(k):
   y_l = numpy.arange(lifetime_l.size)/lifetime_l.size
   plot.subplot(223)
   plot.yscale('log')
-  plot.step(x_l, y_l, 'bo', label='log(tail)-X', lw=2)
+  plot.step(x_l, y_l, 'bo', label='log(tail) vs. X', lw=2)
   plot.xlabel("X (s)")
   plot.ylabel("Tail")
   plot.legend()
   plot.subplot(224)
   plot.xscale('log')
   plot.yscale('log')
-  plot.step(x_l, y_l, 'bo', label='log(tail)-log(X)', lw=2)
+  plot.step(x_l, y_l, 'bo', label='log(tail) vs. log(X)', lw=2)
   plot.xlabel("X (s)")
   plot.legend()
   
@@ -250,36 +267,41 @@ def plot_task_lifetime_hist(k):
   # plot.ylabel(r'$Pr\{X > x\}$')
   plot.savefig("plot_task_lifetime_hist_k_{}.png".format(k) )
   plot.gcf().clear()
-  log(WARNING, "done.")
+  log(WARNING, "done; k= {}".format(k) )
 
 def pplot_task_lifetime_hist(k):
   lifetime_l = []
-  with open("task_lifetimes_for_jobs_w_num_task_{}.dat".format(k), mode="rt") as f:
+  with open("filtered_task_lifetimes_for_jobs_w_num_task_{}.dat".format(k), mode="rt") as f:
     reader = csv.reader(f)
     for line in reader:
-      lifetime_l.append(float(line[0] )/60/60)
+      lifetime_l.append(float(line[0] ) )
   
   lifetime_l = numpy.sort(lifetime_l)
   print("len(lifetime_l)= {}".format(len(lifetime_l) ) )
   # 
+  # plot.hist(lifetime_l, bins=100, histtype='step', normed=True, lw=2)
+  
   # results, edges = numpy.histogram(lifetime_l, bins=50, normed=True)
   # binWidth = edges[1] - edges[0]
   # plot.bar(edges[:-1], results*binWidth, binWidth)
   
-  # plot.xlabel("Task execution time (hour)")
-  # plot.ylabel("Fraction of tasks")
-  # plot.title(r'Execution trace of the same job with ${}$ tasks'.format(k) )
-  
   x_l = lifetime_l[::-1]
   y_l = numpy.arange(lifetime_l.size)/lifetime_l.size
-  # plot.yscale('log')
-  plot.step(x_l, y_l, 'bo', lw=1, linestyle=':')
-  # plot.xlabel(r'$x$ (hour)')
-  # plot.ylabel(r'$Pr\{X > x\}$')
-  plot.xlabel(r'Task lifetime (hour)', fontsize=13)
+  # y_l = [math.log(y + 0.000001) for y in y_l]
+  # m, b = numpy.polyfit(x_l, y_l, 1)
+  # plot.plot(x_l, m*x_l+b, 'r', lw=1, linestyle=':')
+  
+  # plot.step(x_l, y_l, 'bo', lw=1, linestyle=':')
+  plot.step(x_l, y_l, 'bo', linestyle=':')
+  
+  # plot.xlabel(r'$x$ (s)')
+  # plot.ylabel(r'$log(Pr\{X > x\})$')
+  plot.yscale('log')
+  plot.xlabel(r'Task lifetime x (s)', fontsize=13)
   plot.ylabel(r'Tail distribution', fontsize=13)
-  # plot.title(r'Empirical tail distribution of task exection time for jobs with {} tasks'.format(k) )
-  plot.title(r'Jobs with {} tasks'.format(k), fontsize=13)
+  # plot.ylabel(r'Fraction of tasks completed in x')
+  # plot.title(r'Jobs with {} tasks'.format(k), fontsize=13)
+  plot.title(r'k= {}'.format(k), fontsize=13)
   
   fig = plot.gcf()
   def_size = fig.get_size_inches()
@@ -290,6 +312,7 @@ def pplot_task_lifetime_hist(k):
   # plot.savefig("pplot_task_lifetime_hist_k_{}.pdf".format(k) )
   plot.savefig("pplot_task_lifetime_hist_k_{}.png".format(k) )
   fig.clear()
+  log(WARNING, "done; k= {}".format(k) )
 
 if __name__ == "__main__":
   # Uncomment with caution!
@@ -302,9 +325,13 @@ if __name__ == "__main__":
   # write_jobs_w_num_task(num_task=1050)
   
   # write_task_lifetimes(num_task=15)
+  # filter_task_lifetimes(num_task=15)
   # write_task_lifetimes(num_task=400)
+  # filter_task_lifetimes(num_task=400)
   # write_task_lifetimes(num_task=1000)
+  # filter_task_lifetimes(num_task=1000)
   # write_task_lifetimes(num_task=1050)
+  # filter_task_lifetimes(num_task=1050)
   
   # plot_num_tasks_hist()
   # plot_task_lifetime_hist(k=15)
@@ -312,6 +339,7 @@ if __name__ == "__main__":
   # plot_task_lifetime_hist(k=1000)
   # plot_task_lifetime_hist(k=1050)
   
+  pplot_task_lifetime_hist(k=15)
   pplot_task_lifetime_hist(k=400)
   pplot_task_lifetime_hist(k=1000)
   pplot_task_lifetime_hist(k=1050)

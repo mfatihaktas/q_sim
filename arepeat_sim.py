@@ -44,16 +44,18 @@ def plot_pareto():
   plot.gcf().clear()
 
 # #####################  (k, \Delta)  ################### #
-def sim_arepeat_k_c(task_t_rv, d, k, c=1, num_run=1000):
+def sim_arepeat_k_c(task_t_rv, d, k, c=1, num_run=1000, w_relaunch=False):
   stat_id__trial_stat_l_m = {'E_T': [], 'E_C': [], 'E_C_wc': [] }
   for i in range(num_run):
-    i__t_l_m = {i:[(0, task_t_rv.gen_sample() ) ] for i in range(k) }
+    i__t_l_m = {i:[[0, task_t_rv.gen_sample() ] ] for i in range(k) }
     job_compl_t = max([t_l[0][1] for i,t_l in i__t_l_m.items() ] )
     if job_compl_t > d:
       for i,t_l in i__t_l_m.items():
         if t_l[0][1] > d:
+          if w_relaunch:
+            t_l[0][1] = d + task_t_rv.gen_sample()
           for i in range(c):
-            t_l.append((d, d + task_t_rv.gen_sample() ) )
+            t_l.append([d, d + task_t_rv.gen_sample() ] )
     
     E_T = max([min([t[1] for t in t_l] ) for i,t_l in i__t_l_m.items() ] )
     stat_id__trial_stat_l_m['E_T'].append(E_T)
@@ -89,7 +91,7 @@ def sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=1000, w_relaunch=False):
     E_T = compl_t_l[k-1][1]
     stat_id__trial_stat_l_m['E_T'].append(E_T)
     stat_id__trial_stat_l_m['E_C'].append(sum([t[1]-t[0] for t in compl_t_l] ) )
-    stat_id__trial_stat_l_m['E_C_wc'].append(sum([min(t[1], E_T)-t[0] for t in compl_t_l] ) ) # sum([(t[1] > E_T)*(E_T-t[0] ) + (t[1] <= E_T)*(t[1]-t[0] ) for t in compl_t_l] ) )
+    stat_id__trial_stat_l_m['E_C_wc'].append(sum([min(t[1], E_T)-t[0] for t in compl_t_l] ) )
   
   return stat_id__trial_stat_l_m
 

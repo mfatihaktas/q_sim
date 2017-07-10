@@ -33,7 +33,7 @@ class Packet(object):
   
   def __repr__(self):
     # return "Packet[flow_id: {}, _id: {}]".format(self.flow_id, self._id)
-    return "Packet[_id: {}, sym: {}]".format(self._id, self.sym)
+    return "Packet[_id: {}, sym: {}]".format(self.job_id, self.sym)
 
 class CPacket(object): # Control
   def __init__(self, _id, sym=None, prev_hop_id=None, departed_qid_l=[]):
@@ -43,7 +43,7 @@ class CPacket(object): # Control
     self.departed_qid_l = departed_qid_l
   
   def deep_copy(self):
-   return CPacket(self._id, self.prev_hop_id)
+   return CPacket(self._id, self.sym, self.prev_hop_id, list(self.departed_qid_l) )
   
   def __repr__(self):
     # return "CPacket[_id= {}, prev_hop_id= {}, departed_qid_l= {}]".format(self._id, self.prev_hop_id, self.departed_qid_l)
@@ -63,10 +63,10 @@ class MPacket(object): # Monitor
 
 # *******************************  PacketGenerator  ****************************** #
 class PG(object): # Packet Generator
-  def __init__(self, env, _id, arr_rate, flow_id=0):
+  def __init__(self, env, _id, ar, flow_id=0):
     self._id = _id
     self.env = env
-    self.arr_rate = arr_rate
+    self.ar = ar
     self.flow_id = flow_id
     
     self.n_sent = 0
@@ -77,7 +77,7 @@ class PG(object): # Packet Generator
   
   def run(self):
     while 1:
-      yield self.env.timeout(random.expovariate(self.arr_rate) )
+      yield self.env.timeout(random.expovariate(self.ar) )
       self.n_sent += 1
       p = Packet(time=self.env.now, _id=self.n_sent, size=1, flow_id=self.flow_id)
       self.out.put(p)
@@ -221,11 +221,11 @@ class FCFS(Q): # First Come First Serve
     
     self.p_l = []
     self.p_in_serv = None
+    self.cancel_flag, self.preempt_flag = False, False
     self.cancel, self.preempt = None, None
     self.n_recved = 0
     self.n_dropped = 0
-    self.size_n = 0  # Current size of the queue in n
-    self.busy = False  # Used to track if a packet is currently being sent
+    self.size_n = 0 # Current size of the queue in n
     self.wt_l = []
     self.qt_l = []
     
@@ -234,14 +234,32 @@ class FCFS(Q): # First Come First Serve
     self.syncer = simpy.Store(env) # simpy.Resource(env, capacity=1)
     self.out = None
     self.action = env.process(self.run() )  # starts the run() method as a SimPy process
-    # self.action = env.process(self.run_c() )
+    self.action = env.process(self.run_c() )
     self.action = env.process(self.run_helper() )
   
   def __repr__(self):
     return "FCFS[_id= {}, mu= {}]".format(self._id, self.rate)
   
+  def busy(self):
+    return (self.length() > 0)
+  
   def length(self):
-    return len(self.p_l) + self.busy
+    return len(self.p_l) + (self.p_in_serv is not None)
+  
+  def pstate_l(self):
+    l = ["{}, ji= {}".format(self.p_in_serv.sym, self.p_in_serv.job_id) ]
+    for p in self.p_l:
+      l.append("{}, ji= {}".format(p.sym, p.job_id) )
+    return l
+  
+  def num_sym_in(self, sym):
+    num = 0
+    if (self.p_in_serv is not None) and self.p_in_serv.sym == sym:
+      num += 1
+    for p in self.p_l:
+      if p.sym == sym:
+        num += 1
+    return num
   
   def state(self, job_id_to_exclude=[]):
     if not job_id_to_exclude:
@@ -257,7 +275,7 @@ class FCFS(Q): # First Come First Serve
     return [state]
   
   def _in(self, job_id):
-    if not self.busy:
+    if self.p_in_serv is None:
       return False
     elif self.p_in_serv.job_id == job_id:
       return True
@@ -280,9 +298,9 @@ class FCFS(Q): # First Come First Serve
       self.p_in_serv = self.p_l.pop(0)
       self.wt_l.append(self.env.now - self.p_in_serv.ref_time)
       self.size_n -= 1
-      self.busy = True
-      if self.cancel is None: self.cancel = self.env.event()
-      if self.preempt is None: self.preempt = self.env.event()
+      
+      self.cancel = self.env.event()
+      self.preempt = self.env.event()
       
       clk_start_time = self.env.now
       if self.serv == "Det":
@@ -294,22 +312,22 @@ class FCFS(Q): # First Come First Serve
       sim_log(DEBUG, self.env, self, "starting {}-clock! on ".format(self.serv), self.p_in_serv)
       yield (self.cancel | self.preempt | self.env.timeout(t) )
       
-      if self.cancel is None: # task got cancelled
+      if self.cancel_flag: # task got cancelled
         sim_log(DEBUG, self.env, self, "cancelled clock on ", self.p_in_serv)
-        
-      elif self.preempt is None: # task got preempted
+        self.cancel_flag = False
+      elif self.preempt_flag: # task got preempted
         self.p_l.insert(1, self.p_in_serv)
         sim_log(DEBUG, self.env, self, "preempted ", self.p_in_serv)
+        self.preempt_flag = False
       else:
         sim_log(DEBUG, self.env, self, "serv done in {}s on ".format(self.env.now-clk_start_time), self.p_in_serv)
         self.qt_l.append(self.env.now - self.p_in_serv.ref_time)
         if self.out is not None and self.p_in_serv.sym != SYS_TRAFF_SYM:
-          # sim_log(DEBUG, self.env, self, "finished serv, forwarding", self.p_in_serv)
+          sim_log(DEBUG, self.env, self, "forwarding", self.p_in_serv)
           self.p_in_serv.prev_hop_id = self._id
           self.out.put(self.p_in_serv)
         else:
           sim_log(DEBUG, self.env, self, "finished serv", self.p_in_serv)
-      self.busy = False
       self.p_in_serv = None
   
   def put(self, p, preempt=False):
@@ -323,37 +341,37 @@ class FCFS(Q): # First Come First Serve
     #   return
     # else:
     # self.size_n = t_size_n
-    if preempt and self.busy:
+    if preempt and (self.p_in_serv is not None):
+      self.preempt_flag = True
       self.preempt.succeed()
-      self.preempt = None
       self.p_l.insert(0, p)
       self.syncer.put(1)
       return
-    return self.store.put(p)
+    return self.store.put(p.deep_copy() )
   
-  # def run_c(self):
-  #   while True:
-  #     cp = (yield self.store_c.get() )
-  #     if self.p_in_serv is not None and self.p_in_serv.job_id == cp._id:
-  #       self.cancel.succeed()
-  #       self.cancel = None
+  def run_c(self):
+    while True:
+      cp = (yield self.store_c.get() )
+      # sim_log(WARNING, self.env, self, "!!! cancelling p_in_serv= {}, q_length= {}".format(self.p_in_serv, self.length() ), cp)
+      if cp.sym is not None and self.p_in_serv is not None and self.p_in_serv.sym == cp.sym:
+        # log(WARNING, "!!! cancelling p_in_serv= {}, with cp= {}".format(self.p_in_serv, cp) )
+        self.cancel_flag = True
+        self.cancel.succeed()
+        for p in self.p_l:
+          if p.sym == cp.sym:
+            self.p_l.remove(p)
+      elif self.p_in_serv is not None and self.p_in_serv.job_id == cp._id:
+        self.cancel_flag = True
+        self.cancel.succeed()
       
-  #     for p in self.p_l:
-  #       if p.job_id == cp._id:
-  #         self.p_l.remove(p)
+        for p in self.p_l:
+          if p.job_id == cp._id:
+            self.p_l.remove(p)
   
   def put_c(self, cp):
     sim_log(DEBUG, self.env, self, "recved", cp)
-    # return self.store_c.put(cp)
-    
-    if self.p_in_serv is not None and self.p_in_serv.job_id == cp._id:
-      self.cancel.succeed()
-      self.cancel = None
-    
-    for p in self.p_l:
-      if p.job_id == cp._id:
-        self.p_l.remove(p)
-    
+    return self.store_c.put(cp.deep_copy() )
+  
 class QMonitor(object):
   def __init__(self, env, q, dist):
     self.q = q

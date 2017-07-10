@@ -95,9 +95,9 @@ def I(u_l, m, n):
   return scipy.special.betainc(m, n, u_l)
 
 def B(m, n, u_l=1):
+  if u_l == 1:
+    return scipy.special.beta(m, n)
   return mpmath.quad(lambda x: x**(m-1) * (1-x)**(n-1), [0, u_l] )
-  # if u_l == 1:
-  #   return scipy.special.beta(m, n)
   # else:
   #   return I(u_l, m, n)*B(m, n)
 

@@ -345,73 +345,146 @@ def sum_of_harmonics():
     print("n= {}, E_C= {}".format(n, E_C(n) ) )
 
 # **********************************  Fairness First MDSQ  ******************************* #
-class FF_MDSQ(object): # Fairness First
-  def __init__(self, _id, env, qmu_l, serv, sym__rgroup_l_map, sym__sysqid_map, out=None):
+class MT_MDS_JQ(object):
+  def __init__(self, _id, env, k, input_qid_l, sym_sysqid_map):
     self._id = _id
     self.env = env
-    self.sym__rgroup_l_map = sym__rgroup_l_map
-    self.sym__sysqid_map = sym__sysqid_map
+    self.input_qid_l = input_qid_l
+    self.sym_sysqid_map = sym_sysqid_map
+    
+    self.job_id__p_l_map = {}
+    
+    self.store = simpy.Store(env)
+    self.store_c = simpy.Store(env)
+    self.out = None
+    self.out_c = None
+    self.out_m = None
+    self.action = env.process(self.run() )  # starts the run() method as a SimPy process
+    self.action = env.process(self.run_c() )
+  
+  def __repr__(self):
+    return "MT_MDS_JQ[_id= {}, input_qid_l= {}]".format(self._id, self.input_qid_l)
+  
+  def check_for_job_completion(self, p):
+    p_l = self.job_id__p_l_map[p.job_id]
+    recved_from_qid_l = [p.prev_hop_id for p in p_l]
+    sys_qid = self.sym_sysqid_map[p.sym]
+    success = False
+    
+    if sys_qid in p_l or len(p_l) >= k:
+      self.out_c.put_c(CPacket(_id=p.job_id, sym=p.sym, prev_hop_id=self._id, departed_qid_l=recved_from_qid_l) )
+      
+      p.winner_id = p.prev_hop_id
+      p.prev_hop_id = self._id
+      self.out.put(p)
+  
+  def run(self):
+    while True:
+      p = (yield self.store.get() )
+      if p.job_id not in self.job_id__p_l_map:
+        self.job_id__p_l_map[p.job_id] = []
+      self.job_id__p_l_map[p.job_id].append(p)
+      self.check_for_job_completion(p)
+  
+  def put(self, p):
+    sim_log(DEBUG, self.env, self, "recved", p)
+    p.ref_time = self.env.now
+    return self.store.put(p)
+  
+  def run_c(self):
+    while True:
+      cp = (yield self.store_c.get() )
+      self.job_id__p_l_map.pop(p.job_id, None)
+  
+  def put_c(self, cp):
+    sim_log(DEBUG, self.env, self, "recved", cp)
+    return self.store_c.put(cp)
+
+class FF_MDSQ(object): # Fairness First
+  def __init__(self, _id, env, n, k, sym_l, serv, out=None):
+    self._id = _id
+    self.env = env
+    self.n = n
+    self.k = k
+    self.sym_l = sym_l
     self.out = out
     
-    self.num_q = len(qmu_l)
     self.qid_l = [i for i in range(self.num_q) ]
+    self.sym_sysqid_map = {s:i for i,s in enumerate(self.sym_l) }
     
     self.jsink = FF_JSink(_id, env)
     self.jsink.out = out
     self.id_q_map = {}
     
-    self.jq = MT_JQ(_id=_id, env=env, input_qid_l=self.qid_l, sym__rgroup_l_map=sym__rgroup_l_map)
-    self.jq.out = self.jsink # data outlet
-    self.jq.out_c = self # control outlet
+    self.jq = MT_MDS_JQ(_id, env, self.qid_l, sym_sysqid_map)
+    self.jq.out = self.jsink
+    self.jq.out_c = self
     for i, qid in enumerate(self.qid_l):
-      q = FCFS(_id=qid, env=env, rate=qmu_l[i], serv=serv)
+      q = FCFS(qid, env, qmu_l[i], serv)
       q.out = self.jq
       self.id_q_map[qid] = q
     # 
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
-    self.action = env.process(self.run() )
-    self.action = env.process(self.run_c() )
+    env.process(self.run() )
+    env.process(self.run_c() )
     
     self.job_id_counter = 0
-    self.pop_l = []
+    self.starttype__num_map = {i:0 for i in range(t+1) }
+    
+    self.pop_store = simpy.Store(env)
+    env.process(self.send_pop() )
+    self.release_pop = None
   
   def __repr__(self):
-    return "MT_AVQ[qid_l= {}]".format(self.qid_l)
+    return "MT_MDSQ[n= {}, k= {}]".format(self.n, self.k)
   
-  def send_pop(self, p):
-    sys_q = self.id_q_map[self.sym__sysqid_map[p.sym] ]
-    if not sys_q.busy:
+  def state(self):
+    return {i:q.length() for i,q in self.id_q_map.items() }
+  
+  def send_pop(self):
+    while True:
+      p = (yield self.pop_store.get() )
+      
+      sys_qid = self.sym_sysqid_map[p.sym]
+      sys_q = self.id_q_map[sys_qid]
+      if sys_q.busy:
+        self.release_pop = self.env.event()
+        yield self.release_pop
+      
+      serving_qid_l = []
       sys_q.put(p.deep_copy() )
-      for r_l in self.sym__rgroup_l_map[p.sym]:
-        if len(r_l) == 1: continue
-        
-        rep = True
-        for r in r_l:
-          if self.id_q_map[r].busy:
-            rep = False
-        if rep:
-          for r in r_l:
-            self.id_q_map[r].put(p.deep_copy() )
-    else:
-      self.pop_l.append(p.deep_copy() )
+      serving_qid_l.append(sys_qid)
+      
+      qid_l_ = []
+      for qid in list(self.qid_l).remove(sys_qid):
+        if not (q.busy and q.p_in_serv.sym != POP_SYM): # q may be busy with pop_sym because simpy did not register cancellation yet
+          qid_l_.append(qid)
+      
+      if len(qid_l_) >= k:
+        for qid in qid_l_:
+          self.id_q_map[qid].put(p.deep_copy() )
+          serving_qid_l.append(qid)
+      self.starttype__num_map[len(serving_qid_l)-1] += 1
+      self.job_id__serving_qid_l_map[p.job_id] = serving_qid_l
   
   def run(self):
     while True:
       p = (yield self.store.get() )
       
       if p.sym == POP_SYM:
-        self.send_pop(p)
+        self.pop_store.put(p)
       else:
-        sys_q = self.id_q_map[self.sym__sysqid_map[p.sym] ]
+        sys_q = self.id_q_map[self.sym_sysqid_map[p.sym] ]
         if sys_q.p_in_serv is not None and sys_q.p_in_serv.sym == POP_SYM:
-          sys_qid = self.sym__sysqid_map[p.sym]
-          for r_l in self.sym__rgroup_l_map[POP_SYM]:
-            if sys_qid in r_l:
-              for r in r_l:
-                self.id_q_map[r].put_c(CPacket(_id=sys_q.p_in_serv.job_id, prev_hop_id=self._id) )
-                # print("sending cancel to q= {}".format(self.id_q_map[r] ) )
-              
+          ji = sys_q.p_in_serv.job_id
+          serving_qid_l = self.job_id__serving_qid_l_map[ji]
+          serving_qid_l.remove(self.sym_sysqid_map[p.sym] )
+          
+          sys_q.put_c(CPacket(_id=ji, prev_hop_id=self._id) )
+          if len(serving_qid_l) < k:
+            for qid in serving_qid_l:
+              self.id_q_map[r].put_c(CPacket(_id=ji, prev_hop_id=self._id) )
         sys_q.put(p.deep_copy() )
   
   def put(self, p):
@@ -421,21 +494,25 @@ class FF_MDSQ(object): # Fairness First
     p.job_id = self.job_id_counter
     return self.store.put(p)
   
-  def run_c(self):
-    while True:
-      cp = (yield self.store_c.get() )
-      # 
-      if cp.sym == POP_SYM:
-        for g, q in self.id_q_map.items():
-          if q._id not in cp.departed_qid_l:
-            q.put_c(cp.deep_copy() )
-        
-        if len(self.pop_l):
-          self.send_pop(self.pop_l.pop(0) )
+  # def run_c(self):
+  #   while True:
+  #     cp = (yield self.store_c.get() )
+  #     # 
+  #     # log(WARNING, "recved cp= {}".format(cp) )
+  #     # print("state= {}".format(pprint.pformat(self.state() ) ) )
+      
+  #     for g, q in self.id_q_map.items():
+  #       if q._id not in cp.departed_qid_l:
+  #         q.put_c(cp.deep_copy() )
+      
+  #     if cp.sym == POP_SYM:
+  #       if self.release_pop is not None:
+  #         self.release_pop.succeed()
+  #         self.release_pop = None
   
-  def put_c(self, cp):
-    sim_log(DEBUG, self.env, self, "recved", cp)
-    return self.store_c.put(cp)
+  # def put_c(self, cp):
+  #   sim_log(DEBUG, self.env, self, "recved", cp)
+  #   return self.store_c.put(cp)
 
 if __name__ == "__main__":
   test_m_m_1()

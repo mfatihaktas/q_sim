@@ -8,11 +8,11 @@ from mds_sim import MDSQ
 from patch import *
 
 class MT_PG(PG):
-  def __init__(self, env, _id, arr_rate, sym_l, flow_id=0, pop_sym=None, pop_arr_rate=None):
-    super().__init__(env, _id, arr_rate, flow_id)
+  def __init__(self, env, _id, ar, sym_l, flow_id=0, pop_sym=None, pop_ar=None):
+    super().__init__(env, _id, ar, flow_id)
     self.sym_l = sym_l
     self.pop_sym = pop_sym
-    self.pop_arr_rate = pop_arr_rate
+    self.pop_ar = pop_ar
     
     self.sym__n_sent = {}
   
@@ -35,7 +35,7 @@ class MT_PG(PG):
       sym_l_.remove(self.pop_sym)
     
     while 1:
-      yield self.env.timeout(random.expovariate(self.arr_rate) )
+      yield self.env.timeout(random.expovariate(self.ar) )
       s = sym_l_[random.randint(0, len(sym_l_)-1) ]
       
       p = Packet(time=self.env.now, size=1, _id=self.n_sent, sym=s, flow_id=self.flow_id)
@@ -43,12 +43,12 @@ class MT_PG(PG):
   
   def run_pop(self):
     while 1:
-      yield self.env.timeout(random.expovariate(self.pop_arr_rate) )
+      yield self.env.timeout(random.expovariate(self.pop_ar) )
       
       p = Packet(time=self.env.now, size=1, _id=self.n_sent, sym=self.pop_sym, flow_id=self.flow_id)
       self.send(p)
 
-class MT_JQ(object):
+class MT_AV_JQ(object):
   def __init__(self, _id, env, input_qid_l, sym__rgroup_l_map):
     self._id = _id
     self.env = env
@@ -56,23 +56,17 @@ class MT_JQ(object):
     self.sym__rgroup_l_map = sym__rgroup_l_map
     
     self.job_id__p_l_map = {}
-    self.qt_l = []
-    self.length = 0 # maximum of the lengths of all pq's
-    # self.state__num_found_map = {}
     
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
     self.out = None
     self.out_c = None
     self.out_m = None
-    self.action = env.process(self.run() )  # starts the run() method as a SimPy process
+    self.action = env.process(self.run() ) # starts the run() method as a SimPy process
     self.action = env.process(self.run_c() )
   
   def __repr__(self):
-    return "MT_JQ[_id= {}, input_qid_l= {}]".format(self._id, self.input_qid_l)
-  
-  def state(self):
-    return None
+    return "MT_AV_JQ[_id= {}, input_qid_l= {}]".format(self._id, self.input_qid_l)
   
   def check_for_job_completion(self, p):
     p_l = self.job_id__p_l_map[p.job_id]
@@ -88,7 +82,10 @@ class MT_JQ(object):
         break
     if success:
       if len(rgroup_l) > 1:
-        self.out_c.put_c(CPacket(_id=p.job_id, sym=p.sym, prev_hop_id=self._id, departed_qid_l=recved_from_qid_l) )
+        cp = CPacket(_id=p.job_id, sym=p.sym, prev_hop_id=self._id, departed_qid_l=recved_from_qid_l)
+        # sim_log(WARNING, self.env, self, "p= {}, sending completion for".format(p), cp)
+        
+        self.out_c.put_c(cp)
       
       p.winner_id = p.prev_hop_id
       p.prev_hop_id = self._id
@@ -107,7 +104,7 @@ class MT_JQ(object):
   def put(self, p):
     sim_log(DEBUG, self.env, self, "recved", p)
     p.ref_time = self.env.now
-    return self.store.put(p)
+    return self.store.put(p.deep_copy() )
   
   def run_c(self):
     while True:
@@ -116,7 +113,7 @@ class MT_JQ(object):
   
   def put_c(self, cp):
     sim_log(DEBUG, self.env, self, "recved", cp)
-    return self.store_c.put(cp)
+    return self.store_c.put(cp.deep_copy() )
 
 # **************************************  Availability Q  **************************************** #
 """
@@ -243,12 +240,12 @@ class AVQ(object): # Availability
     return self.store_c.put(cp)
 
 class AVQMonitor(object):
-  def __init__(self, env, q, poll_dist):
+  def __init__(self, env, q, poll_rate):
     self.q = q
     self.env = env
-    self.poll_dist = poll_dist
+    self.poll_rate = poll_rate
     
-    self.t_l = [] # Time steps that the numbers polled from the q
+    # self.t_l = [] # Time steps that the numbers polled from the q
     # self.n_l = [] # Num of jobs in the q
     self.polled_state__counter_map = {}
     self.state__num_found_by_job_departed_map = {}
@@ -260,7 +257,7 @@ class AVQMonitor(object):
   
   def run(self):
     while True:
-      yield self.env.timeout(self.poll_dist() )
+      yield self.env.timeout(1/self.poll_rate)
       # self.t_l.append(self.env.now)
       q_state = self.q.state()
       # print("q_state= {}".format(pprint.pformat(q_state) ) )
@@ -317,7 +314,7 @@ class MT_AVQ(object):
     self.jsink.out = out
     self.id_q_map = {}
     
-    self.join_q = MT_JQ(_id=_id, env=env, input_qid_l=self.qid_l, sym__rgroup_l_map=sym__rgroup_l_map)
+    self.join_q = MT_AV_JQ(_id, env, self.qid_l, sym__rgroup_l_map)
     self.join_q.out = self.jsink
     self.join_q.out_c = self
     self.join_q.out_m = None # can be set by the caller if desired
@@ -368,10 +365,10 @@ class MT_AVQ(object):
     return self.store_c.put(cp)
 
 class AVQMonitor(object):
-  def __init__(self, env, q, poll_dist):
+  def __init__(self, env, q, poll_rate):
     self.q = q
     self.env = env
-    self.poll_dist = poll_dist
+    self.poll_rate = poll_rate
     
     self.t_l = [] # Time steps that the numbers polled from the q
     # self.n_l = [] # Num of jobs in the q
@@ -385,7 +382,7 @@ class AVQMonitor(object):
   
   def run(self):
     while True:
-      yield self.env.timeout(self.poll_dist() )
+      yield self.env.timeout(self.poll_rate() )
       # self.t_l.append(self.env.now)
       q_state = self.q.state()
       # print("q_state= {}".format(pprint.pformat(q_state) ) )

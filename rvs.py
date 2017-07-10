@@ -96,7 +96,7 @@ class Google(RV):
     
     self.k = k
     self.sample_l = []
-    with open("task_lifetimes_for_jobs_w_num_task_{}.dat".format(k), mode="rt") as f:
+    with open("filtered_task_lifetimes_for_jobs_w_num_task_{}.dat".format(k), mode="rt") as f:
       reader = csv.reader(f)
       for line in reader:
         self.sample_l.append(float(line[0] ) )
