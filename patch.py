@@ -1,4 +1,5 @@
 import inspect, math, mpmath, scipy, itertools
+from scipy import special
 
 dark_color = itertools.cycle(('green', 'red', 'goldenrod', 'blue', 'purple', 'gray', 'brown', 'magenta', 'goldenrod', 'gold', 'olive', 'orangered', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise', 'darkgray'))
 light_color = itertools.cycle(('silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise'))
@@ -91,8 +92,8 @@ def binomial(n, k):
 #   return binom
 
 def I(u_l, m, n):
-  # return B(m, n, u_l=u_l)/B(m, n)
-  return scipy.special.betainc(m, n, u_l)
+  return B(m, n, u_l=u_l)/B(m, n)
+  # return scipy.special.betainc(m, n, u_l)
 
 def B(m, n, u_l=1):
   if u_l == 1:

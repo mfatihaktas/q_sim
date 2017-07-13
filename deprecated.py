@@ -514,6 +514,59 @@ class FF_MDSQ(object): # Fairness First
   #   sim_log(DEBUG, self.env, self, "recved", cp)
   #   return self.store_c.put(cp)
 
+def plot_deneme():
+  # # Checking G(n-r+1)/G(n-r+1 - 1/a) ~= (n-r)**(1/a)
+  # n = 100
+  # r = 90
+  # a_l = []
+  # actual_l, approx_l = [], []
+  # def exact(a):
+  #   return G(n-r+1)/G(n-r+1 - 1/a)
+  # def approx(a):
+  #   return (n-r)**(1/a)
+  # plot.title(r'$n= {}$, $r= {}$'.format(n, r) )
+  
+  # # Checking R ~ Bin(k,q), E[(n-R)^(1/a)] =~ (n-kq)^(1/a)
+  # n = 100
+  # k = 5
+  # q = 0.9
+  # def exact(a):
+  #   sum_ = 0
+  #   for r in range(k+1):
+  #     sum_ += (n-r)**(1/a) * binomial(k, r) * q**r * (1-q)**(k-r)
+  #   return sum_
+  # def approx(a):
+  #   return (n - k*q)**(1/a)
+  # plot.title(r'$n= {}$, $k= {}$, $q= {}$'.format(n, k, q) )
+  
+  # Checking R ~ Bin(k,q), E[G(k-R+1-1/a)/G(k-R)] =~ G(k-kq+1-1/a)/G(k-kq)
+  k = 10
+  q = 0.2
+  def exact(a):
+    sum_ = 0
+    for r in range(k+1):
+      sum_ += G(k-r+1-1/a)/G(k-r) * binomial(k, r) * q**r * (1-q)**(k-r)
+    return sum_
+  def approx(a):
+    return G(k-k*q+1-1/a)/G(k-k*q)
+  plot.title(r'$k= {}$, $q= {}$'.format(k, q) )
+  
+  a_l = []
+  actual_l, approx_l = [], []
+  for a in numpy.linspace(1, 100, 2*100):
+    a_l.append(a)
+    actual_l.append(exact(a) )
+    approx_l.append(approx(a) )
+  
+  plot.plot(a_l, actual_l, 'bx', label='Actual', zorder=1, ms=8)
+  plot.plot(a_l, approx_l, 'ro', label='Approx', zorder=2, ms=5)
+  plot.legend()
+  plot.xlabel(r'$a$')
+  # plot.ylabel(r'$$')
+  plot.savefig("plot_deneme.png")
+  plot.gcf().clear()
+  log(WARNING, "done.")
+
 if __name__ == "__main__":
   test_m_m_1()
   # test_simplex()

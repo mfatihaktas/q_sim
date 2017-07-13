@@ -37,10 +37,9 @@ def plot_compare_tails():
   fig.clear()
   log(WARNING, "done.")
 
-# Pr{T >= t}
-def prob_T_k_n_geq_t(mu, d, k, n, t):
+# ###########################  Tail distribution  ######################### #
+def Pr_T_g_t_Exp_k_n(mu, d, k, n, t):
   q = 1 - math.exp(-mu*d)
-  
   # Pr{T >= t | T < d}*Pr{T < d}
   def lhs():
     if t > d:
@@ -65,42 +64,31 @@ def prob_T_k_n_geq_t(mu, d, k, n, t):
     for r in range(k):
       # print("prob_X_n_r__k_r_leq_tau(r= {})= {}".format(r, prob_X_n_r__k_r_leq_tau(r) ) )
       sum_ += prob_X_n_r__k_r_leq_tau(r) * binomial(k,r) * q**r * (1-q)**(k-r)
-    return (1 - q**k - sum_) # / q**k
+    return (1 - q**k - sum_)
   # print("lhs= {}, rhs= {}".format(lhs(), rhs() ) )
   return lhs() + rhs()
 
-def prob_T_k_n_geq_t_approx(mu, d, k, n, t):
+def Pr_T_g_t_Exp_k_n_approx(mu, d, k, n, t):
   q = 1 - math.exp(-mu*d)
+  q_ = 1 - math.exp(-mu*t)
+  tau = max(0, t - d)
+  q__ = 1 - math.exp(-mu*tau)
   
-  # Pr{T >= t | T < d}*Pr{T < d}
-  def lhs():
-    if t > d:
-      return 0
-    q_ = 1 - math.exp(-mu*t)
-    # return q**k - q_**k
-    # return 1 - q_**k / q**k
-    return q**k - q_**k
-  # Pr{T >= t | T > d}*Pr{T > d}
-  def rhs():
-    # if t <= d:
-    #   return 0
-    def prob_X_n_r__k_r_leq_tau(r):
-      tau = max(0, t - d)
-      q_ = 1 - math.exp(-mu*tau)
-      
-      return mpmath.quad(lambda x: x**(k-r-1) * (1-x)**(n-k), [0, q_] ) / \
-             mpmath.quad(lambda x: x**(k-r-1) * (1-x)**(n-k), [0, 1] )
-    
-    # sum_ = 0
-    # for r in range(k):
-    #   # print("prob_X_n_r__k_r_leq_tau(r= {})= {}".format(r, prob_X_n_r__k_r_leq_tau(r) ) )
-    #   sum_ += prob_X_n_r__k_r_leq_tau(r) * binomial(k,r) * q**r * (1-q)**(k-r)
-    
-    # sum_ = prob_X_n_r__k_r_leq_tau((math.ceil(k*q) + math.floor(k*q) )/2) - prob_X_n_r__k_r_leq_tau(k)*q**k # math.ceil(k*q)
-    sum_ = prob_X_n_r__k_r_leq_tau(k*q) - prob_X_n_r__k_r_leq_tau(k)*q**k # math.ceil(k*q)
-    return (1 - q**k - sum_) # / q**k
-  # print("lhs= {}, rhs= {}".format(lhs(), rhs() ) )
-  return lhs() + rhs()
+  sum_ = 0
+  for r in range(k+1):
+    sum_ += I(q__, k-r, n-k+1) * binomial(k,r) * q**r * (1-q)**(k-r)
+  
+  return (t < d)*(q**k - q_**k) \
+         + (1-q**k) - sum_ + q**k*I(q__, 0, n-k+1)
+        # + (1-q**k) - I(q__, k*(1-q), n-k+1) + q**k*I(q__, 0, n-k+1) # This does not work very well unfortunately
+
+def Pr_T_g_t_k_n(task_t, D, mu, loc, a, d, k, n, t):
+  if task_t == "Exp":
+    return Pr_T_g_t_Exp_k_n(mu, d, k, n, t)
+  elif task_t == "SExp":
+    return None
+  elif task_t == "Pareto":
+    return None
 
 # ##################  Send n initially any k is enough, X_i ~ Exp(mu), each packet drops ~ Exp(gamma)  ################ #
 def Pr_succ_n_k_w_drop(mu, gamma, n, k):
@@ -382,65 +370,55 @@ def d_E_T_shiftedexp_k_n_dk(D, mu, d, k, n):
 def E_C_shiftedexp_k_n(D, mu, d, k, n, w_cancel=False):
   return E_C_shiftedexp_k_l_n(mu, d, k, k, n, w_cancel)
 
-# ####################  X_i ~ Pareto, (k, n, \Delta) with relaunch  ####################### #
-def plot_deneme():
-  # # Checking G(n-r+1)/G(n-r+1 - 1/a) ~= (n-r)**(1/a)
-  # n = 100
-  # r = 90
-  # a_l = []
-  # actual_l, approx_l = [], []
-  # def exact(a):
-  #   return G(n-r+1)/G(n-r+1 - 1/a)
-  # def approx(a):
-  #   return (n-r)**(1/a)
-  # plot.title(r'$n= {}$, $r= {}$'.format(n, r) )
-  
-  # # Checking R ~ Bin(k,q), E[(n-R)^(1/a)] =~ (n-kq)^(1/a)
-  # n = 100
-  # k = 5
-  # q = 0.9
-  # def exact(a):
-  #   sum_ = 0
-  #   for r in range(k+1):
-  #     sum_ += (n-r)**(1/a) * binomial(k, r) * q**r * (1-q)**(k-r)
-  #   return sum_
-  # def approx(a):
-  #   return (n - k*q)**(1/a)
-  # plot.title(r'$n= {}$, $k= {}$, $q= {}$'.format(n, k, q) )
-  
-  # Checking R ~ Bin(k,q), E[G(k-R+1-1/a)/G(k-R)] =~ G(k-kq+1-1/a)/G(k-kq)
-  k = 10
-  q = 0.2
-  def exact(a):
-    sum_ = 0
-    for r in range(k+1):
-      sum_ += G(k-r+1-1/a)/G(k-r) * binomial(k, r) * q**r * (1-q)**(k-r)
-    return sum_
-  def approx(a):
-    return G(k-k*q+1-1/a)/G(k-k*q)
-  plot.title(r'$k= {}$, $q= {}$'.format(k, q) )
-  
-  a_l = []
-  actual_l, approx_l = [], []
-  for a in numpy.linspace(1, 100, 2*100):
-    a_l.append(a)
-    actual_l.append(exact(a) )
-    approx_l.append(approx(a) )
-  
-  plot.plot(a_l, actual_l, 'bx', label='Actual', zorder=1, ms=8)
-  plot.plot(a_l, approx_l, 'ro', label='Approx', zorder=2, ms=5)
-  plot.legend()
-  plot.xlabel(r'$a$')
-  # plot.ylabel(r'$$')
-  plot.savefig("plot_deneme.png")
-  plot.gcf().clear()
-  log(WARNING, "done.")
+# ####################  X_i ~ Pareto, (k, n/c, \Delta) with relaunch  ####################### #
+def Delta_for_min_p_T_g_t_pareto_k_wrelaunch(loc, a, k):
+  t = 20*loc
+  d_min = None
+  p_T_g_t_min = float('Inf')
+  for d in numpy.linspace(0, 2*t, 1000):
+    p_T_g_t = Pr_T_g_t_pareto_k_wrelaunch(loc, a, d, k, t)
+    if p_T_g_t < p_T_g_t_min:
+      p_T_g_t_min = p_T_g_t
+      d_min = d
+  return d_min
 
-def Delta_for_min_E_T_pareto_k_n_wrelaunch(loc, a, k, n):
+def Pr_T_g_t_pareto_k_wrelaunch(loc, a, d, k, t):
+  q_t = 1 - (loc/t)**a if t > loc else 0
+  if d == 0:
+    return 1 - q_t**k
+  
+  q_d = 1 - (loc/d)**a if d > loc else 0
+  q1 = 1 - (d/t)**a if t > d else 0
+  q2 = 1 - (loc/(t-d))**a if t-d > loc else 0
+  # p_T_geq_t = 1 - q_t**k + (t > d)*(q_d + q1*(1-q_d))**k - (t-d > loc)*(q_d + q2*(1-q_d))**k - q_d**k*((t > d) - (t-d > loc))
+  sum_ = 0
+  for r in range(k):
+  # for r in range(k+1):
+    sum_ += (q1**(k-r) - q2**(k-r)) * binomial(k, r) * q_d**r * (1-q_d)**(k-r)
+  p_T_geq_t = 1 - q_t**k + sum_
+  
+  return p_T_geq_t
+
+def Pr_T_g_t_pareto_k_wrelaunch_approx(loc, a, d, k, t):
+  q_t = 1 - (loc/t)**a if t > loc else 0
+  if d == 0:
+    return 1 - q_t**k
+  
+  q_d = 1 - (loc/d)**a if d > loc else 0
+  q1 = 1 - (d/t)**a if t > d else 0
+  q2 = 1 - (loc/(t-d))**a if t-d > loc else 0
+  # p_T_geq_t = 1 - q_t**k + (t > d)*(q_d + q1*(1-q_d))**k - (t-d > loc)*(q_d + q2*(1-q_d))**k # - q_d**k*((t > d) - (t-d > loc))
+  p_T_geq_t = 1 - q_t**k + (q_d + q1*(1-q_d))**k - (q_d + q2*(1-q_d))**k
+  # sum_ = 0
+  # for r in range(k+1):
+  #   sum_ += (q1**(k-r) - q2**(k-r)) * binomial(k, r) * q_d**r * (1-q_d)**(k-r)
+  # p_T_geq_t = 1 - q_t**k + sum_
+  return p_T_geq_t
+
+def Delta_for_min_E_T_pareto_k_wrelaunch(loc, a, k):
   def g(k, a):
     return loc*G(1-1/a)*G(k+1)/G(k+1-1/a)
-  if n == k:
-    return math.sqrt(loc*g(k, a) )
+  return math.sqrt(loc*g(k, a) )
 
 def E_T_pareto_k_n(loc, a, d, k, n, w_relaunch=True):
   if d == 0:
