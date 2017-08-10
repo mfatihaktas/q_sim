@@ -37,7 +37,7 @@ def E_T_pop_ub_ff_simplex(pop_ar, t, mu):
   if E_T < 0 or E_T > E_T_UB: return None
   return E_T
 
-def pop_ar_ub_approx_ff_simplex(unpop_ar, t, mu):
+def pop_ar_ub_ff_simplex_approx(unpop_ar, t, mu):
   if t == 1:
     p_busyb = unpop_ar/mu
     E_S = p_busyb*1/mu + (1-p_busyb)*avq_low_traff_serv_time_first_moment(r, 1, mu)

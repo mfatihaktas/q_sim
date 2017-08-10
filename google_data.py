@@ -291,14 +291,43 @@ def pplot_task_lifetime_hist(k):
   # m, b = numpy.polyfit(x_l, y_l, 1)
   # plot.plot(x_l, m*x_l+b, 'r', lw=1, linestyle=':')
   
+  step_size = 10
+  num_rank = math.ceil(x_l[0]/step_size)
+  # rank__avg_lifetime_l = []
+  rank__num_lifetime_l = []
+  i = 0
+  for r in range(1, num_rank+1):
+    sum_ = 0
+    counter = 0
+    while i < len(x_l) and x_l[i] > x_l[0]-r*step_size:
+      counter += 1
+      sum_ += x_l[i]
+      i += 1
+    rank__num_lifetime_l.append(counter)
+    # avg = 0
+    # if counter:
+    #   avg = sum_/counter
+    # rank__avg_lifetime_l.append(avg)
+  # print("i= {}, rank__avg_lifetime_l=\n{}".format(i, rank__avg_lifetime_l) )
+  rank__num_lifetime_l = list(reversed(rank__num_lifetime_l) )
+  rank_freq_l = [n/sum(rank__num_lifetime_l) for n in rank__num_lifetime_l]
+  rank_tailprob_l = [sum(rank_freq_l[r-1:]) for r in range(1, num_rank+1) ]
+  
+  # plot.plot(range(1, num_rank+1), rank__avg_lifetime_l, 'bo', linestyle=':')
+  plot.xlabel(r'Rank', fontsize=13)
+  plot.ylabel(r'Tail distribution', fontsize=13)
+  plot.step(range(1, num_rank+1), rank_tailprob_l, 'bo', linestyle=':')
+  plot.yscale('log')
+  # plot.xscale('log')
+  
   # plot.step(x_l, y_l, 'bo', lw=1, linestyle=':')
-  plot.step(x_l, y_l, 'bo', linestyle=':')
+  # plot.step(x_l, y_l, 'bo', linestyle=':')
   
   # plot.xlabel(r'$x$ (s)')
   # plot.ylabel(r'$log(Pr\{X > x\})$')
-  plot.yscale('log')
-  plot.xlabel(r'Task lifetime x (s)', fontsize=13)
-  plot.ylabel(r'Tail distribution', fontsize=13)
+  # plot.yscale('log')
+  # plot.xlabel(r'Task lifetime x (s)', fontsize=13)
+  # plot.ylabel(r'Tail distribution', fontsize=13)
   # plot.ylabel(r'Fraction of tasks completed in x')
   # plot.title(r'Jobs with {} tasks'.format(k), fontsize=13)
   plot.title(r'k= {}'.format(k), fontsize=13)
@@ -339,7 +368,7 @@ if __name__ == "__main__":
   # plot_task_lifetime_hist(k=1000)
   # plot_task_lifetime_hist(k=1050)
   
-  pplot_task_lifetime_hist(k=15)
+  # pplot_task_lifetime_hist(k=15)
   pplot_task_lifetime_hist(k=400)
   pplot_task_lifetime_hist(k=1000)
   pplot_task_lifetime_hist(k=1050)

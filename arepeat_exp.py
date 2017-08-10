@@ -10,437 +10,12 @@ import matplotlib.pyplot as plot
 from arepeat_models import *
 from arepeat_sim import *
 
-# ##################  Send n any k is enough, X_i ~ Exp(mu), each packet drops ~ Exp(gamma)  ############## #
-def plot_send_n_w_drop():
-  mu = 1
-  gamma = 0.2
-  k = 10
-  N = 20
-  
-  plot_Pr_succ = False # True
-  
-  n__y_l_m, n__y_approx_l_m = {}, {}
-  n__x_l_m = {}
-  
-  k_step = 2
-  for n in range(k, N, k_step):
-    n__y_l_m[n] = []
-    n__y_approx_l_m[n] = []
-    n__x_l_m[n] = []
-    for gamma_ in numpy.arange(gamma, 2.9, 0.1):
-      n__x_l_m[n].append(gamma_)
-      if plot_Pr_succ:
-        n__y_l_m[n].append(Pr_succ_n_k_w_drop(mu, gamma_, n, k) )
-      else:
-        n__y_l_m[n].append(E_T_n_k_w_drop_given_succ(mu, gamma_, n, k) )
-        n__y_approx_l_m[n].append(E_T_n_k_w_drop_given_succ_approx(mu, gamma_, n, k) )
-  marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
-  color = iter(cm.rainbow(numpy.linspace(0, 1, int((N-k)/k_step)+1) ) )
-  for n in range(k, N, k_step):
-    m = next(marker)
-    c = next(color)
-    plot.plot(n__x_l_m[n], n__y_l_m[n], label=r'n:{}'.format(n), color=c, marker=m, linestyle='', mew=2)
-    plot.plot(n__x_l_m[n], n__y_approx_l_m[n], label=r'~ n:{}'.format(n), color=c, alpha=0.7, marker=m, linestyle='', mew=2)
-  # plot.legend()
-  plot.legend(loc='center left', bbox_to_anchor=(0.9, 0.5) )
-  plot.title(r'$\mu$= {}, k= {}'.format(mu, k) )
-  plot.xlabel(r'$\gamma$')
-  if plot_Pr_succ:
-    plot.ylabel(r'$Pr\{succ\}$')
-  else:
-    plot.ylabel(r'$E[T|succ]$ (s)')
-  plot.savefig("plot_send_n_w_drop_k_{}.png".format(k) )
-  plot.gcf().clear()
-  log(WARNING, "done; k= {}".format(k) )
-
-# ##################  X_i ~ G, (l=k, k, n=k+1, \Delta)  ################ #
-def plot_arepeat_E_T_vs_E_C_Gred():
-  k = 7
-  red = 1
-  def plot_(k, rv, rv_in_latex):
-    x_l_m, y_l_m, y2_l_m = [], [], []
-    x_sim_l_m, y_sim_l_m, y2_sim_l_m = [], [], []
-    
-    for d in numpy.arange(0, 5*rv.mean(), 1):
-      if red == 1:
-        x_l_m.append(d)
-        # x_l_m.append(E_T_G_1red(rv, d, k) )
-        y_l_m.append(E_C_G_1red(rv, d, k, w_cancel=True) )
-        y2_l_m.append(E_C_G_1red(rv, d, k, w_cancel=False) )
-      
-      stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(rv, d, k, l=k, n=k+red, num_run=100000)
-      E_T = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )
-      E_C_wc = sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] )
-      E_C = sum(stat_id__trial_sampleavg_l_m['E_C'] )/len(stat_id__trial_sampleavg_l_m['E_C'] )
-      x_sim_l_m.append(d)
-      # x_sim_l_m.append(E_T)
-      y_sim_l_m.append(E_C_wc)
-      y2_sim_l_m.append(E_C)
-    if red == 1:
-      plot.plot(x_l_m, y_l_m, label=r'w/ cancel,{}'.format(rv_in_latex), color=next(dark_color), marker=next(marker), linestyle='-', mew=2)
-      plot.plot(x_l_m, y2_l_m, label=r'no cancel,{}'.format(rv_in_latex), color=next(dark_color), marker=next(marker), linestyle='-', mew=2)
-    plot.plot(x_sim_l_m, y_sim_l_m, label=r'w/ cancel,{}'.format(rv_in_latex), color=next(light_color), alpha=1, marker=next(marker), linestyle='', mew=2)
-    plot.plot(x_sim_l_m, y2_sim_l_m, label=r'no cancel,{}'.format(rv_in_latex), color=next(light_color), alpha=1, marker=next(marker), linestyle='', mew=2)
-  
-  # plot_(7, Pareto(a=3, loc=6), r"$Pareto(\alpha=3,\lambda=6)$")
-  # task_t_rv, name = Pareto(a=3, loc=6), "$Pareto$"
-  # task_t_rv, task_t_in_latex = Pareto(a=3, loc=6), r"$Pareto(\alpha=3,\lambda=6)$"
-  # task_t_rv, task_t_in_latex = Exp(mu=1/3, D=6), r"$ShiftedExp(D=6,\mu=1/3)$"
-  # task_t_rv, task_t_in_latex = Exp(mu=1/9), r"$Exp(\mu=1/3)$"
-  # plot_(7, task_t_rv, task_t_in_latex)
-  
-  # plot_(k, Pareto(a=3, loc=6), r"$Pareto(\alpha=3,\lambda=6)$")
-  # plot_(k, Exp(mu=1/3, D=6), r"$ShiftedExp(D=6,\mu=1/3)$")
-  # plot_(k, Exp(mu=1/9), r"$Exp(\mu=1/3)$")
-  plot_(k, Pareto(a=3, loc=6), r"$Pareto$")
-  plot_(k, Exp(mu=1/3, D=6), r"$SExp$")
-  plot_(k, Exp(mu=1/9), r"$Exp$")
-  
-  # plot.legend()
-  plot.legend(loc='center left', bbox_to_anchor=(0.75, 0.5) )
-  plot.xlabel(r'$\Delta$ (s)')
-  # plot.xlabel(r'$E[T]$ (s)')
-  plot.ylabel(r'$E[C]$ (s)')
-  plot.title(r'$k= {}, l= {}, n= {}$'.format(k, k, k+red) )
-  # plot.title(r'$X_i \sim $ {}'.format(task_t_in_latex) )
-  # plot.savefig("plot_arepeat_E_T_vs_E_C_Gred_{}.png".format(task_t_rv) )
-  plot.savefig("plot_arepeat_E_T_vs_E_C_G_red_{}_k_{}.png".format(red, k) )
-  plot.gcf().clear()
-  log(WARNING, "done.")
-  
-def plot_arepeat_E_T_G_1red(w_cancel=True):
-  K = 10
-  # task_t_rv = Exp(mu=2/3)
-  task_t_rv = Pareto(a=3, loc=6)
-  
-  k__x_l_m, k__y_l_m, k__y_approx_l_m = {}, {}, {}
-  k__x_sim_l_m, k__y_sim_l_m = {}, {}
-  k_step = 2
-  for k in range(2, K, k_step):
-  # for k in range(K, K+1, k_step):
-    k__x_l_m[k] = []
-    k__y_l_m[k] = []
-    # k__y_approx_l_m[k] = []
-    k__x_sim_l_m[k] = []
-    k__y_sim_l_m[k] = []
-    # for d in numpy.arange(0, K*task_t_rv.mean(), 0.1):
-    for d in numpy.arange(0, 2*task_t_rv.mean(), 0.1):
-      k__x_l_m[k].append(d)
-      k__y_l_m[k].append(E_T_G_1red(task_t_rv, d, k) )
-      # k__y_approx_l_m[k].append(E_T_G_1red_approx(task_t_rv, d, k) )
-      
-      stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, l=k, n=k+1, num_run=1000)
-      E_T = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )
-      # C_key = 'E_C' if not w_cancel else 'E_C_wc'
-      # E_C = sum(stat_id__trial_sampleavg_l_m[C_key] )/len(stat_id__trial_sampleavg_l_m[C_key] )
-      k__x_sim_l_m[k].append(d)
-      k__y_sim_l_m[k].append(E_T)
-  marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
-  color = iter(cm.rainbow(numpy.linspace(0, 1, int(K/k_step)+1) ) )
-  for k in range(2, K, k_step):
-  # for k in range(K, K+1, k_step):
-    m = next(marker)
-    c = next(color)
-    plot.plot(k__x_l_m[k], k__y_l_m[k], label=r'k:{}'.format(k), color=c, marker=m, linestyle='', mew=2)
-    # plot.plot(k__x_l_m[k], k__y_approx_l_m[k], label=r'~ k:{}'.format(k), color=c, alpha=0.5, marker=m, linestyle='', mew=2)
-    plot.plot(k__x_sim_l_m[k], k__y_sim_l_m[k], label=r'sim k:{}'.format(k), color=c, alpha=0.5, marker=m, linestyle='', mew=2)
-  plot.legend()
-  plot.xlabel(r'$\Delta$ (s)')
-  plot.ylabel(r'$E[T]$ (s)')
-  plot.title(r'$X_i \sim$ {}'.format(task_t_rv) )
-  plot.savefig("plot_arepeat_E_T_G_1red_{}.png".format(task_t_rv) )
-  plot.gcf().clear()
-  log(WARNING, "done; K= {}, task_t_rv= {}".format(K, task_t_rv) )
-
-# ##################  X_i ~ Exp(mu), (l, k, n, \Delta)  ################ #
-def plot_arepeat_k_l_n__E_C_vs_E_T():
-  mu = 1
-  k = 10
-  N = 20
-  task_t_rv = Exp(mu)
-  
-  l__x_l_m, l__y_l_m = {}, {}
-  l__x_sim_l_m, l__y_sim_l_m = {}, {}
-  
-  l_step = 2
-  for l in range(k, N, l_step):
-    # l__x_sim_l_m[l] = []
-    # l__y_sim_l_m[l] = []
-    l__y_l_m[l] = []
-    l__x_l_m[l] = []
-    for d in numpy.arange(0.1, 3*H(k)/mu, 0.1):
-      # stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, l, N, num_run=100000)
-      # E_T = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )
-      # E_C = sum(stat_id__trial_sampleavg_l_m['E_C'] )/len(stat_id__trial_sampleavg_l_m['E_C'] )
-      # l__x_sim_l_m[l].append(E_T)
-      # l__y_sim_l_m[l].append(E_C)
-      
-      l__x_l_m[l].append(E_T_exp_k_l_n(mu, d, k, l, N) )
-      l__y_l_m[l].append(E_C_exp_k_l_n(mu, d, k, l, N, w_cancel=False) )
-  marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
-  color = iter(cm.rainbow(numpy.linspace(0, 1, int((N-k)/l_step)+1) ) )
-  for l in range(k, N, l_step):
-    plot.plot(l__x_l_m[l], l__y_l_m[l], label=r'l={}'.format(l), color=next(dark_color), marker=next(marker), linestyle='-', mew=2)
-    # plot.plot(l__x_sim_l_m[l], l__y_sim_l_m[l], label=r'l:{}'.format(l), color=next(light_color), alpha=0.7, marker=next(marker), linestyle='', mew=2)
-  plot.legend()
-  # plot.legend(loc='center left', bbox_to_anchor=(0.9, 0.5) )
-  plot.xlabel(r'$E[T]$ (s)')
-  plot.ylabel(r'$E[C]$ (s)')
-  plot.title(r'$X \sim Exp(\mu={}), k= {}, n= {}$'.format(mu, k, N) )
-  plot.savefig("plot_arepeat_k_l_n__E_C_vs_E_T__n_{}.png".format(N) )
-  plot.gcf().clear()
-  log(WARNING, "done; k= {}, N= {}".format(k, N) )
-
-def plot_arepeat_E_T_k_n_vs_k_l_n():
-  mu = 1
-  k = 10
-  N = 20
-  
-  l__y_l_m = {}
-  l__x_l_m = {}
-  
-  l_step = 2
-  for l in range(k, N, l_step):
-    l__y_l_m[l] = []
-    l__x_l_m[l] = []
-    for d in numpy.arange(0.1, 2*H(k)/mu, 0.1):
-      l__x_l_m[l].append(d)
-      # if l == k:
-      #   # l__y_l_m[l].append(E_T_exp_k_l_n(mu, d, k, l, N) )
-      #   l__y_l_m[l].append(E_T_exp_k_n(mu, d, k, N) )
-      # else:
-      l__y_l_m[l].append(E_T_exp_k_l_n(mu, d, k, l, N) )
-  marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
-  color = iter(cm.rainbow(numpy.linspace(0, 1, int((N-k)/l_step)+1) ) )
-  for l in range(k, N, l_step):
-    m = next(marker)
-    c = next(color)
-    plot.plot(l__x_l_m[l], l__y_l_m[l], label=r'l:{}'.format(l), color=c, marker=m, linestyle='', mew=2)
-  # plot.legend()
-  plot.legend(loc='center left', bbox_to_anchor=(0.9, 0.5) )
-  plot.xlabel(r'$\Delta$ (s)')
-  plot.ylabel(r'$E[T]$ (s)')
-  plot.title(r'$\mu$= {}, k= {}, N= {}'.format(mu, k, N) )
-  plot.savefig("plot_arepeat_E_T_k_n_vs_k_l_n__N_{}.png".format(N) )
-  plot.gcf().clear()
-  log(WARNING, "done; k= {}, N= {}".format(k, N) )
-
-def plot_arepeat_E_T_k_l_n():
-  mu = 1
-  l = 11 #  91 # 11
-  k = 10 # 90 # 10
-  N = 20 # 120 # 20
-  d = 1
-  task_t_rv = Exp(mu)
-  
-  n__y_sim_l_m, n__y_l_m, n__y_approx_l_m = {}, {}, {}
-  n__x_l_m = {}
-  
-  l_step = int((N-l)/4)
-  for n in range(l, N, l_step):
-    n__y_sim_l_m[n] = []
-    n__y_l_m[n] = []
-    n__y_approx_l_m[n] = []
-    n__x_l_m[n] = []
-    for d in numpy.arange(0.1, 3/mu*(H(l)-H(l-k) ), 0.1):
-      n__x_l_m[n].append(d)
-      
-      # stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=10000)
-      # n__y_sim_l_m[n].append(sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] ) )
-      n__y_l_m[n].append(E_T_exp_k_l_n(mu, d, k, l, n) )
-      n__y_approx_l_m[n].append(E_T_exp_k_l_n_approx(mu, d, k, l, n) )
-  marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
-  color = iter(cm.rainbow(numpy.linspace(0, 1, int((N-l)/l_step)+1) ) )
-  for n in range(l, N, l_step):
-    m = next(marker)
-    c = next(color)
-    # plot.plot(n__x_l_m[n], n__y_sim_l_m[n], label=r'sim, n:{}'.format(n), color=c, alpha=0.5, marker=m, linestyle='', mew=2)
-    plot.plot(n__x_l_m[n], n__y_l_m[n], label=r'n:{}'.format(n), color=c, marker=m, linestyle='', mew=2)
-    plot.plot(n__x_l_m[n], n__y_approx_l_m[n], label=r'~ n:{}'.format(n), color=c, alpha=0.5, marker=m, linestyle='', mew=2)
-  # plot.legend()
-  plot.legend(loc='center left', bbox_to_anchor=(0.9, 0.5) )
-  plot.xlabel(r'$\Delta$ (s)')
-  plot.title(r'$X_i \sim Exp(\mu={})$, k= {}, l= {}'.format(mu, k, l) )
-  plot.ylabel(r'$E[T]$ (s)')
-  plot.savefig("plot_arepeat_k_l_{}.png".format(l) )
-  plot.gcf().clear()
-  log(WARNING, "done; k= {}, l= {}".format(k, l) )
-
-# ############################  (l=k, k, n, \Delta)  ########################## #
-def plot_arepeat_conf_k_n():
-  mu = 1
-  k = 10
-  n = 20 # 15
-  # d = H(k)/mu * 0.3
-  L = 2
-  
-  d_l, prob_T_k_n_geq_L_l, Pr_T_k_n_geq_L_approx_l = [], [], []
-  # for d in numpy.arange(0.1, 3*H(k)/mu, 0.1):
-  for d in numpy.arange(0.1, L, 0.1):
-    d_l.append(d)
-    
-    prob_T_k_n_geq_L_l.append(prob_T_k_n_geq_t(mu, d, k, n, L) )
-    Pr_T_k_n_geq_L_approx_l.append(prob_T_k_n_geq_t_approx(mu, d, k, n, L) )
-  marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
-  plot.plot(d_l, prob_T_k_n_geq_L_l, color='black', label=r'$Pr\{T \geq L\}$', marker=next(marker), linestyle='', mew=2)
-  plot.plot(d_l, Pr_T_k_n_geq_L_approx_l, color='brown', label=r'$Pr\{T_{alt} \geq L\}$', marker=next(marker), linestyle='', mew=2)
-  plot.legend()
-  plot.xlabel(r'$\Delta$')
-  plot.ylabel(r'$Pr\{T \geq L\}$')
-  plot.title(r'mu= {}, k= {}, n= {}, L= {}'.format(mu, k, n, L) )
-  plot.savefig("plot_arepeat_conf_k_{}_n_{}.png".format(k, n) )
-  plot.gcf().clear()
-  log(WARNING, "done; k= {}, n= {}".format(k, n) )
-
-def plot_arepeat_Pr_T_g_t():
-  K = 10
-  D, mu = 30, 1
-  loc, a = 3, 2
-  task_t = "Exp" # "Exp" # "SExp" # "Pareto"
-  task_t_rv, task_t_in_latex = None, None
-  
-  if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu={})'.format(mu)
-  elif task_t == "SExp": task_t_in_latex = r'X \sim SExp(D/k, \mu), D={}, \mu={}'.format(D, mu)
-  elif task_t == "Pareto": task_t_in_latex = r'X \sim Pareto(\lambda={}, \alpha={})'.format(loc, a)
-  
-  def plot_(k, d, n=None, c=None, sim=False):
-    if task_t == "Exp": task_t_rv = Exp(mu)
-    elif task_t == "SExp": task_t_rv = Exp(mu, D/k)
-    elif task_t == "Pareto": task_t_rv = Pareto(a, loc=loc)
-    
-    t_l = []
-    y_l, y_approx_l, y_sim_l = [], [], []
-    for t in numpy.linspace(0, 3*H(K)/mu, 100):
-      t_l.append(t)
-      if n is not None:
-        y_l.append(Pr_T_g_t_k_n(task_t, D, mu, loc, a, d, k, n, t) )
-        # y_approx_l.append(Pr_T_g_t_Exp_k_n_approx(mu, d, k, n, t) )
-      elif c is not None:
-        y_l.append(Pr_T_g_t_k_c(task_t, D, mu, loc, a, d, k, c, t) )
-      # if sim:
-      #   if n is not None:
-      #     stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=10000)
-      #   elif c is not None:
-      #     stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c, num_run=10000)
-      #   # y_sim_l.append(sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] ) )
-      #   y_sim_l.append(sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] ) )
-      #   # y_sim_l.append(sum(stat_id__trial_sampleavg_l_m['E_C'] )/len(stat_id__trial_sampleavg_l_m['E_C'] ) )
-    label = r'$n={}$, $\Delta={}$'.format(n, d) if n is not None else r'$c={}$'.format(c)
-    # print("y_l= {}".format(y_l) )
-    plot.plot(t_l, y_l, label=label, color=next(dark_color), marker=next(marker), linestyle=':', mew=2)
-    # plot.plot(t_l, y_approx_l, label=r'Approx, {}'.format(label), color=next(light_color), marker=next(marker), linestyle=':', mew=2)
-    # plot.plot(d_l, y_sim_l, label=r'$n={}$'.format(n), color=next(light_color), marker=next(marker), linestyle='', mew=2)
-  
-  sim = False
-  plot_(K, d=0, n=K+1, sim=sim)
-  plot_(K, d=1/mu, n=K+1, sim=sim)
-  plot_(K, d=2/mu, n=K+1, sim=sim)
-  plot_(K, d=3/mu, n=K+1, sim=sim)
-  plot_(K, d=4/mu, n=K+1, sim=sim)
-  
-  plot.legend()
-  plot.title(r'${}, k= {}$'.format(task_t_in_latex, K) )
-  plot.xlabel(r'$t$')
-  plot.ylabel(r'$Pr\{T \geq t\}$')
-  plot.savefig("plot_arepeat_Pr_T_g_t_{}_k_{}.png".format(task_t, K) )
-  plot.gcf().clear()
-  log(WARNING, "done; k= {}".format(K) )
-
-def plot_dE_T_shiftedexp_k_n_dk():
-  D = 1
-  mu = 1
-  k = 3 # 10
-  N = k + 1 # 20 # 20
-  d = 1
-  
-  n__k_l_m, n__d_E_T_dk_l_m = {}, {}
-  
-  k_step = 2
-  for n in range(k, N, k_step):
-    n__d_E_T_dk_l_m[n] = []
-    n__k_l_m[n] = []
-    for k_ in numpy.arange(1, n+1, 1):
-      n__k_l_m[n].append(k_)
-      n__d_E_T_dk_l_m[n].append(d_E_T_shiftedexp_k_n_dk(D, mu, d, k_, n) )
-  marker = itertools.cycle(('^', 'p', 'x', '+', '*', 'v', 'o') )
-  color = iter(cm.rainbow(numpy.linspace(0, 1, int(N/k_step) ) ) )
-  for n in range(k, N, k_step):
-    m = next(marker)
-    c = next(color)
-    plot.plot(n__k_l_m[n], n__d_E_T_dk_l_m[n], label=r'n:{}, $d(E[T])/dk$'.format(n), color=c, marker=m, linestyle='', mew=2)
-  # plot.legend()
-  plot.legend(loc='center left', bbox_to_anchor=(0.9, 0.5) )
-  plot.xlabel(r'$k$')
-  plot.title(r'D= {}, $\mu$= {}, $\Delta$= {}'.format(D, mu, d) )
-  plot.ylabel("E[T] (s)")
-  plot.savefig("plot_dE_T_shiftedexp_k_n_dk__d_{}.png".format(d) )
-  plot.gcf().clear()
-  log(WARNING, "done; k= {}".format(k) )
-
-def plot_arepeat_shiftedexp_k_n():
-  D = 1
-  mu = 1
-  k = 10
-  N = 15 # 20
-  d = 1
-  
-  d_l = []
-  n__E_T_l_m, n__E_T_approx_l_m, n__E_T_sim_l_m = {}, {}, {}
-  n__k_l_m = {}
-  
-  varying_d = True # False
-  varying_k = False # True
-  
-  first_loop = True
-  k_step = 2
-  for n in range(k, N, k_step):
-    n__E_T_l_m[n] = []
-    n__E_T_approx_l_m[n] = []
-    n__E_T_sim_l_m[n] = []
-    if varying_d:
-      for d in numpy.arange(0, 2*H(k)/mu, 0.5):
-        if first_loop:
-          d_l.append(d)
-        n__E_T_l_m[n].append(E_T_shiftedexp_k_n(D, mu, d, k, n) )
-        # n__E_T_approx_l_m[n].append(E_T_exp_k_n_approx(mu, d, k, n) )
-        
-        stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(Exp(mu, D/k), d, k, k, n, num_run=10000)
-        n__E_T_sim_l_m[n].append(sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] ) )
-      first_loop = False
-    elif varying_k:
-      n__k_l_m[n] = []
-      for k_ in numpy.arange(1, n+1, 1):
-        n__k_l_m[n].append(k_)
-        n__E_T_l_m[n].append(E_T_shiftedexp_k_n(D, mu, d, k_, n) )
-  for n in range(k, N, k_step):
-    if varying_d:
-      plot.plot(d_l, n__E_T_l_m[n], label=r'$n={}$'.format(n), color=next(dark_color), linestyle='-', mew=2)
-      # plot.plot(d_l, n__E_T_approx_l_m[n], label=r'$n={}$'.format(n), color=next(light_color), marker=next(marker), linestyle='', mew=2)
-      plot.plot(d_l, n__E_T_sim_l_m[n], label=r'$n={}$'.format(n), color=next(light_color), marker=next(marker), linestyle='', mew=2)
-    elif varying_k:
-      plot.plot(n__k_l_m[n], n__E_T_l_m[n], label=r'$n={}$'.format(n), color=next(dark_color), linestyle='-', mew=2)
-  plot.legend()
-  # plot.legend(loc='center left', bbox_to_anchor=(0.9, 0.5) )
-  if varying_d:
-    plot.xlabel(r'$\Delta$ (s)')
-    plot.title(r'$X \sim SExp(D\k, \mu), D={}, \mu={}, k= {}$'.format(D, mu, k) )
-  elif varying_k:
-    plot.xlabel(r'$k$')
-    plot.title(r'$X \sim SExp(D\k, \mu), D={}, \mu={}, \Delta= {}$'.format(D, mu, d) )
-  plot.ylabel(r'$E[T]$ (s)')
-  if varying_d:
-    plot.savefig("plot_arepeat_shiftedexp_k_n__k_{}.png".format(k) )
-  elif varying_k:
-    plot.savefig("plot_arepeat_shiftedexp_k_n__d_{}.png".format(d) )
-  plot.gcf().clear()
-  log(WARNING, "done; k= {}".format(k) )
-
 def plot_arepeat_k_nc():
   K = 10
   N = 14
   D, mu = 30, 1
   loc, a = 3, 2
-  task_t = "SExp" # "Exp" # "SExp" # "Pareto"
+  task_t = "Pareto" # "Exp" # "SExp" # "Pareto"
   task_t_rv, task_t_in_latex = None, None
   
   if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu={})'.format(mu)
@@ -550,316 +125,8 @@ def plot_arepeat_k_nc_E_C_vs_E_T():
   plot.gcf().clear()
   log(WARNING, "done; k= {}".format(K) )
 
-# ####################  X_i ~ Pareto, (k, n/c, \Delta) with relaunch  ####################### #
-def plot_arepeat_Pr_T_g_t_pareto_k_wrelaunch():
-  K = 100
-  loc, a = 3, 2
-  
-  def plot_(k, d, label=None):
-    t_l, y_l, y_approx_l = [], [], []
-    # for t in numpy.linspace(loc, loc*40, 100):
-    for t in numpy.linspace(loc*20, loc*40, 30):
-      t_l.append(t)
-      y_l.append(Pr_T_g_t_pareto_k_wrelaunch(loc, a, d, k, t) )
-      # y_approx_l.append(Pr_T_g_t_pareto_k_wrelaunch_approx(loc, a, d, k, t) )
-    if label is None:
-      label = r'$\Delta={}$'.format(d)
-    plot.plot(t_l, y_l, label=label, color=next(dark_color), marker=next(marker), linestyle=':', mew=2)
-    # plot.plot(t_l, y_approx_l, label=r'Approx, $\Delta={}$'.format(d), color=next(light_color), marker=next(marker), linestyle=':', mew=2)
-  
-  plot_(K, d=0)
-  # plot_(K, d=6*loc)
-  # plot_(K, d=45)
-  d = Delta_for_min_E_T_pareto_k_wrelaunch(loc, a, K)
-  plot_(K, d, label='Minimum $E[T]$, $\Delta= {0:.2f}$'.format(d) )
-  d = Delta_for_min_Pr_T_g_t_pareto_k_wrelaunch(loc, a, K)
-  plot_(K, d, label='Minimum {}, $\Delta= {}$'.format(r'$Pr\{T > t\}$', '{0:.2f}'.format(d) ) )
-  
-  # def plot_(k, t):
-  #   d_l, y_l = [], []
-  #   for d in numpy.linspace(0, 2*t, 200):
-  #     d_l.append(d)
-  #     y_l.append(Pr_T_g_t_pareto_k_wrelaunch(loc, a, d, k, t) )
-  #   plot.plot(d_l, y_l, label=r'$t={0:.2f}$'.format(t), color=next(dark_color), marker=next(marker), linestyle=':', mew=2)
-  
-  # plot_(K, t=10*loc)
-  # plot_(K, t=20*loc)
-  
-  plot.legend()
-  plot.title(r'$X \sim Pareto(\lambda={}, \alpha={}), k= {}$'.format(loc, a, K) )
-  plot.xlabel(r'$t$', fontsize=13)
-  # plot.xlabel(r'$\Delta$', fontsize=13)
-  plot.ylabel(r'$Pr\{T > t\}$', fontsize=13)
-  fig = plot.gcf()
-  fig.tight_layout()
-  def_size = fig.get_size_inches()
-  fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
-  plot.savefig("plot_arepeat_Pr_T_g_t_pareto_k_wrelaunch_k_{}.pdf".format(K), bbox_inches='tight')
-  plot.gcf().clear()
-  log(WARNING, "done; k= {}".format(K) )
-
-def plot_arepeat_k_nc_wrelaunch():
-  K = 100
-  D, mu = 30, 1
-  loc, a = 3, 2 # 100 # 1.2 # 2
-  task_t = "Pareto"
-  
-  def plot_reduction_in_E_T_wrelaunch(k, loc=loc):
-    def max_a_lb():
-      return math.log(k+1)/math.log(4)
-    
-    x_l, y_l = [], []
-    for a in numpy.linspace(1.05, 8, 50):
-      x_l.append(a)
-      
-      E_T_wrelaunch_min = float('Inf')
-      for d in numpy.linspace(loc+0.05, 10*loc, 1000):
-        E_T = E_T_pareto_k_n(loc, a, d, k, n=k, w_relaunch=True)
-        if E_T < E_T_wrelaunch_min:
-          E_T_wrelaunch_min = E_T
-        else:
-          # elif not math.isinf(E_T_wrelaunch_min):
-          break
-      E_T_norelaunch = E_T_pareto_k_n(loc, a, d, k, n=k, w_relaunch=False)
-      y_l.append(max((E_T_norelaunch - E_T_wrelaunch_min)/E_T_norelaunch, 0) )
-    c = next(dark_color)
-    label = r'$k={}$'.format(k) # r'$\lambda={}$, $k={}$'.format(loc, k)
-    plot.plot(x_l, y_l, label=label, color=c, marker=next(marker), linestyle=':', mew=2)
-    plot.axvline(x=max_a_lb(), label=r'$\alpha_u$, {}'.format(label), color=c, linestyle='--')
-  
-  E_T = True # False # True
-  w_cancel = True # False
-  def plot_(k, n=None, c=None, sim=False):
-    task_t_rv = Pareto(a, loc=loc)
-    
-    l = k
-    x_l = []
-    y_wrelaunch_l, y_wrelaunch_approx_l, y_sim_wrelaunch_l = [], [], []
-    y_norelaunch_l = []
-    for d in numpy.linspace(0, 20*loc, 50):
-      x_l.append(d)
-      
-      if E_T:
-        if n is not None:
-          y_wrelaunch_l.append(E_T_pareto_k_n(loc, a, d, k, n, w_relaunch=True) )
-          # y_wrelaunch_approx_l.append(E_T_pareto_k_n_approx(loc, a, d, k, n, w_relaunch=True) )
-          if n == k: y_norelaunch_l.append(E_T_pareto_k_n(loc, a, d, k, n, w_relaunch=False) )
-        elif c is not None:
-          y_wrelaunch_l.append(E_T_pareto_k_c_wrelaunch(loc, a, d, k, c, w_relaunch=True) )
-          # y_wrelaunch_approx_l.append(E_T_pareto_k_c_wrelaunch_approx(loc, a, d, k, c, w_relaunch=True) )
-          if c == 0: y_norelaunch_l.append(E_T_pareto_k_c_wrelaunch(loc, a, d, k, c, w_relaunch=False) )
-      else:
-        if n is not None:
-          y_wrelaunch_l.append(E_C_pareto_k_n(loc, a, d, k, n, w_cancel=w_cancel, w_relaunch=True) )
-          # y_wrelaunch_approx_l.append(E_C_pareto_k_n_approx(loc, a, d, k, n, w_cancel=w_cancel, w_relaunch=True) )
-        elif c is not None:
-          y_wrelaunch_l.append(E_C_pareto_k_c(loc, a, d, k, n, w_cancel=w_cancel, w_relaunch=True) )
-          # y_wrelaunch_approx_l.append(E_C_pareto_k_c_approx(loc, a, d, k, n, w_cancel=w_cancel, w_relaunch=True) )
-      
-      if sim:
-        if n is not None:
-          stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=10000, w_relaunch=True)
-        elif c is not None:
-          stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c, num_run=10000, w_relaunch=True)
-        if E_T:
-          y_sim_wrelaunch_l.append(sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] ) )
-        else:
-          if w_cancel:
-            y_sim_wrelaunch_l.append(sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] ) )
-          else:
-            y_sim_wrelaunch_l.append(sum(stat_id__trial_sampleavg_l_m['E_C'] )/len(stat_id__trial_sampleavg_l_m['E_C'] ) )
-    c = next(dark_color)
-    if n == k:
-      d = Delta_for_min_E_T_pareto_k_wrelaunch(loc, a, k)
-      # plot.axvline(x=d, label=r'$\Delta^*$, n={}'.format(n), color=c)
-      y = E_T_pareto_k_n(loc, a, d, k, n, w_relaunch=True)
-      plot.plot(d, y, color='red', label=r'Approx minimum', marker='*', zorder=1, ms=10, mew=3)
-    # print("y_wrelaunch_l= {}".format(y_wrelaunch_l) )
-    # label = r'$n={}$'.format(n) if n is not None else r'$c={}$'.format(c)
-    label = 'w/ relaunch'
-    plot.plot(x_l, y_wrelaunch_l, label=label, color=c, marker=next(marker), linestyle='--', zorder=0, mew=2)
-    # plot.plot(x_l, y_wrelaunch_approx_l, label='approx, {}'.format(label), color=next(dark_color), marker=next(marker), linestyle='', mew=2)
-    
-    if sim:
-      plot.plot(x_l, y_sim_wrelaunch_l, label=r'sim, {}'.format(label), color=next(light_color), marker=next(marker), linestyle='', mew=2)
-    if E_T:
-      if n == k: plot.plot(x_l, y_norelaunch_l, label='no-relaunch', color=next(dark_color), linestyle='--', mew=2)
-  
-  sim = False # True
-  
-  # plot_reduction_in_E_T_wrelaunch(K)
-  # plot_reduction_in_E_T_wrelaunch(10*K)
-  # plot_reduction_in_E_T_wrelaunch(100*K)
-  # plot_reduction_in_E_T_wrelaunch(1000*K)
-  
-  # plot_reduction_in_E_T_wrelaunch(1, 10*K)
-  # plot_reduction_in_E_T_wrelaunch(loc, 10*K)
-  # plot_reduction_in_E_T_wrelaunch(10*loc, 10*K)
-  # plot_reduction_in_E_T_wrelaunch(100*loc, 10*K)
-  
-  plot_(K, n=K)
-  # plot_(2*K, n=2*K)
-  # plot_(10*K, n=10*K)
-  # plot_(20*K, n=20*K)
-  
-  # plot_(K, n=K)
-  # plot_(K, n=K+1, sim=sim)
-  # plot_(K, n=K+2, sim=sim)
-  # plot_(K, n=K+3, sim=sim)
-  
-  # plot_(K, c=0, sim=sim)
-  # plot_(K, c=1, sim=sim)
-  # plot_(K, c=2, sim=sim)
-  # plot_(K, c=3, sim=sim)
-  
-  plot.legend()
-  # plot.legend(loc='center left', bbox_to_anchor=(0.7, 0.5) )
-  plot.title(r'$X \sim Pareto(\lambda= {}, \alpha= {}), k= {}$'.format(loc, a, K) )
-  # plot.title(r'$X \sim Pareto(\lambda= {}, \alpha)$'.format(loc) )
-  
-  plot.xlabel(r'$\Delta$ (s)', fontsize=13)
-  y_label = r'Expected latency $E[T]$' if E_T else r'Expected cost $E[C]$'
-  plot.ylabel(r'{} (s)'.format(y_label), fontsize=13)
-  # plot.xlabel(r'$\alpha$', fontsize=12)
-  # plot.ylabel('\n'.join(textwrap.wrap(r'Maximum percetange reduction in $E[T]$ by task relaunch', 40) ), fontsize=12)
-  fig = plot.gcf()
-  fig.tight_layout()
-  def_size = fig.get_size_inches()
-  fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
-  plot.savefig("plot_arepeat_k_nc_wrelaunch_{}_k_{}.pdf".format(task_t, K), bbox_inches='tight')
-  plot.gcf().clear()
-  log(WARNING, "done; k= {}".format(K) )
-
-def plot_arepeat_k_nc_wrelaunch_E_C_vs_E_T():
-  K = 1050 # 100
-  loc, a = 3, 2
-  w_cancel = True
-  
-  task_t = "Google" # "Pareto"
-  if task_t == "Pareto": task_t_in_latex = r'X \sim Pareto(\lambda={}, \alpha={})'.format(loc, a)
-  elif task_t == "Google": task_t_in_latex = r'X \sim Google'
-  
-  def plot_(k, n=None, c=None, sim=False):
-    num_run = 10000 # 10000
-    E_T_l, E_C_l = [], []
-    E_T_sim_l, E_C_sim_l = [], []
-    # for d in [*numpy.linspace(0, 5*loc, 50), *numpy.linspace(5*loc, 200*loc, 100)]:
-    # for d in numpy.logspace(-3, 2, 100):
-    d_ul = 10**3
-    for d in numpy.logspace(-3, 3, 20):
-      if sim:
-        if task_t == "Pareto": task_t_rv = Pareto(a, loc=loc)
-        elif task_t == "Google": task_t_rv = Google(k)
-        if n is not None:
-          stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, k, n, num_run, w_relaunch=True)
-        elif c is not None:
-          stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c, num_run, w_relaunch=True)
-        E_T = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )
-        E_C = sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] )
-        if task_t == "Google":
-          E_T = E_T/60/60
-          E_C = E_C/60/60
-        E_T_sim_l.append(E_T)
-        E_C_sim_l.append(E_C)
-      if task_t != "Google":
-        if n is not None:
-          E_T_l.append(E_T_pareto_k_n(loc, a, d, k, n, w_relaunch=True) )
-          E_C_l.append(E_C_pareto_k_n(loc, a, d, k, n, w_cancel=w_cancel, w_relaunch=True) )
-        elif c is not None:
-          E_T_l.append(E_T_pareto_k_c_wrelaunch(loc, a, d, k, c, w_relaunch=True) )
-          E_C_l.append(E_C_pareto_k_c_wrelaunch(loc, a, d, k, c, w_cancel=w_cancel, w_relaunch=True) )
-    color = next(dark_color)
-    label = r'$n={}$'.format(n) if n is not None else r'$c={}$'.format(c)
-    # plot.plot(E_T_l, E_C_l, label=label, color=color, marker=next(marker), zorder=0, linestyle=':', mew=2)
-    plot.plot(E_T_sim_l, E_C_sim_l, label='Simulation, {}'.format(label), color=color, marker=next(marker), zorder=0, linestyle=':', mew=2)
-    
-    if n is not None and n == k:
-      if task_t != "Google":
-        x = E_T_pareto_k_n(loc, a, 0, k, n, w_relaunch=True)
-        y = E_C_pareto_k_n(loc, a, 0, k, n, w_cancel=w_cancel, w_relaunch=True)
-        if k == 100 and a == 2:
-          # plot.annotate(r'$\Delta=0$ or $\Delta \rightarrow \infty$', xy=(x, y), xytext=(x+0.5, y), fontsize=12)
-          plot.annotate(r'$\Delta=0$', xy=(x, y), xytext=(x+1, y+4), fontsize=12)
-          plot.annotate(r'$\Delta \rightarrow \infty$', xy=(x, y), xytext=(x-1.5, y-25), fontsize=12)
-          
-          d = Delta_for_min_E_T_pareto_k_wrelaunch(loc, a, k)
-          x = E_T_pareto_k_n(loc, a, d, k, n, w_relaunch=True)
-          y = E_C_pareto_k_n(loc, a, d, k, n, w_cancel=w_cancel, w_relaunch=True)
-          plot.plot(x, y, color='red', label=r'Approx minimum', marker='*', zorder=1, ms=10, mew=3)
-          plot.annotate(r'$\Delta={0:.2f}$'.format(d), xy=(x, y), xytext=(x-1.5, y+20), fontsize=12)
-        else:
-          # plot.plot(x, y, color='black', marker='*', ms=8, mew=3)
-          plot.annotate(r'$\Delta=0$', xy=(x, y), xytext=(x, y), fontsize=12)
-      else: # task_t = "Google"
-        stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, 0, k, k, k, num_run, w_relaunch=True)
-        x = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )/60/60
-        y = sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] )/60/60
-        plot.annotate(r'$\Delta=0$', xy=(x, y), xytext=(x, y), fontsize=12)
-        
-        stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d_ul, k, k, k, num_run, w_relaunch=True)
-        x = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )/60/60
-        y = sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] )/60/60
-        plot.annotate(r'$\Delta \rightarrow \infty$', xy=(x, y), xytext=(x, y), fontsize=12)
-    elif n is not None and n > k:
-      x = E_T_pareto_k_n(loc, a, 0, k, n, w_relaunch=True)
-      y = E_C_pareto_k_n(loc, a, 0, k, n, w_cancel=w_cancel, w_relaunch=True)
-      if k == 100 and a == 2:
-        plot.plot(x, y, color='black', marker='o', zorder=1, ms=8, mew=2)
-        # plot.annotate(r'$\Delta=0$', xy=(x, y), xytext=(x+1, y+5), color=color, fontsize=13)
-      x = E_T_pareto_k_n(loc, a, d_ul, k, n, w_relaunch=True)
-      y = E_C_pareto_k_n(loc, a, d_ul, k, n, w_cancel=w_cancel, w_relaunch=True)
-      if n == 101 and k == 100 and a == 2:
-        plot.annotate(r'$\Delta \rightarrow \infty$', xy=(x, y), xytext=(x+0.5, y), fontsize=13)
-    elif c is not None:
-      x = E_T_pareto_k_c_wrelaunch(loc, a, 0, k, c, w_relaunch=True)
-      y = E_C_pareto_k_c_wrelaunch(loc, a, 0, k, c, w_cancel=w_cancel, w_relaunch=True)
-      plot.plot(x, y, color='black', marker='o', zorder=1, ms=6, mew=2)
-  """
-  # plot_(K, n=K)
-  
-  # plot_(K, n=K+2)
-  # plot_(K, n=K+1)
-  
-  plot_(K, n=K+10)
-  plot_(K, n=K+20)
-  plot_(K, n=K+30)
-  k, n = K, K+30
-  x = E_T_pareto_k_n(loc, a, 0, k, n, w_relaunch=True)
-  y = E_C_pareto_k_n(loc, a, 0, k, n, w_cancel=w_cancel, w_relaunch=True)
-  plot.plot(x, y, color='black', label=r'$\Delta=0$', marker='o', zorder=1, ms=8, mew=2)
-  x = E_T_pareto_k_n(loc, a, 10**5, k, n, w_relaunch=True)
-  y = E_C_pareto_k_n(loc, a, 10**5, k, n, w_cancel=w_cancel, w_relaunch=True)
-  plot.annotate(r'$\Delta \rightarrow \infty$', xy=(x, y), xytext=(x+0.5, y), fontsize=13)
-  plot_(K, c=1)
-  plot_(K, c=2)
-  plot_(K, c=3)
-  k, c = K, 3
-  x = E_T_pareto_k_c_wrelaunch(loc, a, 0, k, c, w_relaunch=True)
-  y = E_C_pareto_k_c_wrelaunch(loc, a, 0, k, c, w_cancel=w_cancel, w_relaunch=True)
-  plot.plot(x, y, color='black', label=r'$\Delta=0$', marker='o', zorder=1, ms=6, mew=2)
-  x = E_T_pareto_k_c_wrelaunch(loc, a, 10**2, k, c, w_relaunch=True)
-  y = E_C_pareto_k_c_wrelaunch(loc, a, 10**2, k, c, w_cancel=w_cancel, w_relaunch=True)
-  plot.annotate(r'$\Delta \rightarrow \infty$', xy=(x, y), xytext=(x+0.5, y), fontsize=13)
-  """
-  plot_(K, n=K, sim=True)
-  
-  plot.legend()
-  # plot.legend(loc='center left', bbox_to_anchor=(0.9, 0.5) )
-  plot.title(r'${}, k= {}$'.format(task_t_in_latex, K) )
-  unit = '(s)' if task_t != "Google" else '(hours)'
-  plot.xlabel(r'Expected Latency $E[T]$ {}'.format(unit), fontsize=13)
-  y = r'$E[C^c]$' if w_cancel else r'$E[C]$'
-  plot.ylabel('Expected Cost {} {}'.format(y, unit), fontsize=13)
-  fig = plot.gcf()
-  fig.tight_layout()
-  def_size = fig.get_size_inches()
-  fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
-  plot.savefig("plot_arepeat_k_nc_wrelaunch_E_C_vs_E_T_{}_k_{}.pdf".format(task_t, K), bbox_inches='tight')
-  plot.gcf().clear()
-  log(WARNING, "done; k= {}".format(K) )
-
-# #########################  Reped vs. Coded  ##################### #
-def plot_reped_vs_coded(w_cancel):
+# ***************************************  REP vs. CODING  *************************************** #
+def plot_reped_vs_coded(w_cancel=True):
   K = 10
   D = 30
   mu = 0.5
@@ -971,21 +238,20 @@ def plot_reped_vs_coded(w_cancel):
   plot.gcf().clear()
   log(WARNING, "done; k= {}".format(K) )
 
-def plot_reped_vs_coded_nodelay(loc, a):
+def plot_reped_vs_coded_zerodelay(loc, a):
   w_cancel=True
   K = 15 # 400 # 1050 # 15 # 400 # 10
-  D = 30
-  mu = 0.5
-  # loc, a = 3, 2 # 1.5
-  num_run = 10000 # 10000
-  task_t = "Google" # "Exp" # "SExp" # "Pareto"
+  D, mu = 30, 0.5
+  loc, a = 3, 1.5 # 2 # 3
+  num_run = 10000
+  task_t = "Pareto" # "Google" # "Exp" # "SExp" # "Pareto"
   task_t_rv, task_t_in_latex = None, None
   if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu={})'.format(mu)
   elif task_t == "SExp": task_t_in_latex = r'X \sim SExp(D/k, \mu={}), D={}'.format(mu, D)
   elif task_t == "Pareto": task_t_in_latex = r'X \sim Pareto(\lambda={}, \alpha={})'.format(loc, a)
   elif task_t == "Google": task_t_in_latex = r'X \sim Google'
   mew = 3
-  def plot_(k=K, n=0, c=0):
+  def plot_(k=K, n=0, c=0, sim=False):
     l = k
     if task_t == "Exp": task_t_rv = Exp(mu)
     elif task_t == "SExp": task_t_rv = Exp(mu, D/k)
@@ -994,74 +260,79 @@ def plot_reped_vs_coded_nodelay(loc, a):
     
     E_T_l, E_T_sim_l, E_C_l, E_C_sim_l = [], [], [], []
     d = 0
+    color = next(dark_color)
     if c:
-      color = next(dark_color)
       for c_ in range(c+1):
-        stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c_, num_run)
-        E_T = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )/60/60
-        key = 'E_C_wc' if w_cancel else 'E_C'
-        E_C = sum(stat_id__trial_sampleavg_l_m[key] )/len(stat_id__trial_sampleavg_l_m[key] )/60/60
-        E_T_sim_l.append(E_T)
-        E_C_sim_l.append(E_C)
-        if task_t == "Google":
-          if k == 400:
-            if c_ == 0:
-              plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T, E_C), xytext=(E_T-0.2, E_C+2.5) )
-            else:
-              plot.annotate(r'$c={}$'.format(c_), xy=(E_T, E_C), xytext=(E_T+0.025, E_C+1), color=color)
-          elif k == 1050:
-            if c_ == 0:
-              plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T, E_C), xytext=(E_T-0.2, E_C+8) )
-            else:
-              plot.annotate(r'$c={}$'.format(c_), xy=(E_T, E_C), xytext=(E_T+0.025, E_C+1), color=color)
-          elif k == 15:
-            if c_ == 0:
-              plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T, E_C), xytext=(E_T-0.0275, E_C+0.05) )
-            else:
-              plot.annotate(r'$c={}$'.format(c_), xy=(E_T+0.003, E_C), xytext=(E_T, E_C), color=color)
-        
         # E_T = E_T_k_c(task_t, D, mu, loc, a, d, k, c_)
         # E_C = E_C_k_c(task_t, D, mu, loc, a, d, k, c_, w_cancel=w_cancel)
-        # E_T_l.append(E_T)
-        # E_C_l.append(E_C)
-        # if c_ > 0:
-        #   if task_t == "SExp":
-        #     plot.annotate(r'$c={}$'.format(c_), xy=(E_T, E_C), xytext=(E_T+0.1, E_C), color=color)
-        #   elif task_t == "Pareto":
-        #     if a == 1.2:
-        #       plot.annotate(r'$c={}$'.format(c_), xy=(E_T, E_C), xytext=(E_T+1, E_C+1), color=color)
-        #     elif a == 1.5:
-        #       plot.annotate(r'$c={}$'.format(c_), xy=(E_T, E_C), xytext=(E_T+0.3, E_C+0.3), color=color)
-        #     elif a == 2:
-        #       plot.annotate(r'$c={}$'.format(c_), xy=(E_T, E_C), xytext=(E_T+0.3, E_C+0.3), color=color)
-      # plot.plot(E_T_l, E_C_l, label='Replication', color=color, marker=next(marker), zorder=0, mew=2, linestyle=':')
-      plot.plot(E_T_sim_l, E_C_sim_l, label='Simulation, replication', color=color, marker=next(marker), linestyle=':', mew=2)
+        E_T = E_T_2_pareto_k_c(loc, a, k, c_)
+        E_C = E_C_2_pareto_k_c(loc, a, k, c_)
+        E_T_l.append(E_T)
+        E_C_l.append(E_C)
+        if c_ > 0:
+          if task_t == "SExp":
+            plot.annotate(r'$c={}$'.format(c_), xy=(E_T, E_C), xytext=(E_T+0.1, E_C), color=color)
+          elif task_t == "Pareto":
+            if a == 1.2:
+              plot.annotate(r'$c={}$'.format(c_), xy=(E_T, E_C), xytext=(E_T+1, E_C+1), color=color)
+            elif a == 1.5:
+              plot.annotate(r'$c={}$'.format(c_), xy=(E_T, E_C), xytext=(E_T+0.3, E_C+0.3), color=color)
+            elif a == 2:
+              plot.annotate(r'$c={}$'.format(c_), xy=(E_T, E_C), xytext=(E_T+0.3, E_C+0.3), color=color)
+        if sim:
+          stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c_, num_run)
+          E_T = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )/60/60
+          key = 'E_C_wc' if w_cancel else 'E_C'
+          E_C = sum(stat_id__trial_sampleavg_l_m[key] )/len(stat_id__trial_sampleavg_l_m[key] )/60/60
+          E_T_sim_l.append(E_T)
+          E_C_sim_l.append(E_C)
+          if task_t == "Google":
+            if k == 400:
+              if c_ == 0:
+                plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T, E_C), xytext=(E_T-0.2, E_C+2.5) )
+              else:
+                plot.annotate(r'$c={}$'.format(c_), xy=(E_T, E_C), xytext=(E_T+0.025, E_C+1), color=color)
+            elif k == 1050:
+              if c_ == 0:
+                plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T, E_C), xytext=(E_T-0.2, E_C+8) )
+              else:
+                plot.annotate(r'$c={}$'.format(c_), xy=(E_T, E_C), xytext=(E_T+0.025, E_C+1), color=color)
+            elif k == 15:
+              if c_ == 0:
+                plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T, E_C), xytext=(E_T-0.0275, E_C+0.05) )
+              else:
+                plot.annotate(r'$c={}$'.format(c_), xy=(E_T+0.003, E_C), xytext=(E_T, E_C), color=color)
+      plot.plot(E_T_l, E_C_l, label='Replication', color=color, marker=next(marker), zorder=0, mew=2, linestyle=':')
+      # plot.plot(E_T_sim_l, E_C_sim_l, label='Simulation, replication', color=color, marker=next(marker), linestyle=':', mew=2)
     elif n:
-      color = next(dark_color)
       counter = 0
       # for n_ in [*numpy.arange(k, k+50, 2), *numpy.arange(k+50, n+1, 100) ]:
       for n_ in numpy.arange(k, n+1, 1):
-        counter += 1
-        stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, k, n_, num_run)
-        E_T = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )/60/60
-        key = 'E_C_wc' if w_cancel else 'E_C'
-        E_C = sum(stat_id__trial_sampleavg_l_m[key] )/len(stat_id__trial_sampleavg_l_m[key] )/60/60
-        E_T_sim_l.append(E_T)
-        E_C_sim_l.append(E_C)
-        if task_t == "Google":
-          if counter % 10 == 0:
-            plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
-            if k == 400:
-              plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T+0.02, E_C+1), color=color)
-            elif k == 1050:
-              plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T+0.02, E_C+1), color=color)
-            elif k == 15:
-              plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T+0.003, E_C), color=color)
-        
         # E_T = E_T_k_l_n(task_t, D, mu, loc, a, d, k, l, n_)
         # E_C = E_C_k_l_n(task_t, D, mu, loc, a, d, k, l, n_, w_cancel=w_cancel)
-        # E_T_l.append(E_T)
-        # E_C_l.append(E_C)
+        E_T = E_T_2_pareto_k_n(loc, a, k, n_)
+        E_C = E_C_2_pareto_k_n(loc, a, k, n_)
+        E_T_l.append(E_T)
+        E_C_l.append(E_C)
+        
+        if sim:
+          counter += 1
+          stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, k, n_, num_run)
+          E_T = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )/60/60
+          key = 'E_C_wc' if w_cancel else 'E_C'
+          E_C = sum(stat_id__trial_sampleavg_l_m[key] )/len(stat_id__trial_sampleavg_l_m[key] )/60/60
+          E_T_sim_l.append(E_T)
+          E_C_sim_l.append(E_C)
+          if task_t == "Google":
+            if counter % 10 == 0:
+              plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
+              if k == 400:
+                plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T+0.02, E_C+1), color=color)
+              elif k == 1050:
+                plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T+0.02, E_C+1), color=color)
+              elif k == 15:
+                plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T+0.003, E_C), color=color)
+        
         # if task_t == "SExp":
         #   if n_ > K and n_ < k+3:
         #     plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T+0.1, E_C), color=color)
@@ -1105,38 +376,446 @@ def plot_reped_vs_coded_nodelay(loc, a):
         #     elif n_ != k and n_ % k == 0:
         #       plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
         #       plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T-2, E_C-2), color=color)
-      # plot.plot(E_T_l, E_C_l, label='Coding', color=color, zorder=1, marker=next(marker), mew=1, linestyle=':')
-      plot.plot(E_T_sim_l, E_C_sim_l, label='Simulation, coding', color=color, zorder=1, marker=next(marker), linestyle=':', mew=1)
+      plot.plot(E_T_l, E_C_l, label='Coding', color=color, zorder=1, marker=next(marker), mew=1, linestyle=':')
+      # plot.plot(E_T_sim_l, E_C_sim_l, label='Simulation, coding', color=color, zorder=1, marker=next(marker), linestyle=':', mew=1)
   plot_(c=5)
   plot_(n=6*K)
   #
-  E_T_nored = E_T_k_c(task_t, D, mu, loc, a, d=0, k=K, c=0)
-  E_C_nored = E_C_k_c(task_t, D, mu, loc, a, d=0, k=K, c=0, w_cancel=w_cancel)
-  if task_t == "SExp":
-    plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T_nored, E_C_nored), xytext=(E_T_nored-0.6, E_C_nored+9) )
-  elif task_t == "Pareto":
-    plot.axhline(y=E_C_nored, color='k', alpha=0.4, linestyle='--')
-    if a == 1.2:
-      plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T_nored, E_C_nored), xytext=(E_T_nored-20, E_C_nored+3) )
-    elif a == 1.5:
-      plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T_nored, E_C_nored), xytext=(E_T_nored-6, E_C_nored+3) )
-    elif a == 2:
-      plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T_nored, E_C_nored), xytext=(E_T_nored-1.2, E_C_nored+3) )
+  # E_T_nored = E_T_k_c(task_t, D, mu, loc, a, d=0, k=K, c=0)
+  # E_C_nored = E_C_k_c(task_t, D, mu, loc, a, d=0, k=K, c=0, w_cancel=w_cancel)
+  # if task_t == "SExp":
+  #   plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T_nored, E_C_nored), xytext=(E_T_nored-0.6, E_C_nored+9) )
+  # elif task_t == "Pareto":
+  #   plot.axhline(y=E_C_nored, color='k', alpha=0.4, linestyle='--')
+  #   if a == 1.2:
+  #     plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T_nored, E_C_nored), xytext=(E_T_nored-20, E_C_nored+3) )
+  #   elif a == 1.5:
+  #     plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T_nored, E_C_nored), xytext=(E_T_nored-6, E_C_nored+3) )
+  #   elif a == 2:
+  #     plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T_nored, E_C_nored), xytext=(E_T_nored-1.2, E_C_nored+3) )
   plot.legend()
   # plot.legend(loc='lower right')
   plot.title(r'${}, k= {}$'.format(task_t_in_latex, K) )
   # plot.xlabel(r'Expected Latency $E[T]$ (s)', fontsize=12)
-  plot.xlabel(r'Expected latency $E[T]$ (hour)', fontsize=12)
-  plot.ylabel(r'Expected cost $E[C^c]$ (hour)' if w_cancel else r'$E[C]$', fontsize=12)
+  # plot.xlabel(r'Expected latency $E[T]$ (hour)', fontsize=12)
+  plot.xlabel(r'Expected Latency $E[T^2]$', fontsize=12)
+  # plot.ylabel(r'Expected cost $E[C^c]$' if w_cancel else r'$E[C]$', fontsize=12)
+  plot.ylabel(r'Expected cost $E[C^2]$', fontsize=12)
   fig = plot.gcf()
   fig.tight_layout()
   def_size = fig.get_size_inches()
   fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
-  # plot.savefig("plot_reped_vs_coded_nodelay_{}_k_{}__a_{}.png".format(task_t, K, a) )
   if task_t == "Pareto":
-    plot.savefig("plot_reped_vs_coded_nodelay_{}_k_{}_a_{}_.pdf".format(task_t, K, a) )
+    plot.savefig("plot_reped_vs_coded_zerodelay_{}_k_{}_a_{}.png".format(task_t, K, a) )
   else:
-    plot.savefig("plot_reped_vs_coded_nodelay_{}_k_{}.pdf".format(task_t, K) )
+    plot.savefig("plot_reped_vs_coded_zerodelay_{}_k_{}.pdf".format(task_t, K) )
+  plot.gcf().clear()
+  log(WARNING, "done; k= {}".format(K) )
+
+def plot_reduct_in_E_T_atnocost_w_zerodelay_red():
+  loc = 3
+  d = 0
+  def reduction_in_E_T_for_same_E_C_w_red(red_type, loc, a, k):
+    E_T_wo_red, E_T = 0, 0
+    if red_type == 'coded':
+      E_T_wo_red = E_T_pareto_k_n(loc, a, d, k, n=k)
+      E_C_wo_red = E_C_pareto_k_n(loc, a, d, k, n=k)
+      
+      n_ = k+1
+      while 1:
+        E_C = E_C_pareto_k_n(loc, a, d, k, n_)
+        # print("n_= {}, E_C_wo_red= {}, E_C= {}".format(n_, E_C_wo_red, E_C) )
+        if math.isnan(E_C):
+          return reduction_in_E_T_w_red_atnocost__approx(red_type, loc, a, k)
+        elif E_C >= E_C_wo_red:
+          # print("breaking at n_= {}".format(n_) )
+          break
+        # print("n_= {}".format(n_) )
+        n_ += 1
+      E_T = E_T_pareto_k_n(loc, a, d, k, n_-1)
+    elif red_type == 'reped':
+      E_T_wo_red = E_T_pareto_k_c(loc, a, d, k, c=0)
+      E_C_wo_red = E_C_pareto_k_c(loc, a, d, k, c=0)
+      
+      c_ = 1
+      while 1:
+        E_C = E_C_pareto_k_c(loc, a, d, k, c_)
+        # print("c_= {}, E_C_wo_red= {}, E_C= {}".format(c_, E_C_wo_red, E_C) )
+        if math.isnan(E_C) or math.isinf(E_C):
+          return None
+        elif E_C >= E_C_wo_red:
+          # print("breaking at c_= {}".format(c_) )
+          break
+        c_ += 1
+      E_T = E_T_pareto_k_c(loc, a, d, k, c_-1)
+    # return E_T_wo_red - E_T
+    return (E_T_wo_red - E_T)/E_T_wo_red
+  
+  def reduction_in_E_T_w_red_atnocost__approx(red_type, loc, a, k):
+    if red_type == 'coded':
+      E_T_wo_red = E_T_pareto_k_n(loc, a, d, k, n=k)
+      # return E_T_wo_red - loc*a
+      return max(E_T_wo_red - loc*a, 0)/E_T_wo_red
+    elif red_type == 'reped':
+      E_T_wo_red = E_T_pareto_k_c(loc, a, d, k, c=0)
+      # E_T = loc*math.factorial(k)*G(1/a)/G(k+1/a)
+      c_ = max(math.floor(1/(a-1) - 1), 0)
+      E_T = E_T_pareto_k_c(loc, a, d, k, c_) # exact
+      return max(E_T_wo_red - E_T, 0)/E_T_wo_red
+  
+  # def threshold_on_tail_for_latency_reduction_at_no_cost(red_type, a):
+  #   if red_type == 'reped':
+  #     return 1.5
+  #   elif red_type == 'coded':
+  #     return (a + math.factorial(k)*G(1-1/a)/G(k+1-1/a) )**(1/k)
+  
+  def plot_(red_type, k):
+    x_l, y_l, y_approx_l = [], [], []
+    for a in numpy.arange(1.05, 3.5, 0.05):
+      x_l.append(a)
+      y_l.append(reduction_in_E_T_for_same_E_C_w_red(red_type, loc, a, k) )
+      # y_approx_l.append(reduction_in_E_T_w_red_atnocost__approx(red_type, loc, a, k) )
+    # plot.axvline(x=threshold_on_tail_for_latency_reduction_at_no_cost(red_type),
+    #             color=color, alpha=0.5, linestyle='--')
+    legend = "Replication" if red_type == 'reped' else "Coding"
+    plot.plot(x_l, y_l, label=r'{},$k={}$'.format(legend, k), color=next(dark_color), marker=next(marker), mew=2, zorder=0, linestyle=':')
+    # plot.plot(x_l, y_approx_l, label=r'{},$k={}$, approx'.format(legend, k), color=next(dark_color), marker=next(marker), mew=2, zorder=1, linestyle='')
+  
+  plot_('reped', k=10)
+  # plot_('coded', k=10)
+  
+  # plot_('reped', k=50)
+  # plot_('coded', k=50)
+  
+  plot.legend()
+  plot.title(r'$X \sim Pareto(\lambda={}, \alpha)$'.format(loc) )
+  plot.xlabel(r'Tail index $\alpha$', fontsize=12)
+  plot.ylabel('\n'.join(textwrap.wrap(r'Maximum percetange reduction in $E[T]$ at no added cost', 40) ),
+              fontsize=12)
+  fig = plot.gcf()
+  def_size = fig.get_size_inches()
+  fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
+  plot.savefig("plot_reduct_in_E_T_atnocost_w_zerodelay_red.pdf", bbox_inches='tight')
+  plot.gcf().clear()
+  log(WARNING, "done.")
+
+# *************************************  (k, n/c, \Delta) with Relaunch  ************************************* #
+def plot_arepeat_Pr_T_g_t_pareto_k_wrelaunch():
+  K = 100
+  loc, a = 3, 2
+  
+  def plot_(k, d, label=None):
+    t_l, y_l, y_approx_l = [], [], []
+    # for t in numpy.linspace(loc, loc*40, 100):
+    for t in numpy.linspace(loc*20, loc*40, 30):
+      t_l.append(t)
+      y_l.append(Pr_T_g_t_pareto_k_wrelaunch(loc, a, d, k, t) )
+      # y_approx_l.append(Pr_T_g_t_pareto_k_wrelaunch_approx(loc, a, d, k, t) )
+    if label is None:
+      label = r'$\Delta={}$'.format(d)
+    plot.plot(t_l, y_l, label=label, color=next(dark_color), marker=next(marker), linestyle=':', mew=2)
+    # plot.plot(t_l, y_approx_l, label=r'Approx, $\Delta={}$'.format(d), color=next(light_color), marker=next(marker), linestyle=':', mew=2)
+  
+  plot_(K, d=0)
+  # plot_(K, d=6*loc)
+  # plot_(K, d=45)
+  d = Delta_for_min_E_T_pareto_k_wrelaunch(loc, a, K)
+  plot_(K, d, label='Minimum $E[T]$, $\Delta= {0:.2f}$'.format(d) )
+  d = Delta_for_min_Pr_T_g_t_pareto_k_wrelaunch(loc, a, K)
+  plot_(K, d, label='Minimum {}, $\Delta= {}$'.format(r'$Pr\{T > t\}$', '{0:.2f}'.format(d) ) )
+  
+  # def plot_(k, t):
+  #   d_l, y_l = [], []
+  #   for d in numpy.linspace(0, 2*t, 200):
+  #     d_l.append(d)
+  #     y_l.append(Pr_T_g_t_pareto_k_wrelaunch(loc, a, d, k, t) )
+  #   plot.plot(d_l, y_l, label=r'$t={0:.2f}$'.format(t), color=next(dark_color), marker=next(marker), linestyle=':', mew=2)
+  
+  # plot_(K, t=10*loc)
+  # plot_(K, t=20*loc)
+  
+  plot.legend()
+  plot.title(r'$X \sim Pareto(\lambda={}, \alpha={}), k= {}$'.format(loc, a, K) )
+  plot.xlabel(r'$t$', fontsize=13)
+  # plot.xlabel(r'$\Delta$', fontsize=13)
+  plot.ylabel(r'$Pr\{T > t\}$', fontsize=13)
+  fig = plot.gcf()
+  fig.tight_layout()
+  def_size = fig.get_size_inches()
+  fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
+  plot.savefig("plot_arepeat_Pr_T_g_t_pareto_k_wrelaunch_k_{}.pdf".format(K) )
+  plot.gcf().clear()
+  log(WARNING, "done; k= {}".format(K) )
+
+def plot_arepeat_k_nc_wrelaunch():
+  K = 100
+  D, mu = 30, 1
+  loc, a = 3, 2 # 100 # 1.2 # 2
+  task_t = "Pareto"
+  
+  def plot_reduction_in_E_T_wrelaunch(k, loc=loc):
+    def max_a_lb():
+      return math.log(k+1)/math.log(4)
+    
+    x_l, y_l = [], []
+    for a in numpy.linspace(1.05, 8, 50):
+      x_l.append(a)
+      
+      E_T_wrelaunch_min = float('Inf')
+      for d in numpy.linspace(loc+0.05, 10*loc, 1000):
+        E_T = E_T_pareto_k_n(loc, a, d, k, n=k, w_relaunch=True)
+        if E_T < E_T_wrelaunch_min:
+          E_T_wrelaunch_min = E_T
+        else:
+          # elif not math.isinf(E_T_wrelaunch_min):
+          break
+      E_T_norelaunch = E_T_pareto_k_n(loc, a, d, k, n=k, w_relaunch=False)
+      y_l.append(max((E_T_norelaunch - E_T_wrelaunch_min)/E_T_norelaunch, 0) )
+    c = next(dark_color)
+    label = r'$k={}$'.format(k) # r'$\lambda={}$, $k={}$'.format(loc, k)
+    plot.plot(x_l, y_l, label=label, color=c, marker=next(marker), linestyle=':', mew=2)
+    plot.axvline(x=max_a_lb(), label=r'$\alpha_u$, {}'.format(label), color=c, linestyle='--')
+  
+  E_T = True # False # True
+  w_cancel = True # False
+  def plot_(k, n=None, c=None, sim=False):
+    task_t_rv = Pareto(a, loc=loc)
+    
+    l = k
+    x_l = []
+    y_wrelaunch_l, y_wrelaunch_approx_l, y_sim_wrelaunch_l = [], [], []
+    y_norelaunch_l = []
+    for d in numpy.linspace(0, 20*loc, 50):
+      x_l.append(d)
+      
+      if E_T:
+        if n is not None:
+          y_wrelaunch_l.append(E_T_pareto_k_n(loc, a, d, k, n, w_relaunch=True) )
+          # y_wrelaunch_approx_l.append(E_T_pareto_k_n_approx(loc, a, d, k, n, w_relaunch=True) )
+          if n == k: y_norelaunch_l.append(E_T_pareto_k_n(loc, a, d, k, n, w_relaunch=False) )
+        elif c is not None:
+          y_wrelaunch_l.append(E_T_pareto_k_c_wrelaunch(loc, a, d, k, c, w_relaunch=True) )
+          # y_wrelaunch_approx_l.append(E_T_pareto_k_c_wrelaunch_approx(loc, a, d, k, c, w_relaunch=True) )
+          if c == 0: y_norelaunch_l.append(E_T_pareto_k_c_wrelaunch(loc, a, d, k, c, w_relaunch=False) )
+      else:
+        if n is not None:
+          y_wrelaunch_l.append(E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=w_cancel) )
+          # y_wrelaunch_approx_l.append(E_C_pareto_k_n_approx(loc, a, d, k, n, w_cancel=w_cancel, w_relaunch=True) )
+        elif c is not None:
+          y_wrelaunch_l.append(E_C_pareto_k_c_wrelaunch(loc, a, d, k, n, w_cancel=w_cancel) )
+          # y_wrelaunch_approx_l.append(E_C_pareto_k_c_approx(loc, a, d, k, n, w_cancel=w_cancel, w_relaunch=True) )
+      
+      if sim:
+        if n is not None:
+          stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=10000, w_relaunch=True)
+        elif c is not None:
+          stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c, num_run=10000, w_relaunch=True)
+        if E_T:
+          y_sim_wrelaunch_l.append(sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] ) )
+        else:
+          if w_cancel:
+            y_sim_wrelaunch_l.append(sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] ) )
+          else:
+            y_sim_wrelaunch_l.append(sum(stat_id__trial_sampleavg_l_m['E_C'] )/len(stat_id__trial_sampleavg_l_m['E_C'] ) )
+    c = next(dark_color)
+    if n == k:
+      d = Delta_for_min_E_T_pareto_k_wrelaunch(loc, a, k)
+      # plot.axvline(x=d, label=r'$\Delta^*$, n={}'.format(n), color=c)
+      y = E_T_pareto_k_n(loc, a, d, k, n, w_relaunch=True)
+      plot.plot(d, y, color='red', label=r'Approx optimal', marker='*', zorder=1, ms=10, mew=3)
+    # print("y_wrelaunch_l= {}".format(y_wrelaunch_l) )
+    # label = r'$n={}$'.format(n) if n is not None else r'$c={}$'.format(c)
+    label = 'With relaunch'
+    plot.plot(x_l, y_wrelaunch_l, label=label, color=c, marker=next(marker), linestyle='--', zorder=0, mew=2)
+    # plot.plot(x_l, y_wrelaunch_approx_l, label='approx, {}'.format(label), color=next(dark_color), marker=next(marker), linestyle='', mew=2)
+    
+    if sim:
+      plot.plot(x_l, y_sim_wrelaunch_l, label=r'sim, {}'.format(label), color=next(light_color), marker=next(marker), linestyle='', mew=2)
+    if E_T:
+      if n == k: plot.plot(x_l, y_norelaunch_l, label='No relaunch', color=next(dark_color), linestyle='--', mew=2)
+  
+  sim = False # True
+  
+  # plot_reduction_in_E_T_wrelaunch(K)
+  # plot_reduction_in_E_T_wrelaunch(10*K)
+  # plot_reduction_in_E_T_wrelaunch(100*K)
+  # plot_reduction_in_E_T_wrelaunch(1000*K)
+  
+  # plot_reduction_in_E_T_wrelaunch(1, 10*K)
+  # plot_reduction_in_E_T_wrelaunch(loc, 10*K)
+  # plot_reduction_in_E_T_wrelaunch(10*loc, 10*K)
+  # plot_reduction_in_E_T_wrelaunch(100*loc, 10*K)
+  
+  plot_(K, n=K)
+  # plot_(2*K, n=2*K)
+  # plot_(10*K, n=10*K)
+  # plot_(20*K, n=20*K)
+  
+  # plot_(K, n=K)
+  # plot_(K, n=K+1, sim=sim)
+  # plot_(K, n=K+2, sim=sim)
+  # plot_(K, n=K+3, sim=sim)
+  
+  # plot_(K, c=0, sim=sim)
+  # plot_(K, c=1, sim=sim)
+  # plot_(K, c=2, sim=sim)
+  # plot_(K, c=3, sim=sim)
+  
+  plot.legend()
+  # plot.legend(loc='center left', bbox_to_anchor=(0.7, 0.5) )
+  plot.title(r'$X \sim Pareto(\lambda= {}, \alpha= {}), k= {}$'.format(loc, a, K) )
+  # plot.title(r'$X \sim Pareto(\lambda= {}, \alpha)$'.format(loc) )
+  
+  plot.xlabel(r'Relaunch delay $\Delta$ (s)', fontsize=13)
+  y_label = r'Expected latency $E[T]$' if E_T else r'Expected cost $E[C]$'
+  plot.ylabel(r'{} (s)'.format(y_label), fontsize=13)
+  # plot.xlabel(r'$\alpha$', fontsize=12)
+  # plot.ylabel('\n'.join(textwrap.wrap(r'Maximum percetange reduction in $E[T]$ by task relaunch', 40) ), fontsize=12)
+  fig = plot.gcf()
+  fig.tight_layout()
+  def_size = fig.get_size_inches()
+  fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
+  plot.savefig("plot_arepeat_k_nc_wrelaunch_{}_k_{}.pdf".format(task_t, K), bbox_inches='tight')
+  plot.gcf().clear()
+  log(WARNING, "done; k= {}".format(K) )
+
+def plot_arepeat_k_nc_wrelaunch_E_C_vs_E_T():
+  K = 15 # 1050 # 100
+  loc, a = 3, 2
+  w_cancel = True
+  
+  task_t = "Pareto" # "Google"
+  if task_t == "Pareto": task_t_in_latex = r'X \sim Pareto(\lambda={}, \alpha={})'.format(loc, a)
+  elif task_t == "Google": task_t_in_latex = r'X \sim Google'
+  
+  def plot_(k, n=None, c=None, sim=False):
+    num_f = 5
+    num_run = 10000 # 10000
+    E_T_l, E_C_l = [], []
+    E_T_sim_l, E_C_sim_l = [], []
+    
+    if task_t == "Pareto": task_t_rv = Pareto(a, loc=loc)
+    elif task_t == "Google": task_t_rv = Google(k)
+    
+    # for d in [*numpy.linspace(0, 5*loc, 50), *numpy.linspace(5*loc, 200*loc, 100)]:
+    # for d in numpy.logspace(-3, 2, 100):
+    d_ul = 10**5
+    for d in numpy.logspace(-2, 4, 40):
+      if sim:
+        E_T_sum, E_C_sum = 0, 0
+        for i in range(num_f):
+          if n is not None:
+            stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, k, n, num_run, w_relaunch=True)
+          elif c is not None:
+            stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c, num_run, w_relaunch=True)
+          E_T = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )
+          E_C = sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] )
+          if task_t == "Google":
+            E_T = E_T/60/60
+            E_C = E_C/60/60
+          E_T_sum += E_T
+          E_C_sum += E_C
+        E_T = E_T_sum/num_f
+        E_C = E_C_sum/num_f
+        E_T_sim_l.append(E_T)
+        E_C_sim_l.append(E_C)
+      if task_t != "Google":
+        if n is not None:
+          E_T_l.append(E_T_pareto_k_n_wrelaunch(loc, a, d, k, n) )
+          E_C_l.append(E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=w_cancel) )
+        elif c is not None:
+          E_T_l.append(E_T_pareto_k_c_wrelaunch(loc, a, d, k, c) )
+          E_C_l.append(E_C_pareto_k_c_wrelaunch(loc, a, d, k, c, w_cancel=w_cancel) )
+    color = next(dark_color)
+    if n != k:
+      label = r'$n={}$'.format(n) if n is not None else r'$c={}$'.format(c)
+    else:
+      label = "No redundancy with relaunch"
+    plot.plot(E_T_l, E_C_l, label=label, color=color, marker=next(marker), zorder=0, linestyle=':', mew=2)
+    # plot.plot(E_T_sim_l, E_C_sim_l, label='Simulation, {}'.format(label), color=next(dark_color), marker=next(marker), zorder=0, linestyle=':', mew=2)
+    
+    if n is not None and n == k:
+      if task_t != "Google":
+        x = E_T_pareto_k_n_wrelaunch(loc, a, 0, k, n)
+        y = E_C_pareto_k_n_wrelaunch(loc, a, 0, k, n, w_cancel=w_cancel)
+        if k == 100 and a == 2:
+          # plot.annotate(r'$\Delta=0$ or $\Delta \rightarrow \infty$', xy=(x, y), xytext=(x+0.5, y), fontsize=12)
+          plot.annotate(r'$\Delta=0$', xy=(x, y), xytext=(x+1, y+4), fontsize=12)
+          plot.annotate(r'$\Delta \rightarrow \infty$', xy=(x, y), xytext=(x-1.5, y-25), fontsize=12)
+          
+          d = Delta_for_min_E_T_pareto_k_wrelaunch(loc, a, k)
+          x = E_T_pareto_k_n_wrelaunch(loc, a, d, k, n)
+          y = E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=w_cancel)
+          plot.plot(x, y, color='red', label=r'Approx optimal', marker='*', zorder=1, ms=10, mew=3)
+          plot.annotate(r'$\Delta={0:.2f}$'.format(d), xy=(x, y), xytext=(x-1.5, y+20), fontsize=12)
+        else:
+          # plot.plot(x, y, color='black', marker='*', ms=8, mew=3)
+          plot.annotate(r'$\Delta=0$', xy=(x, y), xytext=(x, y), fontsize=12)
+      else: # task_t = "Google"
+        stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, 0, k, k, k, num_run, w_relaunch=True)
+        x = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )/60/60
+        y = sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] )/60/60
+        plot.annotate(r'$\Delta=0$', xy=(x, y), xytext=(x+0.005, y+2.5), fontsize=12)
+        
+        stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d_ul, k, k, k, num_run, w_relaunch=True)
+        x = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )/60/60
+        y = sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] )/60/60
+        plot.annotate(r'$\Delta \rightarrow \infty$', xy=(x-0.005, y-2.5), xytext=(x, y), fontsize=12)
+    elif n is not None and n > k:
+      x = E_T_pareto_k_n_wrelaunch(loc, a, 0, k, n)
+      y = E_C_pareto_k_n_wrelaunch(loc, a, 0, k, n, w_cancel=w_cancel)
+      if k == 100 and a == 2:
+        plot.plot(x, y, color='black', marker='o', zorder=1, ms=8, mew=2)
+        # plot.annotate(r'$\Delta=0$', xy=(x, y), xytext=(x+1, y+5), color=color, fontsize=13)
+      x = E_T_pareto_k_n_wrelaunch(loc, a, d_ul, k, n)
+      y = E_C_pareto_k_n_wrelaunch(loc, a, d_ul, k, n, w_cancel=w_cancel)
+      if n == 101 and k == 100 and a == 2:
+        plot.annotate(r'$\Delta \rightarrow \infty$', xy=(x, y), xytext=(x+0.5, y), fontsize=13)
+    elif c is not None:
+      x = E_T_pareto_k_c_wrelaunch(loc, a, 0, k, c)
+      y = E_C_pareto_k_c_wrelaunch(loc, a, 0, k, c, w_cancel=w_cancel)
+      plot.plot(x, y, color='black', marker='o', zorder=1, ms=6, mew=2)
+  """
+  # plot_(K, n=K)
+  
+  # plot_(K, n=K+2)
+  # plot_(K, n=K+1)
+  
+  plot_(K, n=K+10)
+  plot_(K, n=K+20)
+  plot_(K, n=K+30)
+  k, n = K, K+30
+  x = E_T_pareto_k_n(loc, a, 0, k, n, w_relaunch=True)
+  y = E_C_pareto_k_n(loc, a, 0, k, n, w_cancel=w_cancel, w_relaunch=True)
+  plot.plot(x, y, color='black', label=r'$\Delta=0$', marker='o', zorder=1, ms=8, mew=2)
+  x = E_T_pareto_k_n(loc, a, 10**5, k, n, w_relaunch=True)
+  y = E_C_pareto_k_n(loc, a, 10**5, k, n, w_cancel=w_cancel, w_relaunch=True)
+  plot.annotate(r'$\Delta \rightarrow \infty$', xy=(x, y), xytext=(x+0.5, y), fontsize=13)
+  plot_(K, c=1)
+  plot_(K, c=2)
+  plot_(K, c=3)
+  k, c = K, 3
+  x = E_T_pareto_k_c_wrelaunch(loc, a, 0, k, c, w_relaunch=True)
+  y = E_C_pareto_k_c_wrelaunch(loc, a, 0, k, c, w_cancel=w_cancel, w_relaunch=True)
+  plot.plot(x, y, color='black', label=r'$\Delta=0$', marker='o', zorder=1, ms=6, mew=2)
+  x = E_T_pareto_k_c_wrelaunch(loc, a, 10**2, k, c, w_relaunch=True)
+  y = E_C_pareto_k_c_wrelaunch(loc, a, 10**2, k, c, w_cancel=w_cancel, w_relaunch=True)
+  plot.annotate(r'$\Delta \rightarrow \infty$', xy=(x, y), xytext=(x+0.5, y), fontsize=13)
+  """
+  plot_(K, n=K, sim=False)
+  
+  plot.legend()
+  # plot.legend(loc='center left', bbox_to_anchor=(0.9, 0.5) )
+  plot.title(r'${}, k= {}$'.format(task_t_in_latex, K) )
+  unit = '(s)' if task_t != "Google" else '(hours)'
+  plot.xlabel(r'Expected Latency $E[T]$ {}'.format(unit), fontsize=13)
+  y = r'$E[C^c]$' if w_cancel else r'$E[C]$'
+  plot.ylabel('Expected Cost {} {}'.format(y, unit), fontsize=13)
+  fig = plot.gcf()
+  fig.tight_layout()
+  def_size = fig.get_size_inches()
+  fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
+  plot.savefig("plot_arepeat_k_nc_wrelaunch_E_C_vs_E_T_{}_k_{}.pdf".format(task_t, K), bbox_inches='tight')
   plot.gcf().clear()
   log(WARNING, "done; k= {}".format(K) )
 
@@ -1151,15 +830,15 @@ if __name__ == "__main__":
   # plot_arepeat_shiftedexp_k_n()
   
   # plot_reped_vs_coded(w_cancel=True)
-  # plot_reped_vs_coded_nodelay(loc=3, a=2)
-  # plot_reped_vs_coded_nodelay(loc=3, a=1.2)
-  # plot_reped_vs_coded_nodelay(loc=3, a=1.5)
+  plot_reped_vs_coded_zerodelay(loc=3, a=2)
+  # plot_reped_vs_coded_zerodelay(loc=3, a=1.2)
+  # plot_reped_vs_coded_zerodelay(loc=3, a=1.5)
   
   # plot_arepeat_k_nc()
   # plot_arepeat_k_nc_E_C_vs_E_T()
   # plot_arepeat_k_nc_wrelaunch()
   # plot_arepeat_k_nc_wrelaunch_E_C_vs_E_T()
-  plot_arepeat_Pr_T_g_t_pareto_k_wrelaunch()
+  # plot_arepeat_Pr_T_g_t_pareto_k_wrelaunch()
   
   # plot_arepeat_k_c()
   # plot_arepeat_k_c_E_C_vs_E_T()

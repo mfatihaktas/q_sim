@@ -90,7 +90,7 @@ def Pr_T_g_t_k_n(task_t, D, mu, loc, a, d, k, n, t):
   elif task_t == "Pareto":
     return None
 
-# ##################  Send n initially any k is enough, X_i ~ Exp(mu), each packet drops ~ Exp(gamma)  ################ #
+# ##################  Send n initially any k is enough, X ~ Exp(mu), each packet drops ~ Exp(gamma)  ################ #
 def Pr_succ_n_k_w_drop(mu, gamma, n, k):
   p = mu/(gamma+mu)
   def prob_F_f(f):
@@ -140,7 +140,7 @@ def E_T_n_k_w_drop_given_succ_approx(mu, gamma, n, k):
   
   return E_T/Pr_succ_n_k_w_drop(mu, gamma, n, k)
 
-# ##################  X_i ~ G, (l=k, k, n=k+1, \Delta)  ################ #
+# ##################  X ~ G, (l=k, k, n=k+1, \Delta)  ################ #
 def E_T_G_1red(task_t_rv, d, k):
   E_X_k_k = mpmath.quad(lambda x: x * k*task_t_rv.cdf(x)**(k-1)*task_t_rv.pdf(x), [0, mpmath.inf] )
   return E_X_k_k - \
@@ -214,7 +214,8 @@ def plot_Pr_T_g_t_G_1red():
   plot.gcf().clear()
   log(WARNING, "done; k= {}, d= {}, task_t_rv= {}".format(k, d, task_t_rv) )
   
-# ####################  X_i ~ Exp(mu), (l, k, n, \Delta)  ####################### #
+# ********************************  CODING  ******************************** #
+# ####################  X ~ Exp(mu), (l, k, n, \Delta)  ####################### #
 def E_C_exp_k_l_n(mu, d, k, l, n, w_cancel=False):
   if w_cancel:
     return k/mu
@@ -286,7 +287,7 @@ def E_T_exp_k_l_n_approx(mu, d, k, l, n):
   E_T += math.log(n-r_) - math.log(l-r_)
   return E_T
 
-# ####################  X_i ~ Exp(mu), (l=k, k, n, \Delta)  ####################### #
+# ####################  X ~ Exp(mu), (l=k, k, n, \Delta)  ####################### #
 def E_T_exp_k_n(mu, d, k, n):
   if d == 0:
     return 1/mu*(H(n) - H(n-k) )
@@ -314,7 +315,7 @@ def E_T_exp_k_n_approx(mu, d, k, n):
 def E_C_exp_k_n(mu, d, k, n, w_cancel=False):
   return E_C_exp_k_l_n(mu, d, k, k, n, w_cancel=w_cancel)
 
-# ####################  X_i ~ D/k + Exp(mu), (l, k, n, \Delta)  ####################### #
+# ####################  X ~ D/k + Exp(mu), (l, k, n, \Delta)  ####################### #
 def E_T_shiftedexp_k_l_n(D, mu, d, k, l, n):
   return D/k + E_T_exp_k_l_n(mu, d, k, l, n)
 
@@ -340,7 +341,7 @@ def E_C_shiftedexp_k_l_n(D, mu, d, k, l, n, w_cancel=False):
       # - ((1-F_d__D_over_k**k)*(n-k)/mu + (n-k)*(D/2/k)*(F_d**k-F_d__D_over_k**k) )
     
 
-# ####################  X_i ~ D/k + Exp(mu), (l=k, k, n, \Delta)  ####################### #
+# ####################  X ~ D/k + Exp(mu), (l=k, k, n, \Delta)  ####################### #
 def E_T_shiftedexp_k_n(D, mu, d, k, n):
   return D/k + E_T_exp_k_n(mu, d, k, n)
 
@@ -370,299 +371,8 @@ def d_E_T_shiftedexp_k_n_dk(D, mu, d, k, n):
 def E_C_shiftedexp_k_n(D, mu, d, k, n, w_cancel=False):
   return E_C_shiftedexp_k_l_n(mu, d, k, k, n, w_cancel)
 
-# ####################  X_i ~ Pareto, (k, n/c, \Delta) with relaunch  ####################### #
-def Delta_for_min_p_T_g_t_pareto_k_wrelaunch(loc, a, k):
-  t = 20*loc
-  d_min = None
-  p_T_g_t_min = float('Inf')
-  for d in numpy.linspace(0, 2*t, 1000):
-    p_T_g_t = Pr_T_g_t_pareto_k_wrelaunch(loc, a, d, k, t)
-    if p_T_g_t < p_T_g_t_min:
-      p_T_g_t_min = p_T_g_t
-      d_min = d
-  return d_min
-
-def Pr_T_g_t_pareto_k_wrelaunch(loc, a, d, k, t):
-  q_t = 1 - (loc/t)**a if t > loc else 0
-  if d == 0:
-    return 1 - q_t**k
-  
-  q_d = 1 - (loc/d)**a if d > loc else 0
-  q1 = 1 - (d/t)**a if t > d else 0
-  q2 = 1 - (loc/(t-d))**a if t-d > loc else 0
-  # p_T_geq_t = 1 - q_t**k + (t > d)*(q_d + q1*(1-q_d))**k - (t-d > loc)*(q_d + q2*(1-q_d))**k - q_d**k*((t > d) - (t-d > loc))
-  sum_ = 0
-  for r in range(k):
-  # for r in range(k+1):
-    sum_ += (q1**(k-r) - q2**(k-r)) * binomial(k, r) * q_d**r * (1-q_d)**(k-r)
-  p_T_geq_t = 1 - q_t**k + sum_
-  
-  return p_T_geq_t
-
-def Pr_T_g_t_pareto_k_wrelaunch_approx(loc, a, d, k, t):
-  q_t = 1 - (loc/t)**a if t > loc else 0
-  if d == 0:
-    return 1 - q_t**k
-  
-  q_d = 1 - (loc/d)**a if d > loc else 0
-  q1 = 1 - (d/t)**a if t > d else 0
-  q2 = 1 - (loc/(t-d))**a if t-d > loc else 0
-  # p_T_geq_t = 1 - q_t**k + (t > d)*(q_d + q1*(1-q_d))**k - (t-d > loc)*(q_d + q2*(1-q_d))**k # - q_d**k*((t > d) - (t-d > loc))
-  p_T_geq_t = 1 - q_t**k + (q_d + q1*(1-q_d))**k - (q_d + q2*(1-q_d))**k
-  # sum_ = 0
-  # for r in range(k+1):
-  #   sum_ += (q1**(k-r) - q2**(k-r)) * binomial(k, r) * q_d**r * (1-q_d)**(k-r)
-  # p_T_geq_t = 1 - q_t**k + sum_
-  return p_T_geq_t
-
-def Delta_for_min_E_T_pareto_k_wrelaunch(loc, a, k):
-  def g(k, a):
-    return loc*G(1-1/a)*G(k+1)/G(k+1-1/a)
-  return math.sqrt(loc*g(k, a) )
-
-def E_T_pareto_k_n(loc, a, d, k, n, w_relaunch=True):
-  if d == 0:
-    if n > 170:
-      return loc*((n+1)/(n-k+1))**(1/a)
-    return loc*(G(n+1)/G(n-k+1) )*(G(n-k+1-1/a)/G(n+1-1/a) )
-  
-  def E_X_n_k(n, k): # E[X_{n:k}] for X ~ Pareto
-    if n == k and n > 170:
-      return loc*(k+1)**(1/a) * G(1-1/a)
-    elif n > 170:
-      return loc*((n+1)/(n-k+1))**(1/a)
-    return loc*G(n+1)/G(n-k+1)*G(n-k+1-1/a)/G(n+1-1/a)
-  
-  q = (d > loc)*(1 - (loc/d)**a)
-  
-  if n == k and not w_relaunch:
-    return E_X_n_k(k, k)
-  elif d <= loc:
-    return d + E_X_n_k(n, k)
-  elif n == k and w_relaunch:
-    def g(k, a):
-      if k > 170:
-        return loc*(k+1)**(1/a) * G(1-1/a)
-      return loc*G(1-1/a)*G(k+1)/G(k+1-1/a)
-      
-    return d*(1-q**k) + g(k, a)*((loc/d-1)*I(1-q,1-1/a,k) + 1)
-  else:
-    # if not w_relaunch: # Cannot be expressed analytically
-    #   pass
-    if w_relaunch:
-      if d <= loc:
-        return d + E_T_pareto_k_n(loc, a, 0, k, n, w_relaunch=False)
-      else:
-        # sum_ = 0
-        # for r in range(k):
-        #   sum_ += (E_X_n_k(n-r, k-r) - E_X_n_k(k-r, k-r) ) * binomial(k,r) * q**r * (1-q)**(k-r)
-        # return sum_ + E_T_pareto_k_n(loc, a, d, k, n=k)
-        return d*(1-q**k) + loc*(B(n-k*q+1, -1/a)/B(n-k+1, -1/a) + k*B(k, 1-1/a, u_l=q) - q**k)
-
-def E_T_pareto_k_n_approx(loc, a, d, k, n, w_relaunch=True):
-  if n == k:
-    return E_T_pareto_k_n(loc, a, d, k, n)
-  
-  q = (d > loc)*(1 - (loc/d)**a)
-  if n == k and w_relaunch:
-    def g(k, a):
-      return loc*G(1-1/a)*G(k+1)/G(k+1-1/a)
-    # return d*(1-q**k) + g(k, a)*((loc/d-1)*I(1-q,1-1/a,k) + 1)
-    # return d*(1-q**k) + g(k, a)*loc/d
-    return d + g(k, a)*loc/d
-  elif n > k and w_relaunch:
-    if d <= loc:
-      return d + E_T_pareto_k_n(loc, a, 0, k, n, w_relaunch=False)
-    else:
-      return d*(1-q**k) + loc*(B(n-k*q+1, -1/a)/B(n-k+1, -1/a) + k*B(k, 1-1/a, u_l=q) - q**k)
-
-def E_C_pareto_k_n(loc, a, d, k, n, w_cancel=True, w_relaunch=True):
-  if d == 0 and w_cancel:
-    if n > 170:
-      return loc/(a-1) * (a*n - (n-k)*((n+1)/(n-k+1))**(1/a) )
-    return loc*n/(a-1) * (a - G(n)/G(n-k)*G(n-k+1-1/a)/G(n+1-1/a) )
-  
-  if w_relaunch:
-    q = (d > loc)*(1 - (loc/d)**a)
-    if w_cancel:
-      if d <= loc:
-        return k*d + E_C_pareto_k_n(loc, a, 0, k, n, w_cancel=True)
-      else:
-        # E_X_given_X_leq_d = a/(a-1)/q * (loc - d*(1-q) )
-        # E = 0
-        # for r in range(k+1):
-        #   E += G(n-r+1)/G(n-r+1-1/a) * binomial(k,r) * q**r * (1-q)**(k-r)
-        
-        # return k*q*E_X_given_X_leq_d + k*(1-q)*d + a/(a-1)*loc*(n - k*q) \
-        #       - loc/(a-1) * G(n-k+1-1/a)/G(n-k)*E \
-        #       - q**k * loc*(n-k)
-        
-        return a/(a-1)*(k*(1-q)*(loc-d) + n*loc) + k*(1-q)*d - loc*(n-k)*q**k \
-               - loc/(a-1) * (n-k)*B(n-k*q+1, -1/a)/B(n-k+1, -1/a) # G(n-k+1-1/a)/G(n-k)*E
-    else:
-      if d <= loc:
-        return k*d + n*loc/(1-1/a)
-      else:
-        return a/(a-1)*(k*loc*(1-q+q**k) + n*loc*(1-q**k) ) - k*d*(1-q)/(a-1)
-
-def E_C_pareto_k_n_approx(loc, a, d, k, n, w_cancel=True, w_relaunch=True):
-  q = (d > loc)*(1 - (loc/d)**a)
-  
-  if w_relaunch:
-    q = (d > loc)*(1 - (loc/d)**a)
-    if w_cancel:
-      if d <= loc:
-        return k*d + E_C_pareto_k_n(loc, a, 0, k, n, w_cancel=True)
-      else:
-        return a/(a-1)*(k*(1-q)*(loc-d) + n*loc) + k*(1-q)*d - loc*(n-k)*q**k \
-                - loc/(a-1) * (n-k)*B(n-k*q+1, -1/a)/B(n-k+1, -1/a)
-
-# ####################  X_i ~ Pareto, (k, c, \Delta) with relaunch  ####################### #
-def E_T_pareto_k_c_wrelaunch(loc, a, d, k, c, w_relaunch=True):
-  def E_X_n_k(n, k): # E[X_{n:k}] for X ~ Pareto
-    return loc*(G(n+1)/G(n-k+1) )*(G(n-k+1-1/a)/G(n+1-1/a) )
-  
-  if c == 0:
-    if w_relaunch:
-      return E_T_pareto_k_n(loc, a, d, k, n=k, w_relaunch=True)
-    else:
-      return E_X_n_k(k, k)
-  
-  q = (d > loc)*(1 - (loc/d)**a) if d else 0
-  if w_relaunch:
-    a_ = 1/(c+1)/a
-    if d == 0:
-      return d + loc*G(k+1)*G(1-a_)/G(k+1-a_)
-    else:
-      return loc*G(1-a_)/G(-a_)*B(k-k*q+1, -a_) - loc*G(1-1/a)/G(-1/a)*B(k-k*q+1, -1/a) \
-             + E_T_pareto_k_c_wrelaunch(loc, a, d, k, 0, w_relaunch=True)
-
-def E_C_pareto_k_c_wrelaunch(loc, a, d, k, c, w_cancel=True, w_relaunch=True):
-  q = (d > loc)*(1 - (loc/d)**a) if d else 0
-  if not w_cancel:
-    if d <= loc:
-      return k*d + k*loc*(c+1)*a/(a-1)
-    else:
-      return k*(loc - d*(1-q) )*a/(a-1) + k*d*(1-q) \
-             + k*loc*(c+1)*(1-q)*a/(a-1)
-  else: # w_cancel
-    if d <= loc:
-      return k*d + k*loc*(c+1)*(c+1)*a/((c+1)*a - 1)
-    else:
-      return k*(loc - d*(1-q) )*a/(a-1) + k*d*(1-q) \
-             + k*loc*(c+1)*(1-q)*(c+1)*a/((c+1)*a-1)
-
-def plot_pareto_zerodelay_red():
-  loc = 3
-  d = 0
-  def reduction_in_E_T_for_same_E_C_w_red(red_type, loc, a, k):
-    E_T_wo_red, E_T = 0, 0
-    if red_type == 'coded':
-      E_T_wo_red = E_T_pareto_k_n(loc, a, d, k, n=k)
-      E_C_wo_red = E_C_pareto_k_n(loc, a, d, k, n=k)
-      
-      n_ = k+1
-      while 1:
-        E_C = E_C_pareto_k_n(loc, a, d, k, n_)
-        # print("n_= {}, E_C_wo_red= {}, E_C= {}".format(n_, E_C_wo_red, E_C) )
-        if math.isnan(E_C):
-          return reduction_in_E_T_w_red_atnocost__approx(red_type, loc, a, k)
-        elif E_C >= E_C_wo_red:
-          # print("breaking at n_= {}".format(n_) )
-          break
-        # print("n_= {}".format(n_) )
-        n_ += 1
-      E_T = E_T_pareto_k_n(loc, a, d, k, n_-1)
-    elif red_type == 'reped':
-      E_T_wo_red = E_T_pareto_k_c(loc, a, d, k, c=0)
-      E_C_wo_red = E_C_pareto_k_c(loc, a, d, k, c=0)
-      
-      c_ = 1
-      while 1:
-        E_C = E_C_pareto_k_c(loc, a, d, k, c_)
-        # print("c_= {}, E_C_wo_red= {}, E_C= {}".format(c_, E_C_wo_red, E_C) )
-        if math.isnan(E_C) or math.isinf(E_C):
-          return None
-        elif E_C >= E_C_wo_red:
-          # print("breaking at c_= {}".format(c_) )
-          break
-        c_ += 1
-      E_T = E_T_pareto_k_c(loc, a, d, k, c_-1)
-    # return E_T_wo_red - E_T
-    return (E_T_wo_red - E_T)/E_T_wo_red
-  
-  def reduction_in_E_T_w_red_atnocost__approx(red_type, loc, a, k):
-    if red_type == 'coded':
-      E_T_wo_red = E_T_pareto_k_n(loc, a, d, k, n=k)
-      # return E_T_wo_red - loc*a
-      return max(E_T_wo_red - loc*a, 0)/E_T_wo_red
-    elif red_type == 'reped':
-      E_T_wo_red = E_T_pareto_k_c(loc, a, d, k, c=0)
-      # E_T = loc*math.factorial(k)*G(1/a)/G(k+1/a)
-      c_ = max(math.floor(1/(a-1) - 1), 0)
-      E_T = E_T_pareto_k_c(loc, a, d, k, c_) # exact
-      return max(E_T_wo_red - E_T, 0)/E_T_wo_red
-  
-  # def threshold_on_tail_for_latency_reduction_at_no_cost(red_type, a):
-  #   if red_type == 'reped':
-  #     return 1.5
-  #   elif red_type == 'coded':
-  #     return (a + math.factorial(k)*G(1-1/a)/G(k+1-1/a) )**(1/k)
-  
-  def plot_(red_type, k):
-    x_l, y_l, y_approx_l = [], [], []
-    for a in numpy.arange(1.05, 3.5, 0.05):
-      x_l.append(a)
-      y_l.append(reduction_in_E_T_for_same_E_C_w_red(red_type, loc, a, k) )
-      # y_approx_l.append(reduction_in_E_T_w_red_atnocost__approx(red_type, loc, a, k) )
-    # plot.axvline(x=threshold_on_tail_for_latency_reduction_at_no_cost(red_type),
-    #             color=color, alpha=0.5, linestyle='--')
-    legend = "Replication" if red_type == 'reped' else "Coding"
-    plot.plot(x_l, y_l, label=r'{},$k={}$'.format(legend, k), color=next(dark_color), marker=next(marker), mew=2, zorder=0, linestyle=':')
-    # plot.plot(x_l, y_approx_l, label=r'{},$k={}$, approx'.format(legend, k), color=next(dark_color), marker=next(marker), mew=2, zorder=1, linestyle='')
-  
-  plot_('reped', k=10)
-  # plot_('coded', k=10)
-  
-  # plot_('reped', k=50)
-  # plot_('coded', k=50)
-  
-  # plot_('coded', k=100)
-  
-  plot.legend()
-  plot.title(r'$X \sim Pareto(\lambda={}, \alpha)$'.format(loc) )
-  plot.xlabel(r'Tail index $\alpha$', fontsize=12)
-  plot.ylabel('\n'.join(textwrap.wrap(r'Maximum percetange reduction in $E[T]$ at no added cost', 40) ),
-              fontsize=12)
-  fig = plot.gcf()
-  def_size = fig.get_size_inches()
-  fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
-  plot.savefig("plot_pareto_zerodelay_red.pdf", bbox_inches='tight')
-  plot.gcf().clear()
-  log(WARNING, "done.")
-
-# ####################  Wrappers, (l, k, n, \Delta)  ####################### #
-def E_T_k_l_n(task_t, D, mu, loc, a, d, k, l, n):
-  if task_t == "Exp":
-    if l == k: return E_T_exp_k_n(mu, d, k, n)
-    else: return E_T_exp_k_l_n(mu, d, k, l, n)
-  elif task_t == "SExp":
-    if l == k: return E_T_shiftedexp_k_n(D, mu, d, k, n)
-    else: return E_T_shiftedexp_k_l_n(D, mu, d, k, l, n)
-  elif task_t == "Pareto":
-    return E_T_pareto_k_n(loc, a, d, k, n)
-
-def E_C_k_l_n(task_t, D, mu, loc, a, d, k, l, n, w_cancel, approx=False):
-  if task_t == "Exp":
-    if l == k: return E_C_exp_k_n(mu, d, k, l, n, w_cancel)
-    else: return E_C_exp_k_l_n(mu, d, k, l, n, w_cancel)
-  elif task_t == "SExp":
-    return E_C_shiftedexp_k_l_n(D, mu, d, k, l, n, w_cancel)
-  elif task_t == "Pareto":
-    return E_C_pareto_k_n(loc, a, d, k, n, w_cancel=w_cancel)
-
-# ********************************  REPLICATION  ************************** #
-# ####################  X_i ~ Exp(mu), (k, \Delta, c)  ####################### #
+# ********************************  REPLICATION  ******************************** #
+# ####################  X ~ Exp(mu), (k, \Delta, c)  ####################### #
 def E_T_exp_k_c(mu, d, k, c):
   if d == 0:
     return 1/mu/(c+1)*H(k)
@@ -688,7 +398,7 @@ def E_T_exp_k_c_approx(mu, d, k):
   H_k_kq = H_cont(k-k*q)
   return 1/mu*(H(k) - c/(c+1)*H_k_kq)
 
-# ####################  X_i ~ D/k + Exp(mu), (k, \Delta, c)  ####################### #
+# ####################  X ~ D/k + Exp(mu), (k, \Delta, c)  ####################### #
 def E_T_shiftedexp_k_c(D, mu, d, k, c):
   return D/k + E_T_exp_k_c(mu, d, k, c)
 
@@ -707,7 +417,7 @@ def E_C_shiftedexp_k_c(D, mu, d, k, c, w_cancel=False):
       return D + k/mu*(1 + c*(1-q-math.exp(-mu*d)) )
       # D + k/mu*(2-q-math.exp(-mu*d) )
 
-# ####################  X_i ~ Pareto(loc, a), (k, \Delta, c)  ####################### #
+# ####################  X ~ Pareto(loc, a), (k, \Delta, c)  ####################### #
 def E_T_pareto_k_c(loc, a, d, k, c):
   if d == 0:
     # return loc*math.factorial(k)*G(1-1/(c+1)/a)/G(k+1-1/(c+1)/a)
@@ -779,7 +489,226 @@ def E_C_pareto_k_c_approx(loc, a, d, k, w_cancel=True):
       
       return k*(q*E_X__X_leq_d + (1-q)*(2*E_Y + d) )
 
-# ####################  Wrappers, (k, \Delta, c)  ####################### #
+def E_pareto_X_i_j(loc, a, n, i, j):
+  if i > j:
+    j_ = j
+    j = i
+    i = j_
+  if a <= max(2/(n-i+1), 1/(n-j+1) ):
+    return 0 # None
+  return loc**2*G(n+1)/G(n+1-2/a) * G(n-i+1-2/a)/G(n-i+1-1/a) * G(n-j+1-1/a)/G(n-j+1)
+
+def E_T_2_pareto_k_n(loc, a, k, n):
+  return E_pareto_X_i_j(loc, a, n, k, k)
+
+def E_C_2_pareto_k_n(loc, a, k, n):
+  E_C_2 = 0
+  for i in range(1, k):
+    for j in range(1, k):
+      E_C_2 += E_pareto_X_i_j(loc, a, n, i, j)
+  for i in range(1, k):
+    E_C_2 += 2*(n-k+1)*E_pareto_X_i_j(loc, a, n, i, k)
+  E_C_2 += (n-k+1)**2*E_pareto_X_i_j(loc, a, n, k, k)
+  return E_C_2
+
+def E_T_2_pareto_k_c(loc, a, k, c):
+  return E_pareto_X_i_j(loc, (c+1)*a, k, k, k)
+
+def E_C_2_pareto_k_c(loc, a, k, c):
+  a_ = (c+1)*a
+  if a_ > 2:
+    return k**2*(c+1)**2 * loc**2*a_/(a_-2)
+  else:
+    None
+
+# ***************************  X ~ Pareto, (k, n/c, \Delta) with Relaunch  *************************** #
+def Pr_T_g_t_pareto_k_wrelaunch(loc, a, d, k, t):
+  q_t = 1 - (loc/t)**a if t > loc else 0
+  if d == 0:
+    return 1 - q_t**k
+  
+  q_d = 1 - (loc/d)**a if d > loc else 0
+  q1 = 1 - (d/t)**a if t > d else 0
+  q2 = 1 - (loc/(t-d))**a if t-d > loc else 0
+  # p_T_geq_t = 1 - q_t**k + (t > d)*(q_d + q1*(1-q_d))**k - (t-d > loc)*(q_d + q2*(1-q_d))**k - q_d**k*((t > d) - (t-d > loc))
+  sum_ = 0
+  for r in range(k):
+  # for r in range(k+1):
+    sum_ += (q1**(k-r) - q2**(k-r)) * binomial(k, r) * q_d**r * (1-q_d)**(k-r)
+  p_T_geq_t = 1 - q_t**k + sum_
+  
+  return p_T_geq_t
+
+def Pr_T_g_t_pareto_k_wrelaunch_approx(loc, a, d, k, t):
+  q_t = 1 - (loc/t)**a if t > loc else 0
+  if d == 0:
+    return 1 - q_t**k
+  
+  q_d = 1 - (loc/d)**a if d > loc else 0
+  q1 = 1 - (d/t)**a if t > d else 0
+  q2 = 1 - (loc/(t-d))**a if t-d > loc else 0
+  # p_T_geq_t = 1 - q_t**k + (t > d)*(q_d + q1*(1-q_d))**k - (t-d > loc)*(q_d + q2*(1-q_d))**k # - q_d**k*((t > d) - (t-d > loc))
+  p_T_geq_t = 1 - q_t**k + (q_d + q1*(1-q_d))**k - (q_d + q2*(1-q_d))**k
+  # sum_ = 0
+  # for r in range(k+1):
+  #   sum_ += (q1**(k-r) - q2**(k-r)) * binomial(k, r) * q_d**r * (1-q_d)**(k-r)
+  # p_T_geq_t = 1 - q_t**k + sum_
+  return p_T_geq_t
+
+def Delta_for_min_p_T_g_t_pareto_k_wrelaunch(loc, a, k):
+  t = 20*loc
+  d_min = None
+  p_T_g_t_min = float('Inf')
+  for d in numpy.linspace(0, 2*t, 1000):
+    p_T_g_t = Pr_T_g_t_pareto_k_wrelaunch(loc, a, d, k, t)
+    if p_T_g_t < p_T_g_t_min:
+      p_T_g_t_min = p_T_g_t
+      d_min = d
+  return d_min
+
+def pareto_E_X_n_k(loc, a, n, k):
+  if n == k and n > 170:
+    return loc*(k+1)**(1/a) * G(1-1/a)
+  elif n > 170:
+    return loc*((n+1)/(n-k+1))**(1/a)
+  return loc*G(n+1)/G(n-k+1)*G(n-k+1-1/a)/G(n+1-1/a)
+
+def E_T_pareto_k_n(loc, a, d, k, n):
+  if d == 0 or n == k:
+    return pareto_E_X_n_k(loc, a, n, k)
+  else:
+    log(ERROR, "Cannot be expressed analytically!")
+    return None
+
+def E_T_pareto_k_n_wrelaunch(loc, a, d, k, n):
+  if d == 0:
+    return pareto_E_X_n_k(loc, a, n, k)
+  q = (d > loc)*(1 - (loc/d)**a)
+  
+  if d <= loc:
+    return d + pareto_E_X_n_k(loc, a, n, k)
+  elif n == k:
+    def g(k, a):
+      if k > 170:
+        return loc*(k+1)**(1/a) * G(1-1/a)
+      return loc*G(1-1/a)*G(k+1)/G(k+1-1/a)
+    
+    return d*(1-q**k) + g(k, a)*((loc/d-1)*I(1-q,1-1/a,k) + 1)
+  elif n > k:
+    if d <= loc:
+      return d + E_T_pareto_k_n(loc, a, 0, k, n)
+    else:
+      # sum_ = 0
+      # for r in range(k):
+      #   sum_ += (E_X_n_k(n-r, k-r) - E_X_n_k(k-r, k-r) ) * binomial(k,r) * q**r * (1-q)**(k-r)
+      # return sum_ + E_T_pareto_k_n_wrelaunch(loc, a, d, k, n=k)
+      return d*(1-q**k) + loc*(B(n-k*q+1, -1/a)/B(n-k+1, -1/a) + k*B(k, 1-1/a, u_l=q) - q**k)
+
+def E_T_pareto_k_n_wrelaunch_approx(loc, a, d, k, n):
+  q = (d > loc)*(1 - (loc/d)**a)
+  
+  if n == k:
+    return E_T_pareto_k_n_wrelaunch(loc, a, d, k, n)
+  elif n > k:
+    if d <= loc:
+      return d + E_T_pareto_k_n(loc, a, 0, k, n)
+    else:
+      return d*(1-q**k) + loc*(B(n-k*q+1, -1/a)/B(n-k+1, -1/a) + k*B(k, 1-1/a, u_l=q) - q**k)
+
+def Delta_for_min_E_T_pareto_k_wrelaunch(loc, a, k):
+  def g(k, a):
+    return loc*G(1-1/a)*G(k+1)/G(k+1-1/a)
+  return math.sqrt(loc*g(k, a) )
+
+def E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=True):
+  if d == 0 and w_cancel:
+    if n > 170:
+      return loc/(a-1) * (a*n - (n-k)*((n+1)/(n-k+1))**(1/a) )
+    return loc*n/(a-1) * (a - G(n)/G(n-k)*G(n-k+1-1/a)/G(n+1-1/a) )
+  
+  q = (d > loc)*(1 - (loc/d)**a)
+  if w_cancel:
+    if d <= loc:
+      return k*d + E_C_pareto_k_n_wrelaunch(loc, a, 0, k, n, w_cancel=True)
+    else:
+      # E_X_given_X_leq_d = a/(a-1)/q * (loc - d*(1-q) )
+      # E = 0
+      # for r in range(k+1):
+      #   E += G(n-r+1)/G(n-r+1-1/a) * binomial(k,r) * q**r * (1-q)**(k-r)
+      
+      # return k*q*E_X_given_X_leq_d + k*(1-q)*d + a/(a-1)*loc*(n - k*q) \
+      #       - loc/(a-1) * G(n-k+1-1/a)/G(n-k)*E \
+      #       - q**k * loc*(n-k)
+      
+      return a/(a-1)*(k*(1-q)*(loc-d) + n*loc) + k*(1-q)*d - loc*(n-k)*q**k \
+             - loc/(a-1) * (n-k)*B(n-k*q+1, -1/a)/B(n-k+1, -1/a) # G(n-k+1-1/a)/G(n-k)*E
+  else:
+    if d <= loc:
+      return k*d + n*loc/(1-1/a)
+    else:
+      return a/(a-1)*(k*loc*(1-q+q**k) + n*loc*(1-q**k) ) - k*d*(1-q)/(a-1)
+
+def E_C_pareto_k_n_wrelaunch_approx(loc, a, d, k, n, w_cancel=True):
+  q = (d > loc)*(1 - (loc/d)**a)
+  
+  q = (d > loc)*(1 - (loc/d)**a)
+  if w_cancel:
+    if d <= loc:
+      return k*d + E_C_pareto_k_n_wrelaunch(loc, a, 0, k, n, w_cancel=True)
+    else:
+      return a/(a-1)*(k*(1-q)*(loc-d) + n*loc) + k*(1-q)*d - loc*(n-k)*q**k \
+              - loc/(a-1) * (n-k)*B(n-k*q+1, -1/a)/B(n-k+1, -1/a)
+
+def E_T_pareto_k_c_wrelaunch(loc, a, d, k, c):
+  def E_X_n_k(n, k): # E[X_{n:k}] for X ~ Pareto
+    return loc*(G(n+1)/G(n-k+1) )*(G(n-k+1-1/a)/G(n+1-1/a) )
+  
+  if c == 0:
+    return E_T_pareto_k_n(loc, a, d, k, n=k, w_relaunch=True)
+  
+  q = (d > loc)*(1 - (loc/d)**a) if d else 0
+  a_ = 1/(c+1)/a
+  if d == 0:
+    return d + loc*G(k+1)*G(1-a_)/G(k+1-a_)
+  else:
+    return loc*G(1-a_)/G(-a_)*B(k-k*q+1, -a_) - loc*G(1-1/a)/G(-1/a)*B(k-k*q+1, -1/a) \
+           + E_T_pareto_k_c_wrelaunch(loc, a, d, k, 0)
+
+def E_C_pareto_k_c_wrelaunch(loc, a, d, k, c, w_cancel=True):
+  q = (d > loc)*(1 - (loc/d)**a) if d else 0
+  if not w_cancel:
+    if d <= loc:
+      return k*d + k*loc*(c+1)*a/(a-1)
+    else:
+      return k*(loc - d*(1-q) )*a/(a-1) + k*d*(1-q) \
+             + k*loc*(c+1)*(1-q)*a/(a-1)
+  else: # w_cancel
+    if d <= loc:
+      return k*d + k*loc*(c+1)*(c+1)*a/((c+1)*a - 1)
+    else:
+      return k*(loc - d*(1-q) )*a/(a-1) + k*d*(1-q) \
+             + k*loc*(c+1)*(1-q)*(c+1)*a/((c+1)*a-1)
+
+# ******************************  Wrappers  ****************************** #
+def E_T_k_l_n(task_t, D, mu, loc, a, d, k, l, n):
+  if task_t == "Exp":
+    if l == k: return E_T_exp_k_n(mu, d, k, n)
+    else: return E_T_exp_k_l_n(mu, d, k, l, n)
+  elif task_t == "SExp":
+    if l == k: return E_T_shiftedexp_k_n(D, mu, d, k, n)
+    else: return E_T_shiftedexp_k_l_n(D, mu, d, k, l, n)
+  elif task_t == "Pareto":
+    return E_T_pareto_k_n(loc, a, d, k, n)
+
+def E_C_k_l_n(task_t, D, mu, loc, a, d, k, l, n, w_cancel, approx=False):
+  if task_t == "Exp":
+    if l == k: return E_C_exp_k_n(mu, d, k, l, n, w_cancel)
+    else: return E_C_exp_k_l_n(mu, d, k, l, n, w_cancel)
+  elif task_t == "SExp":
+    return E_C_shiftedexp_k_l_n(D, mu, d, k, l, n, w_cancel)
+  elif task_t == "Pareto":
+    return E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=w_cancel)
+
 def E_T_k_c(task_t, D, mu, loc, a, d, k, c):
   if task_t == "Exp":
     return E_T_exp_k_c(mu, d, k, c)
@@ -797,6 +726,19 @@ def E_C_k_c(task_t, D, mu, loc, a, d, k, c, w_cancel, approx=False):
     if approx:
       return E_C_pareto_k_c_approx(loc, a, d, k, c, w_cancel)
     return E_C_pareto_k_c(loc, a, d, k, c, w_cancel)
+
+def deneme():
+  # To check if sum of ratios of gamma formula works for non-integer sum indices (Works)
+  def compare(k, a):
+    actual = 0
+    for i in range(2, k+1):
+      actual += G(i-2/a)/G(i-1/a)
+    approx = G(k+1-2/a)/(1-1/a)/G(k-1/a) - G(2-2/a)/(1-1/a)/G(1-1/a)
+    print("actual= {}, approx= {}".format(actual, approx) )
+  
+  compare(k=10, a=2)
+  compare(k=10, a=3)
+  compare(k=10, a=4)
 
 if __name__ == "__main__":
   # plot_Pr_T_g_t_G_1red()

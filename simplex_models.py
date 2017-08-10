@@ -6,7 +6,6 @@ import sys, pprint, math, numpy
 from math import factorial
 from numpy import linalg
 from patch import *
-# from sim_components import *
 
 def E_T_rep_n_1(arr_rate, mu, n):
   E_S = 1/n/mu
@@ -28,14 +27,68 @@ def E_T_fj_2(arr_rate, mu):
   if E_T < 0: return None
   return E_T
 
-def simplex_inner_bound_on_arr_rate(r, t, mu, w_sys=True):
-  E_S = 1
+# ****************************  Simplex possible serv time moments  **************************** #
+def avq_low_traff_serv_time_first_moment(r, t, mu):
+  if t == 0:
+    return 1/mu
+  else:
+    return 1/(mu*r)*B(t+1, 1/r)
+
+def avq_low_traff_serv_time_second_moment(r, t, mu):
+  if t == 0:
+    return 2/mu**2
+  else:
+    second_moment = 0
+    for j in range(t + 1):
+      inner_term = 0
+      for l in range(r*j + 1):
+        inner_term += (-1)**l * binomial(r*j, l)*(2/(mu**2 * (l+1)**2) )
+      second_moment += binomial(t, j) * (-1)**j * inner_term
+    return second_moment
+
+def E_S_type_i(mu, t, i):
+  gamma = mu
+  return sum([binomial(t-i,j)*2**j * (-1)**(t-i-j) / (gamma+(2*t-i-j)*mu) for j in range(t-i+1) ] )
+
+def E_S_2_type_i(mu, t, i):
+  gamma = mu
+  return sum([binomial(t-i,j)*2**j * (-1)**(t-i-j) * 2/(gamma+(2*t-i-j)*mu)**2 for j in range(t-i+1) ] )
+
+def simplex_inner_bound_on_arr_rate(mu, t, r, w_sys=True):
   if w_sys:
     E_S = 1/(mu*r)*B(t+1, 1/r)
   else:
     E_S = 1/mu * sum([binomial(t,i) * 2**i*(-1)**(t-i)/(2*t-i) for i in range(t+1) ] )
   
   return float(1/E_S)
+
+def E_Pareto_S_type_i(loc, a, t, i):
+  if a*(t+1) < 1:
+    return None
+  return sum([binomial(t-i,j)*2**j * (-1)**(t-i-j) * loc*(1 + 1/(a*(2*t+1-i-j)-1) ) for j in range(t-i+1) ] )
+
+def E_Pareto_S_2_type_i(loc, a, t, i):
+  if a*(t+1)/2 < 1:
+    return None
+  return sum([binomial(t-i,j)*2**j * (-1)**(t-i-j) * loc**2*(1 + 1/(a*(2*t+1-i-j)/2-1) ) for j in range(t-i+1) ] )
+
+def simplex_Pareto_inner_bound_on_arr_rate(loc, a, t):
+  return float(1/E_Pareto_S_type_i(loc, a, t, i=0) )
+
+def E_Bern_Pareto_S_type_i(L, U, p_s, loc, a, t, i):
+  if a <= 1:
+    return None
+  p_s_simplex = p_s**(i+1) * (1 - (1-p_s)**2)**(t-i)
+  return (L + (U-L)*p_s_simplex) * loc*(1 + 1/(a-1) )
+
+def E_Bern_Pareto_S_2_type_i(L, U, p_s, loc, a, t, i):
+  if a <= 2:
+    return None
+  p_s_simplex = p_s**(i+1) * (1 - (1-p_s)**2)**(t-i)
+  return (L**2 + (U**2 - L**2)*p_s_simplex) * loc**2*(1 + 1/(a/2-1) )
+
+def simplex_Bern_Pareto_inner_bound_on_arr_rate(L, U, p_s, loc, a, t):
+  return float(1/E_Bern_Pareto_S_type_i(L, U, p_s, loc, a, t, i=0) )
 
 # -----------------------------------  Simplex w/ split-to-one  ------------------------------- #
 def arr_rate_ub_simplex_split_to_one(t, mu):
@@ -208,7 +261,7 @@ def E_T_simplex_w_one_repair__matrix_analytic(t, arr_rate, mu):
   if E_T > 20: return None
   return E_T
 
-# -----------------------------------------  Simplex 2 repair  ----------------------------------- #
+# -----------------------------------------  Simplex(t=2)  ----------------------------------- #
 def simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu):
   gamma = mu
   nu = gamma + 4*mu
@@ -302,24 +355,6 @@ def simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu):
   log(WARNING, "LATER state_prob_map= {}".format(pprint.pformat(state_prob_map) ) )
   """
   return state_prob_map
-
-def avq_low_traff_serv_time_first_moment(r, t, mu):
-  if t == 0:
-    return 1/mu
-  else:
-    return 1/(mu*r)*B(t+1, 1/r)
-
-def avq_low_traff_serv_time_second_moment(r, t, mu):
-  if t == 0:
-    return 2/mu**2
-  else:
-    second_moment = 0
-    for j in range(t + 1):
-      inner_term = 0
-      for l in range(r*j + 1):
-        inner_term += (-1)**l * binomial(r*j, l)*(2/(mu**2 * (l+1)**2) )
-      second_moment += binomial(t, j) * (-1)**j * inner_term
-    return second_moment
 
 def E_T_simplex_t_2(arr_rate, mu, M):
   E_S_c = avq_low_traff_serv_time_first_moment(2, 2, mu)
@@ -458,21 +493,15 @@ def E_T_avq_sys__mds_r_2(arr_rate, gamma, mu, r):
   return E_T
 
 # ########################################  Simplex(t)  ###################################### #
-def E_S_type_i(gamma, mu, t, i):
-  return sum([binomial(t-i,j)*2**j * (-1)**(t-i-j) / (gamma+(2*t-i-j)*mu) for j in range(t-i+1) ] )
-def E_S_2_type_i(gamma, mu, t, i):
-  return sum([binomial(t-i,j)*2**j * (-1)**(t-i-j) * 2/(gamma+(2*t-i-j)*mu)**2 for j in range(t-i+1) ] )
-
 def plot_diminishing_return_as_t_incs():
   mu = 1
-  gamma = mu
   m_l = []
   E_S_simplex_type_i_l, E_S_2_simplex_type_i_l = [], []
   E_S_rep_t_l, E_S_2_rep_t_l = [], []
   for t in range(1, 20):
     m_l.append(t)
-    E_S_simplex_type_i_l.append(E_S_type_i(gamma, mu, t, i=t) )
-    E_S_2_simplex_type_i_l.append(E_S_2_type_i(gamma, mu, t, i=t) )
+    E_S_simplex_type_i_l.append(E_S_type_i(mu, t, i=t) )
+    E_S_2_simplex_type_i_l.append(E_S_2_type_i(mu, t, i=t) )
     E_S_rep_t_l.append(1/(t+1)/mu)
     E_S_2_rep_t_l.append(2/((t+1)*mu)**2 )
   plot.plot(m_l, E_S_simplex_type_i_l, color=next(dark_color), label=r'$E[S], simplex$', marker=next(marker), linestyle=':', mew=2)
@@ -492,11 +521,17 @@ def plot_diminishing_return_as_t_incs():
   plot.gcf().clear()
   log(WARNING, "done.")
 
-def E_T_simplex_approx(t, arr_rate, gamma, mu, p_i_l=[], naive=False, incremental=False, arr_rate_ub=False):
+def E_T_simplex_approx(t, arr_rate, serv, mu, loc=None, a=None, p_i_l=[], naive=False, incremental=False, arr_rate_ub=False):
   E_S_simplex_type_i_l, E_S_2_simplex_type_i_l = [], []
   for i in range(t+1):
-    E_S_simplex_type_i_l.append(E_S_type_i(gamma, mu, t, i) )
-    E_S_2_simplex_type_i_l.append(E_S_2_type_i(gamma, mu, t, i) )
+    if serv == "Exp":
+      E_S = E_S_type_i(mu, t, i)
+      E_S_2 = E_S_2_type_i(mu, t, i)
+    elif serv == "Pareto":
+      E_S = E_Pareto_S_type_i(loc, a, t, i)
+      E_S_2 = E_Pareto_S_2_type_i(loc, a, t, i)
+    E_S_simplex_type_i_l.append(E_S)
+    E_S_2_simplex_type_i_l.append(E_S_2)
   
   if len(p_i_l) == 0:
     E_X = 1/arr_rate
@@ -533,7 +568,7 @@ def E_T_simplex_approx(t, arr_rate, gamma, mu, p_i_l=[], naive=False, incrementa
     return 1/E_S
   E_S_2 = sum([E_S_2_simplex_type_i_l[i]*p_i for i,p_i in enumerate(p_i_l) ] )
   E_T = E_S + arr_rate*E_S_2/2/(1-arr_rate*E_S)
-  if E_T < 0 or E_T > 20: return None
+  if E_T < 0 or E_T > 30: return None
   return E_T
 
 def E_T_simplex_varki_gauri_lb(t, arr_rate, gamma, mu):

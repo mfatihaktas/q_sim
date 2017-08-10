@@ -35,26 +35,10 @@ class FF_JSink(object): # Join
     else:
       self.st_unpop_l.append(st)
     
-    if self.out is not None: 
+    if self.out is not None:
       self.out.put(p)
 
 # **********************************  Fairness First AVQ  ******************************* #
-class FF_AVQMonitor(object):
-  def __init__(self, env, q, poll_rate):
-    self.q = q
-    self.env = env
-    self.poll_rate = poll_rate
-    
-    # self.t_l = [] # Time steps that the numbers polled from the q
-    self.num_pop_in_l = []
-    
-    env.process(self.run() )
-  
-  def run(self):
-    while True:
-      yield self.env.timeout(1/self.poll_rate)
-      self.num_pop_in_l.append(self.q.num_sym_in(POP_SYM) )
-
 class FF_AVQ(object): # Fairness First
   def __init__(self, _id, env, t, qmu_l, serv, sym__rgroup_l_map, sym_sysqid_map, out=None):
     self._id = _id
@@ -77,7 +61,7 @@ class FF_AVQ(object): # Fairness First
       q = FCFS(qid, env, qmu_l[i], serv)
       q.out = self.jq
       self.id_q_map[qid] = q
-    # 
+    #
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
     env.process(self.run() )
@@ -119,7 +103,7 @@ class FF_AVQ(object): # Fairness First
         for r in r_l:
           # q = self.id_q_map[r]
           # if q.length() == 1:
-          #   # q.p_in_serv is not None and 
+          #   # q.p_in_serv is not None and
           #   if q.p_in_serv.sym != POP_SYM: # q may be busy with pop_sym because simpy did not register cancellation yet
           #     print("server-{} busy with sym= {}, while sending p= {}, pstate_l= {}".format(r, q.p_in_serv.sym, p, q.pstate_l() ) )
           #     rep = False
@@ -186,8 +170,24 @@ class FF_AVQ(object): # Fairness First
     sim_log(DEBUG, self.env, self, "recved", cp)
     return self.store_c.put(cp.deep_copy() )
 
-# *********************************  Exp  *********************************** #
-def test_ff_avq(num_f_run, unpop_ar, mu, t, r, k, serv, pop_ar):
+class FF_AVQMonitor(object):
+  def __init__(self, env, q, poll_rate):
+    self.q = q
+    self.env = env
+    self.poll_rate = poll_rate
+    
+    # self.t_l = [] # Time steps that the numbers polled from the q
+    self.num_pop_in_l = []
+    
+    env.process(self.run() )
+  
+  def run(self):
+    while True:
+      yield self.env.timeout(1/self.poll_rate)
+      self.num_pop_in_l.append(self.q.num_sym_in(POP_SYM) )
+
+# *********************************  Experiment  *********************************** #
+def test_ff_avq(num_f_run, unpop_ar, mu, t, r, k, serv, pop_ar, mds=False):
   num_q = int(1 + t*r)
   qmu_l = num_q*[mu]
   
@@ -211,24 +211,37 @@ def test_ff_avq(num_f_run, unpop_ar, mu, t, r, k, serv, pop_ar):
           rgroup_l.append([1] )
           rgroup_l.append([0, 2] )
       elif t == 3:
-        if sym == 'a':
-          sym_sysqid_map[sym] = 0
-          rgroup_l.append([0] )
-          rgroup_l.append([1, 2] )
-          rgroup_l.append([3, 4] )
-          rgroup_l.append([5, 6] )
-        elif sym == 'b':
-          sym_sysqid_map[sym] = 1
-          rgroup_l.append([1] )
-          rgroup_l.append([0, 2] )
-          rgroup_l.append([3, 5] )
-          rgroup_l.append([4, 6] )
-        elif sym == 'c':
-          sym_sysqid_map[sym] = 3
-          rgroup_l.append([3] )
-          rgroup_l.append([0, 4] )
-          rgroup_l.append([1, 5] )
-          rgroup_l.append([2, 6] )
+        if not mds:
+          if sym == 'a':
+            sym_sysqid_map[sym] = 0
+            rgroup_l.append([0] )
+            rgroup_l.append([1, 2] )
+            rgroup_l.append([3, 4] )
+            rgroup_l.append([5, 6] )
+          elif sym == 'b':
+            sym_sysqid_map[sym] = 1
+            rgroup_l.append([1] )
+            rgroup_l.append([0, 2] )
+            rgroup_l.append([3, 5] )
+            rgroup_l.append([4, 6] )
+          elif sym == 'c':
+            sym_sysqid_map[sym] = 3
+            rgroup_l.append([3] )
+            rgroup_l.append([0, 4] )
+            rgroup_l.append([1, 5] )
+            rgroup_l.append([2, 6] )
+        elif mds:
+          if sym == 'a':
+            sym_sysqid_map[sym] = 0
+            rgroup_l.append([0] )
+            rgroup_l.append([1, 2, 3] )
+            rgroup_l.append([4, 5, 6] )
+          elif sym == 'b':
+            sym_sysqid_map[sym] = 1
+            rgroup_l.append([1] )
+          elif sym == 'c':
+            sym_sysqid_map[sym] = 2
+            rgroup_l.append([2] )
       sym__rgroup_l_map[sym] = rgroup_l
     pg = MT_PG(env, "pg", (len(sym_l)-1)*unpop_ar, sym_l, pop_sym=POP_SYM, pop_ar=pop_ar)
     log(WARNING, "sym__rgroup_l_map=\n {}\n sym_sysqid_map=\n {}".format(pprint.pformat(sym__rgroup_l_map), pprint.pformat(sym_sysqid_map) ) )
@@ -258,22 +271,22 @@ def test_ff_avq(num_f_run, unpop_ar, mu, t, r, k, serv, pop_ar):
   E_T_pop = E_T_pop_f_sum/num_f_run
   E_T_unpop = E_T_unpop_f_sum/num_f_run
   print(">> E_T_pop= {}, E_T_unpop= {}".format(E_T_pop, E_T_unpop) )
-  if E_T_unpop > E_T_UB: return (None, None)
+  # if E_T_unpop > E_T_UB: return (None, None)
   return (E_T_pop, E_T_unpop)
   
 def plot_ff_simplex():
   t, r, k = 3, 2, 2
-  serv = "Exp" # "Dolly" # "Exp"
+  serv = "Exp" # "Dolly"
   mu = 1
-  unpop_ar = 0.9 # 0.05 # 0.5 # 0.9
+  unpop_ar = 0.5 # 0.05 # 0.5 # 0.9
   if serv == "Exp":
-    ar_ub = pop_ar_ub_approx_ff_simplex(unpop_ar, t, mu)
+    ar_ub = pop_ar_ub_ff_simplex_approx(unpop_ar, t, mu)
   elif serv == "Dolly":
     if t == 1: ar_ub = 0.28
     elif t == 3: ar_ub = 0.4
   log(WARNING, "t= {}, r= {}, k= {}, mu= {}, serv= {}, unpop_ar= {}, ar_ub= {}".format(t, r, k, mu, serv, unpop_ar, ar_ub) )
   
-  E_T_unpop_sim_simplex_l, E_T_pop_sim_simplex_l, E_T_simplex_l = [], [], []
+  E_T_unpop_sim_simplex_l, E_T_pop_sim_simplex_l = [], []
   E_T_pop_ub_simplex_l, E_T_pop_lb_simplex_l, E_T_pop_approx_simplex_l = [], [], []
   
   sim_simplex = False
@@ -327,7 +340,7 @@ def plot_ff_simplex():
           12.038706806221821,
           18.5928197729436,
           33.37017843702431,
-          73.25485711218015,
+          None, # 73.25485711218015,
           None,
           None]
       elif unpop_ar == 0.9:
@@ -403,7 +416,6 @@ def plot_ff_simplex():
           26.460116374413456,
           None]
           # 216.13373742455795]
-        
     elif t == 77:
       pass
     else: sim_simplex = True
@@ -414,9 +426,16 @@ def plot_ff_simplex():
       pass
     else: sim_simplex = True
   
-  mew, ms = 2, 8 # 3, 8
+  sim_mds = False
+  if serv == "Exp":
+    if t == 11:
+      pass
+    elif t == 33:
+      pass
+    else: sim_mds = True
   
-  num_f_run = 1 # 2
+  mew, ms = 2, 8
+  num_f_run = 1
   ar_l = []
   for pop_ar in [*numpy.linspace(0.05, 0.8*ar_ub, 5, endpoint=False), *numpy.linspace(0.8*ar_ub, ar_ub, 10) ]:
   # for pop_ar in numpy.linspace(0.0001, 0.0001, 1):
@@ -446,6 +465,19 @@ def plot_ff_simplex():
   
   # log(WARNING, "E_T_unpop_sim_simplex_l= {}".format(pprint.pformat(E_T_unpop_sim_simplex_l) ) )
   # plot.plot(ar_l, E_T_unpop_sim_simplex_l, label="Simulation, unpopular", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  
+  ar_l = []
+  mds_ar_ub = ar_ub
+  for pop_ar in [*numpy.linspace(0.05, 0.8*mds_ar_ub, 5, endpoint=False), *numpy.linspace(0.8*mds_ar_ub, mds_ar_ub, 10) ]:
+    ar_l.append(pop_ar)
+    if sim_mds:
+      (E_T_pop, E_T_unpop) = test_ff_avq(num_f_run, unpop_ar, mu, t, r, k, serv, pop_ar=pop_ar, mds=True)
+      E_T_pop_sim_mds_l.append(E_T_pop)
+      E_T_unpop_sim_mds_l.append(E_T_unpop)
+    # E_T_pop_approx_mds_l.append(E_T_pop_approx_ff_mds(pop_ar, unpop_ar, t, mu) )
+  log(WARNING, "E_T_pop_sim_mds_l= {}".format(pprint.pformat(E_T_pop_sim_mds_l) ) )
+  plot.plot(ar_l, E_T_pop_sim_mds_l, label="Simulation", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  # plot.plot(ar_l, E_T_pop_approx_simplex_l, label="Approximation", marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   
   plot.legend(prop={'size':11} )
   plot.xlabel(r'$\lambda_p$ (Request/sec)', fontsize=12)

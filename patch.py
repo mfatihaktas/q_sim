@@ -7,6 +7,8 @@ linestyle = itertools.cycle(('-', '--', '-.', ':') )
 marker = itertools.cycle(('^', 'p', '+', 'x', '*', 'v', '<', '>', 'd', '1' , '2', '3', '4') )
 skinny_marker_l = ['x', '+', '1', '2', '3', '4']
 
+mew, ms = 3, 5
+
 INFO = 0
 DEBUG = 1
 WARNING = 2

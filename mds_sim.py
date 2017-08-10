@@ -25,16 +25,15 @@ class MDS_PG(PG):
 # Split arrivals to all, wait for any k for download, cancel the outstanding remainings.
 class MDSQ(object):
   # r: split each arrival to randomly any r servers
-  def __init__(self, _id, env, k, qid_l, qmu_l, serv="Exp", r=None, preempt=False, out=None):
+  def __init__(self, _id, env, k, qid_l, serv="Exp", serv_dist_m=None, r=None, preempt=False, out=None):
     self._id = _id
     self.env = env
-    self.n = len(qid_l)
-    self.r = r
     self.k = k
     self.qid_l = qid_l
-    self.qmu_l = qmu_l
+    self.r = r
     self.preempt = preempt
-    # self.out = out
+    
+    self.n = len(qid_l)
     
     self.jsink = JSink(_id, env)
     self.jsink.out = out
@@ -44,13 +43,13 @@ class MDSQ(object):
     self.id_q_map = {}
     for i in range(self.n):
       qid = qid_l[i]
-      q = FCFS(_id=qid, env=env, rate=qmu_l[i], serv=serv)
+      q = FCFS(qid, env, serv, serv_dist_m)
       q.out = self.jq
       self.id_q_map[qid] = q
     
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
-    self.action = env.process(self.run() ) # starts the run() method as a SimPy process
+    self.action = env.process(self.run() )
     self.action = env.process(self.run_c() )
     
     self.job_id_counter = 0
@@ -104,13 +103,13 @@ class MDSQ(object):
   def run_c(self):
     while True:
       cp = (yield self.store_c.get() )
-      # 
+      #
       next_job_id = cp._id + 1
       type_ = self.n - self.n_servers_in(next_job_id)
       if type_ == self.n: # next job is not in
         type_ = 0
       self.servtype__num_m[type_] += 1
-      # 
+      #
       for i, q in self.id_q_map.items():
         if q._id not in cp.departed_qid_l:
           q.put_c(cp)

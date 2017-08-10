@@ -1,5 +1,5 @@
 import simpy, random, copy, pprint
-
+from rvs import *
 from patch import *
 
 # *******************************  Packet  ****************************** #
@@ -8,12 +8,13 @@ MDS_TRAFF_SYM = 'm'
 SIMPLEX_TRAFF_SYM = 's'
 
 class Packet(object):
-  def __init__(self, time, _id, size=1, sym=None, flow_id=0):
+  def __init__(self, time, _id, size=1, sym=None, flow_id=0, serv_time=None):
     self.time = time
     self.size = size
     self._id = _id
     self.sym = sym
     self.flow_id = flow_id
+    self.serv_time = serv_time
     
     self.ref_time = 0 # for casual use
     # for FJ and MDS Q implementation
@@ -23,7 +24,7 @@ class Packet(object):
     self.winner_id = None
   
   def deep_copy(self):
-    p = Packet(time=self.time, _id=self._id, size=self.size, sym=self.sym, flow_id=self.flow_id)
+    p = Packet(time=self.time, _id=self._id, size=self.size, sym=self.sym, flow_id=self.flow_id, serv_time=self.serv_time)
     p.ref_time = self.ref_time
     p.prev_hop_id = self.prev_hop_id
     p.entrance_time = self.entrance_time
@@ -63,23 +64,31 @@ class MPacket(object): # Monitor
 
 # *******************************  PacketGenerator  ****************************** #
 class PG(object): # Packet Generator
-  def __init__(self, env, _id, ar, flow_id=0):
+  def __init__(self, env, _id, ar, flow_id=0, serv=None, serv_dist_m=None):
     self._id = _id
     self.env = env
     self.ar = ar
     self.flow_id = flow_id
     
+    if serv == "Bern*Pareto":
+      self.serv_time = BernPareto(serv_dist_m['L'], serv_dist_m['U'], serv_dist_m['p_s'], serv_dist_m['loc'], serv_dist_m['a'] )
+    else:
+      self.serv_time = None
+    
     self.n_sent = 0
     self.out = None
   
   def init(self):
-    self.env.process(self.run() ) # starts the run() method as a SimPy process
+    self.env.process(self.run() )
   
   def run(self):
     while 1:
       yield self.env.timeout(random.expovariate(self.ar) )
       self.n_sent += 1
-      p = Packet(time=self.env.now, _id=self.n_sent, size=1, flow_id=self.flow_id)
+      if self.serv_time is None:
+        p = Packet(time=self.env.now, _id=self.n_sent, flow_id=self.flow_id)
+      else:
+        p = Packet(time=self.env.now, _id=self.n_sent, flow_id=self.flow_id, serv_time=self.serv_time.gen_sample() )
       self.out.put(p)
 
 # *************************************  JSink, JQ  ************************************* #
@@ -93,7 +102,7 @@ class JSink(object): # Join
     
     self.store = simpy.Store(env)
     self.out = None
-    self.action = env.process(self.run() )  # starts the run() method as a SimPy process
+    self.action = env.process(self.run() )
   
   def __repr__(self):
     return "JSink[_id= {}]".format(self._id)
@@ -106,7 +115,7 @@ class JSink(object): # Join
         self.qid__num_win_map[p.winner_id] = 0
       self.qid__num_win_map[p.winner_id] += 1
       
-      if self.out is not None: 
+      if self.out is not None:
         self.out.put(p)
   
   def put(self, p):
@@ -180,44 +189,21 @@ class JQ(object): # JoinQ
 
 # *****************************************  Q  ************************************* #
 class Q(object):
-  def __init__(self, _id, env, num_s):
+  def __init__(self, _id, env):
     self._id = _id
     self.env = env
-    self.num_s = num_s
-
-def dolly_slowdown_dist(): # Kristen et al. A Better Model for Job Redundancy: Decoupling Server Slowdown and Job Size
-  u = random.uniform(0, 1)
-  if u <= 0.23: return 1 + u/100
-  u -= 0.23
-  if u <= 0.14: return 2 + u/100
-  u -= 0.14
-  if u <= 0.09: return 3 + u/100
-  u -= 0.09
-  if u <= 0.03: return 4 + u/100
-  u -= 0.03
-  if u <= 0.08: return 5 + u/100
-  u -= 0.08
-  if u <= 0.1: return 6 + u/100
-  u -= 0.1
-  if u <= 0.04: return 7 + u/100
-  u -= 0.04
-  if u <= 0.14: return 8 + u/100
-  u -= 0.14
-  if u <= 0.12: return 9 + u/100
-  u -= 0.12
-  if u <= 0.021: return 10 + u/100
-  u -= 0.021
-  if u <= 0.007: return 11 + u/100
-  u -= 0.007
-  if u <= 0.002: return 12 + u/100
-  return 12 + u/100 # for safety
 
 class FCFS(Q): # First Come First Serve
-  def __init__(self, _id, env, rate, serv="Exp"):
-    super().__init__(_id, env, 1)
+  def __init__(self, _id, env, serv="Exp", serv_dist_m=None):
+    super().__init__(_id, env)
     
-    self.rate = rate
     self.serv = serv
+    if self.serv == "Exp":
+      self.serv_time = Exp(mu=serv_dist_m['mu'] )
+    elif self.serv == "Pareto":
+      self.serv_time = Pareto(serv_dist_m['loc'], serv_dist_m['a'] )
+    elif self.serv == "Dolly":
+      self.serv_time = Dolly()
     
     self.p_l = []
     self.p_in_serv = None
@@ -238,7 +224,7 @@ class FCFS(Q): # First Come First Serve
     self.action = env.process(self.run_helper() )
   
   def __repr__(self):
-    return "FCFS[_id= {}, mu= {}]".format(self._id, self.rate)
+    return "FCFS[_id= {}, serv_time= {}]".format(self._id, self.serv_time)
   
   def busy(self):
     return (self.length() > 0)
@@ -303,12 +289,9 @@ class FCFS(Q): # First Come First Serve
       self.preempt = self.env.event()
       
       clk_start_time = self.env.now
-      if self.serv == "Det":
-        t = self.p_in_serv.size()/self.rate
-      elif self.serv == "Exp":
-        t = random.expovariate(self.rate)
-      elif self.serv == "Dolly":
-        t = dolly_slowdown_dist()
+      t = self.p_in_serv.serv_time
+      if t is None:
+        t = self.serv_time.gen_sample()
       sim_log(DEBUG, self.env, self, "starting {}-clock! on ".format(self.serv), self.p_in_serv)
       yield (self.cancel | self.preempt | self.env.timeout(t) )
       

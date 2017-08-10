@@ -7,53 +7,6 @@ class RV(): # Random Variable
     self.l_l = l_l
     self.u_l = u_l
 
-class Pareto(RV):
-  def __init__(self, a, loc=1):
-    RV.__init__(self, l_l=loc, u_l=float("inf") )
-    self.a = a
-    self.loc = loc
-  
-  def __str__(self):
-    return "Pareto(a= {}, loc= {})".format(self.a, self.loc)
-  
-  def tail(self, x):
-    if x <= self.l_l:
-      return 1
-    return (self.loc/x)**self.a
-  
-  def cdf(self, x):
-    if x <= self.l_l:
-      return 0
-    return 1 - (self.loc/x)**self.a
-  
-  def pdf(self, x):
-    if x <= self.l_l:
-      return 0
-    return self.a*self.loc**self.a / x**(self.a+1)
-  
-  def dpdf_dx(self, x):
-    if x <= self.l_l:
-      return 0
-    return sympy.mpmath.diff(lambda y: self.a*self.loc**self.a / y**(self.a+1), x)
-  
-  def mean(self):
-    if self.a <= 1:
-      log(WARNING, "Mean is Infinity; a= {} <= 1".format(self.a) )
-      return float("inf")
-    else:
-      return self.a*self.loc/(self.a-1)
-  
-  def var(self):
-    if self.a <= 2:
-      log(WARNING, "Variance is Infinity; a= {} <= 2".format(self.a) )
-      return float("inf")
-    else:
-      return self.a*self.loc**2 / (self.a-1)**2/(self.a-2)
-  
-  def gen_sample(self):
-    return ((numpy.random.pareto(self.a, 1) + 1)*self.loc)[0]
-    # return pareto.ppf(numpy.random.uniform(0, 1), b=self.a, scale=self.loc)
-
 class Exp(RV):
   def __init__(self, mu, D=0):
     RV.__init__(self, l_l=0, u_l=float("inf") )
@@ -90,6 +43,53 @@ class Exp(RV):
   def gen_sample(self):
     return self.D + random.expovariate(self.mu)
 
+class Pareto(RV):
+  def __init__(self, loc, a):
+    RV.__init__(self, l_l=loc, u_l=float("inf") )
+    self.loc = loc
+    self.a = a
+  
+  def __str__(self):
+    return "Pareto(loc= {}, a= {})".format(self.loc, self.a)
+  
+  def tail(self, x):
+    if x <= self.l_l:
+      return 1
+    return (self.loc/x)**self.a
+  
+  def cdf(self, x):
+    if x <= self.l_l:
+      return 0
+    return 1 - (self.loc/x)**self.a
+  
+  def pdf(self, x):
+    if x <= self.l_l:
+      return 0
+    return self.a*self.loc**self.a / x**(self.a+1)
+  
+  def dpdf_dx(self, x):
+    if x <= self.l_l:
+      return 0
+    return sympy.mpmath.diff(lambda y: self.a*self.loc**self.a / y**(self.a+1), x)
+  
+  def mean(self):
+    if self.a <= 1:
+      log(WARNING, "Mean is Infinity; a= {} <= 1".format(self.a) )
+      return float("inf")
+    else:
+      return self.loc*self.a/(self.a-1)
+  
+  def var(self):
+    if self.a <= 2:
+      log(WARNING, "Variance is Infinity; a= {} <= 2".format(self.a) )
+      return float("inf")
+    else:
+      return self.a*self.loc**2 / (self.a-1)**2/(self.a-2)
+  
+  def gen_sample(self):
+    return ((numpy.random.pareto(self.a, 1) + 1)*self.loc)[0]
+    # return pareto.ppf(numpy.random.uniform(0, 1), b=self.a, scale=self.loc)
+
 class Google(RV):
   def __init__(self, k):
     RV.__init__(self, l_l=0, u_l=float("inf") )
@@ -111,3 +111,61 @@ class Google(RV):
   
   def gen_sample(self):
     return self.sample_l[math.floor(self.num_sample*random.random() ) ]
+
+class Dolly(RV):
+  # Kristen et al. A Better Model for Job Redundancy: Decoupling Server Slowdown and Job Size
+  def __init__(self):
+    RV.__init__(self, l_l=1, u_l=12)
+  
+  def __str__(self):
+    return "Dolly"
+  
+  def gen_sample(self):
+    u = random.uniform(0, 1)
+    if u <= 0.23: return 1 + u/100
+    u -= 0.23
+    if u <= 0.14: return 2 + u/100
+    u -= 0.14
+    if u <= 0.09: return 3 + u/100
+    u -= 0.09
+    if u <= 0.03: return 4 + u/100
+    u -= 0.03
+    if u <= 0.08: return 5 + u/100
+    u -= 0.08
+    if u <= 0.1: return 6 + u/100
+    u -= 0.1
+    if u <= 0.04: return 7 + u/100
+    u -= 0.04
+    if u <= 0.14: return 8 + u/100
+    u -= 0.14
+    if u <= 0.12: return 9 + u/100
+    u -= 0.12
+    if u <= 0.021: return 10 + u/100
+    u -= 0.021
+    if u <= 0.007: return 11 + u/100
+    u -= 0.007
+    if u <= 0.002: return 12 + u/100
+    return 12 + u/100 # for safety
+
+class Bern(RV):
+  def __init__(self, L, U, p):
+    RV.__init__(self, l_l=L, u_l=U)
+  
+  def __str__(self):
+    return "Bern"
+  
+  def gen_sample(self):
+    return U if random.uniform(0, 1) <= p else L
+
+class BernPareto(RV):
+  def __init__(self, L, U, p_s, loc, a):
+    RV.__init__(self, l_l=L*loc, u_l=float("Inf") )
+    
+    self.pareto = Pareto(loc, a)
+    self.bern = Bern(L, U, p_s)
+  
+  def __str__(self):
+    return "Bern*Pareto"
+  
+  def gen_sample(self):
+    return self.bern.gen_sample()*self.pareto.gen_sample()

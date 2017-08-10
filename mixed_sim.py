@@ -1,4 +1,4 @@
-from sim_components import *
+from sim import *
 from patch import *
 
 # *************************************  Mixed Packet Generator  ********************************* #
@@ -42,7 +42,9 @@ class SlaveQ(Q): # Release HoL at command
     return len(self.p_l)
   
   def avg_qtime(self):
-    return sum(self.qt_l)/len(self.qt_l)
+    # return sum(self.qt_l)/len(self.qt_l)
+    nonzero_qt_l = [t for t in self.qt_l if t > 0.000001]
+    return sum(nonzero_qt_l)/len(nonzero_qt_l)
   
   # def run(self):
   #   while True:
@@ -81,7 +83,14 @@ class MixedNet(object): # Network
     # env.process(self.run() )
   
   def __repr__(self):
-    return "MNet[n={}, k={}]".format(self.n, self.k)
+    return "MixedNet[n={}, k={}]".format(self.n, self.k)
+  
+  def E_T(self):
+    # Assuming each q is identical
+    E_T_sum = 0
+    for q in self.id_q_map:
+      E_T_sum += q.avg_qtime()
+    return E_T_sum/self.n
   
   def throughput(self):
     n_released = sum([q.n_released for i,q in enumerate(self.id_q_map) ] )
@@ -113,4 +122,42 @@ class MixedNet(object): # Network
     if n_busy >= self.k:
       for i,q in enumerate(self.id_q_map):
         q.release()
+
+class MixedNetMonitor(object):
+  def __init__(self, env, mixednet, poll_interval):
+    self.env = env
+    self.mixednet = mixednet
+    self.poll_interval = poll_interval
+    
+    self.qid__state_counter_map_map = {}
+    for i in range(self.mixednet.n):
+      self.qid__state_counter_map_map[i] = {}
+    env.process(self.run() )
+  
+  def __repr__(self):
+    return "Monitor:{}".format(self.mixednet)
+  
+  def steadystate_prob_map(self):
+    # Assuming each q is identical
+    state_counter_map = {}
+    for i in range(self.mixednet.n):
+      for s, c in self.qid__state_counter_map_map[i].items():
+        if s not in state_counter_map:
+          state_counter_map[s] = 0
+        state_counter_map[s] += c
+    
+    total_c = sum([c for s,c in state_counter_map.items() ] )
+    return {s:c/total_c for s,c in state_counter_map.items() }
+  
+  def run(self):
+    while True:
+      yield self.env.timeout(self.poll_interval)
+      
+      for i in range(self.mixednet.n):
+        state_counter_map = self.qid__state_counter_map_map[i]
+        s = self.mixednet.id_q_map[i].length()
+        # print("polled s= {}".format(s) )
+        if s not in state_counter_map:
+          state_counter_map[s] = 0
+        state_counter_map[s] += 1
   

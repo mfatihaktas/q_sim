@@ -24,7 +24,8 @@ if [ $1 = 'e' ]; then
   # rm *.png; $PYTHON exp.py
   $PYTHON simplex_exp.py
 elif [ $1 = 'x' ]; then
-  $PYTHON mixed_exp.py
+  # $PYTHON mixed_exp.py
+  $PYTHON mixed_models.py
 elif [ $1 = 'm' ]; then
   # $MATLAB -r "run exp.m; quit"
   # rm *.png; $PYTHON mds_exp.py # > mds_exp.log
@@ -49,6 +50,8 @@ elif [ $1 = 'a' ]; then
   # $PYTHON arepeat_sim_components.py
   # $PYTHON arepeat_models.py
   $PYTHON arepeat_exp.py
+elif [ $1 = 'sl' ]; then
+  $PYTHON slowdown.py
 elif [ $1 = 'g' ]; then
   $PYTHON google_data.py
 elif [ $1 = 'f' ]; then
