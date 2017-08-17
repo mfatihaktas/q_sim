@@ -40,5 +40,45 @@ def plot_Pr_slow():
   plot.ylabel(r'Probability of Slowdown')
   plot.savefig("plot_Pr_slow.png")
 
+"""
+  A batch of k tasks executed with Qing or PS on a single node
+  With PS, X' ~ X/k
+"""
+def plot_E_T():
+  def E_T_w_q(k, loc, a):
+    return k*loc*a/(a-1)
+  def E_T_w_ps(k, loc, a):
+    return k*loc*G(k+1)*G(1-1/a)/G(k+1-1/a)
+  
+  loc = 3
+  a = 2
+  k = 100
+  
+  x_l, E_T_w_q_l, E_T_w_ps_l = [], [], []
+  # title = r'$\lambda= {}$, $\alpha= {}$'.format(loc, a)
+  # xlabel = r'$k$'
+  # for k in range(1, 20):
+  #   x_l.append(k)
+  
+  # title = r'$k= {}$, $\alpha= {}$'.format(k, a)
+  # xlabel = r'$\lambda$'
+  # for loc in numpy.linspace(0.5, 10, 50):
+  #   x_l.append(loc)
+  
+  title = r'$k= {}$, $\lambda= {}$'.format(k, loc)
+  xlabel = r'$\alpha$'
+  for a in numpy.linspace(2, 10, 50):
+    x_l.append(a)
+    E_T_w_q_l.append(E_T_w_q(k, loc, a) )
+    E_T_w_ps_l.append(E_T_w_ps(k, loc, a) )
+  plot.plot(x_l, E_T_w_q_l, label=r'qing', color=next(dark_color), marker=next(marker) )
+  plot.plot(x_l, E_T_w_ps_l, label=r'ps', color=next(dark_color), marker=next(marker) )
+  plot.legend()
+  plot.title(title)
+  plot.xlabel(xlabel)
+  plot.ylabel(r'$E[T]$')
+  plot.savefig("plot_E_T.png")
+
 if __name__ == "__main__":
-  plot_Pr_slow()
+  # plot_Pr_slow()
+  plot_E_T()

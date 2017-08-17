@@ -8,13 +8,12 @@ MDS_TRAFF_SYM = 'm'
 SIMPLEX_TRAFF_SYM = 's'
 
 class Packet(object):
-  def __init__(self, time, _id, size=1, sym=None, flow_id=0, serv_time=None):
+  def __init__(self, time, _id, size=1, sym=None, flow_id=0):
     self.time = time
     self.size = size
     self._id = _id
     self.sym = sym
     self.flow_id = flow_id
-    self.serv_time = serv_time
     
     self.ref_time = 0 # for casual use
     # for FJ and MDS Q implementation
@@ -24,7 +23,7 @@ class Packet(object):
     self.winner_id = None
   
   def deep_copy(self):
-    p = Packet(time=self.time, _id=self._id, size=self.size, sym=self.sym, flow_id=self.flow_id, serv_time=self.serv_time)
+    p = Packet(time=self.time, _id=self._id, size=self.size, sym=self.sym, flow_id=self.flow_id)
     p.ref_time = self.ref_time
     p.prev_hop_id = self.prev_hop_id
     p.entrance_time = self.entrance_time
@@ -64,16 +63,16 @@ class MPacket(object): # Monitor
 
 # *******************************  PacketGenerator  ****************************** #
 class PG(object): # Packet Generator
-  def __init__(self, env, _id, ar, flow_id=0, serv=None, serv_dist_m=None):
+  def __init__(self, env, _id, ar, flow_id=0, psize=None, psize_dist_m=None):
     self._id = _id
     self.env = env
     self.ar = ar
     self.flow_id = flow_id
     
-    if serv == "Bern*Pareto":
-      self.serv_time = BernPareto(serv_dist_m['L'], serv_dist_m['U'], serv_dist_m['p_s'], serv_dist_m['loc'], serv_dist_m['a'] )
+    if psize == "Pareto":
+      self.psize_dist = Pareto(psize_dist_m['loc'], psize_dist_m['a'] )
     else:
-      self.serv_time = None
+      self.psize_dist = None
     
     self.n_sent = 0
     self.out = None
@@ -85,10 +84,9 @@ class PG(object): # Packet Generator
     while 1:
       yield self.env.timeout(random.expovariate(self.ar) )
       self.n_sent += 1
-      if self.serv_time is None:
-        p = Packet(time=self.env.now, _id=self.n_sent, flow_id=self.flow_id)
-      else:
-        p = Packet(time=self.env.now, _id=self.n_sent, flow_id=self.flow_id, serv_time=self.serv_time.gen_sample() )
+      
+      psize = 1 if self.psize_dist is None else self.psize_dist.gen_sample()
+      p = Packet(time=self.env.now, _id=self.n_sent, flow_id=self.flow_id, size=psize)
       self.out.put(p)
 
 # *************************************  JSink, JQ  ************************************* #
@@ -198,12 +196,16 @@ class FCFS(Q): # First Come First Serve
     super().__init__(_id, env)
     
     self.serv = serv
-    if self.serv == "Exp":
+    if serv == "Exp":
       self.serv_time = Exp(mu=serv_dist_m['mu'] )
-    elif self.serv == "Pareto":
+    elif serv == "Pareto":
       self.serv_time = Pareto(serv_dist_m['loc'], serv_dist_m['a'] )
-    elif self.serv == "Dolly":
+    elif serv == "Bern":
+      self.serv_time = Bern(serv_dist_m['U'], serv_dist_m['L'], serv_dist_m['p'] )
+    elif serv == "Dolly":
       self.serv_time = Dolly()
+    else:
+      self.serv_time = None
     
     self.p_l = []
     self.p_in_serv = None
@@ -289,9 +291,7 @@ class FCFS(Q): # First Come First Serve
       self.preempt = self.env.event()
       
       clk_start_time = self.env.now
-      t = self.p_in_serv.serv_time
-      if t is None:
-        t = self.serv_time.gen_sample()
+      t = self.p_in_serv.size*self.serv_time.gen_sample()
       sim_log(DEBUG, self.env, self, "starting {}-clock! on ".format(self.serv), self.p_in_serv)
       yield (self.cancel | self.preempt | self.env.timeout(t) )
       

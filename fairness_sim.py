@@ -40,14 +40,14 @@ class FF_JSink(object): # Join
 
 # **********************************  Fairness First AVQ  ******************************* #
 class FF_AVQ(object): # Fairness First
-  def __init__(self, _id, env, t, qmu_l, serv, sym__rgroup_l_map, sym_sysqid_map, out=None):
+  def __init__(self, _id, env, t, sym__rgroup_l_map, sym_sysqid_map, serv, serv_dist_m, out=None):
     self._id = _id
     self.env = env
     self.sym__rgroup_l_map = sym__rgroup_l_map
     self.sym_sysqid_map = sym_sysqid_map
     self.out = out
     
-    self.num_q = len(qmu_l)
+    self.num_q = int(1 + t*r)
     self.qid_l = [i for i in range(self.num_q) ]
     
     self.jsink = FF_JSink(_id, env)
@@ -58,7 +58,7 @@ class FF_AVQ(object): # Fairness First
     self.jq.out_c = self # control outlet
     self.id_q_map = {}
     for i, qid in enumerate(self.qid_l):
-      q = FCFS(qid, env, qmu_l[i], serv)
+      q = FCFS(qid, env, serv, serv_dist_m)
       q.out = self.jq
       self.id_q_map[qid] = q
     #

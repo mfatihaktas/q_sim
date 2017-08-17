@@ -148,24 +148,33 @@ class Dolly(RV):
     return 12 + u/100 # for safety
 
 class Bern(RV):
-  def __init__(self, L, U, p):
-    RV.__init__(self, l_l=L, u_l=U)
+  def __init__(self, U, L, p):
+    RV.__init__(self, l_l=U, u_l=L)
+    
+    self.p = p
   
   def __str__(self):
     return "Bern"
   
+  def mean(self):
+    return self.p*self.u_l + (1 - self.p)*self.l_l
+  
   def gen_sample(self):
-    return U if random.uniform(0, 1) <= p else L
+    u = random.uniform(0, 1)
+    return self.u_l + u/100 if u <= self.p else self.l_l + u/100
 
-class BernPareto(RV):
-  def __init__(self, L, U, p_s, loc, a):
-    RV.__init__(self, l_l=L*loc, u_l=float("Inf") )
+# class BernPareto(RV):
+#   def __init__(self, U, L, p, loc, a):
+#     RV.__init__(self, l_l=U*loc, u_l=float("Inf") )
     
-    self.pareto = Pareto(loc, a)
-    self.bern = Bern(L, U, p_s)
+#     self.bern = Bern(U, L, p)
+#     self.pareto = Pareto(loc, a)
   
-  def __str__(self):
-    return "Bern*Pareto"
+#   def __str__(self):
+#     return "Bern*Pareto"
   
-  def gen_sample(self):
-    return self.bern.gen_sample()*self.pareto.gen_sample()
+#   def mean(self):
+#     return self.bern.mean()*self.pareto.mean()
+  
+#   def gen_sample(self):
+#     return self.bern.gen_sample()*self.pareto.gen_sample()
