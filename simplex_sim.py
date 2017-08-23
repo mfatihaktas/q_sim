@@ -8,17 +8,17 @@ from mds_sim import MDSQ
 from patch import *
 
 class MT_PG(PG):
-  def __init__(self, env, _id, ar, sym_l, flow_id=0, pop_sym=None, pop_ar=None):
+  def __init__(self, env, _id, ar, sym_l, hot_sym=None, hot_ar=None, flow_id=0):
     super().__init__(env, _id, ar, flow_id)
     self.sym_l = sym_l
-    self.pop_sym = pop_sym
-    self.pop_ar = pop_ar
+    self.hot_sym = hot_sym
+    self.hot_ar = hot_ar
     
     self.sym__n_sent = {}
   
   def init(self):
     self.env.process(self.run() )
-    if self.pop_sym is not None:
+    if self.hot_sym is not None:
       self.env.process(self.run_pop() )
   
   def send(self, p):
@@ -31,8 +31,8 @@ class MT_PG(PG):
   
   def run(self):
     sym_l_ = list(self.sym_l)
-    if self.pop_sym is not None:
-      sym_l_.remove(self.pop_sym)
+    if self.hot_sym is not None:
+      sym_l_.remove(self.hot_sym)
     
     while 1:
       yield self.env.timeout(random.expovariate(self.ar) )
@@ -43,9 +43,9 @@ class MT_PG(PG):
   
   def run_pop(self):
     while 1:
-      yield self.env.timeout(random.expovariate(self.pop_ar) )
+      yield self.env.timeout(random.expovariate(self.hot_ar) )
       
-      p = Packet(time=self.env.now, size=1, _id=self.n_sent, sym=self.pop_sym, flow_id=self.flow_id)
+      p = Packet(time=self.env.now, size=1, _id=self.n_sent, sym=self.hot_sym, flow_id=self.flow_id)
       self.send(p)
 
 class MT_AV_JQ(object):
@@ -296,28 +296,28 @@ class AVQMonitor(object):
     sim_log(DEBUG, self.env, self, "recved", p)
     return self.store.put(p)
   
-# *****************************  Mixed-Traffic Availability Q  ******************************* #
+# *******************************  Mixed-Traffic Availability Q  ******************************* #
 class MT_AVQ(object):
-  def __init__(self, _id, env, sym__rgroup_l_map, serv, serv_dist_m=None, out=None):
+  def __init__(self, _id, env, t, sym__rgroup_l_map, serv, serv_dist_m, out=None):
     self._id = _id
     self.env = env
     self.sym__rgroup_l_map = sym__rgroup_l_map
     self.out = out
     
-    self.num_q = int(1 + t*r)
+    self.num_q = int(1 + t*2)
     self.qid_l = [i for i in range(self.num_q) ]
     
     self.jsink = JSink(_id, env)
     self.jsink.out = out
-    self.id_q_map = {}
-    
     self.join_q = MT_AV_JQ(_id, env, self.qid_l, sym__rgroup_l_map)
     self.join_q.out = self.jsink
     self.join_q.out_c = self
     self.join_q.out_m = None # can be set by the caller if desired
-    for i, qid in enumerate(qid_l):
-      q = FCFS(qid, env, serv, serv_dist_m)
-      log(DEBUG, "i= {}, q= {}".format(i, q) )
+    
+    self.id_q_map = {}
+    for i in self.qid_l:
+      q = FCFS(i, env, serv, serv_dist_m)
+      log(DEBUG, "q= {}".format(q) )
       q.out = self.join_q
       self.id_q_map[i] = q
     
@@ -340,7 +340,7 @@ class MT_AVQ(object):
   def run(self):
     while True:
       p = (yield self.store.get() )
-      for qid, q in self.id_q_map.items():
+      for i, q in self.id_q_map.items():
         q.put(p.deep_copy() )
       
   def put(self, p):
@@ -353,7 +353,7 @@ class MT_AVQ(object):
   def run_c(self):
     while True:
       cp = (yield self.store_c.get() )
-      for g, q in self.id_q_map.items():
+      for i, q in self.id_q_map.items():
         if q._id not in cp.departed_qid_l:
           q.put_c(cp.deep_copy() )
   

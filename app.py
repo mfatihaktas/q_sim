@@ -26,7 +26,7 @@ if __name__ == "__main__":
   #   t = random_dot(num)
   #   print("num= {}, t= {}".format(num, t) )
   
-  num = 500*1000
+  num = int(0.8*500*1000)
   t = random_dot(num)
   # print("num= {}, t= {}".format(num, t) )
   print("{}".format(t) )

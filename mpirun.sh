@@ -15,11 +15,11 @@ echo "NODES= $NODES"
 
 MPIRUN=/opt/openmpi-1.7ft_b3/bin/mpirun # /usr/lib64/openmpi/bin/mpirun
 PKILL=/usr/bin/pkill
-PYTHON=~/Desktop/Python-3.5.1/install/bin/python3
+PYTHON=/usr/bin/python3 # ~/Desktop/Python-3.5.1/install/bin/python3
 DIR=/cac/u01/mfa51/Desktop/q_sim
 
-NUM_REP=100
-NUM_APP=$((4*8)) # $((5*8)) # $((5*16))
+NUM_REP=100 # 100
+NUM_APP=10 # $((4*8)) # $((5*8)) # $((5*16))
 
 if [ $1  == 'r' ]; then
   # eval NODES=\$$NODES

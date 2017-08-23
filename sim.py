@@ -197,7 +197,7 @@ class FCFS(Q): # First Come First Serve
     
     self.serv = serv
     if serv == "Exp":
-      self.serv_time = Exp(mu=serv_dist_m['mu'] )
+      self.serv_time = Exp(serv_dist_m['mu'] )
     elif serv == "Pareto":
       self.serv_time = Pareto(serv_dist_m['loc'], serv_dist_m['a'] )
     elif serv == "Bern":
@@ -222,7 +222,7 @@ class FCFS(Q): # First Come First Serve
     self.syncer = simpy.Store(env) # simpy.Resource(env, capacity=1)
     self.out = None
     self.action = env.process(self.run() )  # starts the run() method as a SimPy process
-    self.action = env.process(self.run_c() )
+    # self.action = env.process(self.run_c() )
     self.action = env.process(self.run_helper() )
   
   def __repr__(self):
@@ -336,24 +336,38 @@ class FCFS(Q): # First Come First Serve
     while True:
       cp = (yield self.store_c.get() )
       # sim_log(WARNING, self.env, self, "!!! cancelling p_in_serv= {}, q_length= {}".format(self.p_in_serv, self.length() ), cp)
-      if cp.sym is not None and self.p_in_serv is not None and self.p_in_serv.sym == cp.sym:
-        # log(WARNING, "!!! cancelling p_in_serv= {}, with cp= {}".format(self.p_in_serv, cp) )
+      # if cp.sym is not None and self.p_in_serv is not None and self.p_in_serv.sym == cp.sym:
+      #   # log(WARNING, "!!! cancelling p_in_serv= {}, with cp= {}".format(self.p_in_serv, cp) )
+      #   self.cancel_flag = True
+      #   self.cancel.succeed()
+      #   for p in self.p_l:
+      #     if p.sym == cp.sym:
+      #       self.p_l.remove(p)
+      if cp._id == -1 and self.p_in_serv is not None and self.p_in_serv.sym == cp.sym: # for ff_simplex
         self.cancel_flag = True
         self.cancel.succeed()
-        for p in self.p_l:
-          if p.sym == cp.sym:
-            self.p_l.remove(p)
       elif self.p_in_serv is not None and self.p_in_serv.job_id == cp._id:
         self.cancel_flag = True
         self.cancel.succeed()
-      
-        for p in self.p_l:
-          if p.job_id == cp._id:
-            self.p_l.remove(p)
+      # This has to be run always for mixed-traffic since requests can depart out of order
+      for p in self.p_l:
+        if p.job_id == cp._id:
+          self.p_l.remove(p)
   
   def put_c(self, cp):
     sim_log(DEBUG, self.env, self, "recved", cp)
-    return self.store_c.put(cp.deep_copy() )
+    # return self.store_c.put(cp.deep_copy() )
+    
+    if cp._id == -1 and self.p_in_serv is not None and self.p_in_serv.sym == cp.sym: # for ff_simplex
+      self.cancel_flag = True
+      self.cancel.succeed()
+    elif self.p_in_serv is not None and self.p_in_serv.job_id == cp._id:
+      self.cancel_flag = True
+      self.cancel.succeed()
+    # This has to be run always for mixed-traffic since requests can depart out of order
+    for p in self.p_l:
+      if p.job_id == cp._id:
+        self.p_l.remove(p)
   
 class QMonitor(object):
   def __init__(self, env, q, dist):

@@ -9,28 +9,25 @@ class RV(): # Random Variable
 
 class Exp(RV):
   def __init__(self, mu, D=0):
-    RV.__init__(self, l_l=0, u_l=float("inf") )
+    RV.__init__(self, l_l=D, u_l=float("inf") )
     self.D = D
     self.mu = mu
-    if D < 0 or mu < 0:
-      log(ERROR, "Unexpected arg; {}".format(self) )
-      return 1
   
   def __str__(self):
-    return "Exp(D= {0:.2f}, mu= {0:.2f})".format(self.D, self.mu)
+    return "Exp(D={}, mu={})".format(self.D, self.mu)
   
   def tail(self, x):
-    if x <= self.l_l or x < self.D:
+    if x <= self.l_l:
       return 1
     return math.exp(-self.mu*(x - self.D) )
   
   def cdf(self, x):
-    if x <= self.l_l or x < self.D:
+    if x <= self.l_l:
       return 0
     return 1 - math.exp(-self.mu*(x - self.D) )
   
   def pdf(self, x):
-    if x <= self.l_l or x < self.D:
+    if x <= self.l_l:
       return 0
     return self.mu*math.exp(-self.mu*(x - self.D) )
   

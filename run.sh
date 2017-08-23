@@ -13,7 +13,7 @@ done
 echo "SIM_NODES= $SIM_NODES"
 
 MATLAB=/cac/u01/mfa51/Desktop/matlab_2016/install_/bin/./matlab
-PYTHON=~/Desktop/Python-3.5.1/install/bin/python3
+PYTHON=python3 # ~/Desktop/Python-3.5.1/install/bin/python3
 MPIRUN=/cac/u01/mfa51/Desktop/openmpi-1.10.2/install/bin/mpirun
 PKILL=/usr/bin/pkill
 

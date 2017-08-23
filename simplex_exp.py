@@ -83,43 +83,12 @@ def test_avq(num_f_run, arr_rate, t, r, k, serv="Exp", serv_dist_m=None,
     
     env = simpy.Environment()
     if mixed_traff:
-      sym__rgroup_l_map = {}
-      if t == 1: sym_l = ['a', 'b']
-      elif t == 3: sym_l = ['a', 'b', 'c']
-      for sym in sym_l:
-        rgroup_l = []
-        if w_sys and t == 1:
-          if sym == 'a':
-            rgroup_l.append([0] )
-            rgroup_l.append([1, 2] )
-            # for g in range(1, t+1):
-            #   rgroup_l.append([2*g-1, 2*g] )
-          elif sym == 'b':
-            rgroup_l.append([1] )
-            rgroup_l.append([0, 2] )
-        elif w_sys and t == 3:
-          if sym == 'a':
-            rgroup_l.append([0] )
-            rgroup_l.append([1, 2] )
-            rgroup_l.append([3, 4] )
-            rgroup_l.append([5, 6] )
-          elif sym == 'b':
-            rgroup_l.append([1] )
-            rgroup_l.append([0, 2] )
-            rgroup_l.append([3, 5] )
-            rgroup_l.append([4, 6] )
-          elif sym == 'c':
-            rgroup_l.append([3] )
-            rgroup_l.append([0, 4] )
-            rgroup_l.append([1, 5] )
-            rgroup_l.append([2, 6] )
-        sym__rgroup_l_map[sym] = rgroup_l
+      sym_l, sym__rgroup_l_m = simplex_sym_l__sym__rgroup_l_m(t)
+      log(WARNING, "sym__rgroup_l_m=\n {}".format(pprint.pformat(sym__rgroup_l_m) ) )
       pg = MT_PG(env, "pg", arr_rate, sym_l)
-      log(WARNING, "sym__rgroup_l_map=\n {}".format(pprint.pformat(sym__rgroup_l_map) ) )
-      avq = MT_AVQ("mt_avq", env, sym__rgroup_l_map, serv, serv_dist_m)
+      avq = MT_AVQ("mt_avq", env, t, sym__rgroup_l_m, serv, serv_dist_m)
       # monitor = AVQMonitor(env, aq=avq, poll_dist=lambda: 0.1)
       # avq.join_q.out_m = monitor
-      pg.out = avq
     else:
       psize = None
       if serv == "Bern*Pareto":
@@ -129,12 +98,13 @@ def test_avq(num_f_run, arr_rate, t, r, k, serv="Exp", serv_dist_m=None,
       avq = AVQ("avq", env, t, r, k, serv, serv_dist_m, sching, w_sys=w_sys)
       # monitor = AVQMonitor(env, aq=avq, poll_dist=lambda: 0.1)
       # avq.join_q.out_m = monitor
-      pg.out = avq
-      pg.init()
-    env.run(until=50000*4)
+    pg.out = avq
+    pg.init()
+    c = 4 if serv == "Pareto" else 1
+    env.run(until=c*50000) # 20
+    
     if mixed_traff:
       print("pg.sym__n_sent= {}".format(pprint.pformat(pg.sym__n_sent) ) )
-    
     st_l = avq.jsink.st_l
     if len(st_l) > 0:
       E_T_f_sum += float(sum(st_l) )/len(st_l)
@@ -471,8 +441,8 @@ def plot_simplex_vs_rep():
   # plot_select_one()
   # scheduling = "Split-to-one"
   plot.legend(prop={'size':12})
-  plot.xlabel(r'Arrival rate $\lambda$ (Request/sec)', fontsize=12)
-  plot.ylabel(r'Average download time (sec)', fontsize=12)
+  plot.xlabel(r'Arrival rate $\lambda$ (Request/s)', fontsize=12)
+  plot.ylabel(r'Average download time (s)', fontsize=12)
   # plot.title(r'$t={}, \mu={}$'.format(t, mu) )
   plot.title(r'{} scheduling, $t= {}$'.format(scheduling, t) )
   fig = plot.gcf()
@@ -505,9 +475,9 @@ def plot_simplex_vs_rep():
   log(WARNING, "done; scheduling= {}, t= {}".format(scheduling, t) )
 
 def plot_simplex():
-  mixed_traff, w_sys = False, True
+  mixed_traff, w_sys = True, True
   t, r, k = 3, 2, 2
-  serv = "Bern" # "Bern*Pareto" # "Pareto" # "Exp" # "Dolly"
+  serv = "Exp" # "Bern" # "Bern*Pareto" # "Pareto" # "Exp" # "Dolly"
   mu = 1
   # loc, a = 1, 2
   U, L, p, loc, a = 1, 8, 0.2, 1, 3 # 1, 8, 0.2, 1, 3
@@ -652,6 +622,41 @@ def plot_simplex():
           18.778687793661728,
           23.582209372296532,
           36.21619587757658]
+      elif t == 3:
+        # # num_f_run = 3
+        # E_T_sim_simplex_l= [
+        #   1.1111615206072647,
+        #   1.2612248957282188,
+        #   1.4716074809966988,
+        #   1.8227059853938297,
+        #   2.4253777975833004,
+        #   4.071010185184682,
+        #   4.396238433456311,
+        #   5.0137801610805175,
+        #   5.848770901912878,
+        #   6.813386046075639,
+        #   8.718909855975161,
+        #   11.188496302711075,
+        #   17.300044430648644,
+        #   39.39675358464152,
+        #   None] # 429.63361702902347
+        # num_f_run = 1
+        E_T_sim_simplex_l= [
+          1.1072895175117927,
+          1.2582695204803385,
+          1.4572200912301614,
+          1.8340775367273732,
+          2.4430722742069184,
+          4.053853819806121,
+          4.4494192069988605,
+          5.061922101782603,
+          5.883304533639656,
+          6.705043861319703,
+          8.307668993372534,
+          11.041651319984396,
+          17.564101468045756,
+          33.184482866801716,
+          None]
       else: sim_simplex = True
     else: sim_simplex = True
   elif serv == "Bern*Pareto":
@@ -718,33 +723,56 @@ def plot_simplex():
   
   # Mixed traff
   sim_simplex_mixed_traff = False
-  if serv == "Exp":
-    if t == 1:
-      E_T_simplex_l= [
-        5.199245728165055,
-        6.199267167604961,
-        7.03035246626308,
-        8.454590346490983,
-        9.79364682430103,
-        11.872769374724683,
-        16.236234711493154,
-        23.117895846693823,
-        36.0540574127781,
-        60.31077338957529]
-    elif t == 33:
-      pass
-    else:
-      sim_simplex_mixed_traff = True
+  if mixed_traff:
+    if serv == "Exp":
+      if t == 1:
+        E_T_sim_simplex_mixed_traff_l= [
+          0.678978501641253,
+          0.7748022818617738,
+          0.9072886738372506,
+          1.0928902616368403,
+          1.43754904360929,
+          2.0810587767368154,
+          2.266461910378062,
+          2.5977047234601125,
+          3.2441553951140985,
+          3.585616438620215,
+          4.415600179701042,
+          6.099149242270735,
+          9.786138444920114,
+          None, # 21.631079441147904
+          None]
+      elif t == 3:
+        E_T_sim_simplex_mixed_traff_l= [
+          0.46217641274184773,
+          0.5249541076176077,
+          0.6065798815902482,
+          0.7193352388312126,
+          0.9238674360581351,
+          1.363955390788439,
+          1.4654931553890183,
+          1.733811055160431,
+          2.0493965738680795,
+          2.479767271681704,
+          3.065826086322138,
+          4.300842192226751,
+          8.05986376865404,
+          None, # 35.70730644518723,
+          None]
+      else:
+        sim_simplex_mixed_traff = True
   
   arr_rate_l = []
   for arr_rate in [*numpy.linspace(0.05, 0.8*arr_rate_ub, 5, endpoint=False), *numpy.linspace(0.8*arr_rate_ub, arr_rate_ub, 10) ]:
   # for arr_rate in numpy.linspace(0.05, arr_rate_ub, 2):
     arr_rate_l.append(arr_rate)
     
+    p_i_l = []
     if sim_simplex:
-      p_i_l = []
       E_T_sim_simplex_l.append(test_avq(num_f_run, arr_rate, t, r, k, serv, serv_dist_m, w_sys=w_sys, p_i_l=p_i_l) )
     # E_T_simplex_sim_based_approx_l.append(E_T_simplex_approx(t, arr_rate, serv, serv_dist_m, p_i_l=p_i_l) )
+    # if sim_simplex_mixed_traff:
+    #   E_T_sim_simplex_mixed_traff_l.append(test_avq(num_f_run, arr_rate, t, r, k, serv, serv_dist_m, w_sys=w_sys, p_i_l=p_i_l, mixed_traff=True) )
     
     E_T_simplex_sm_l.append(E_T_simplex_splitmerge(t, arr_rate, serv, serv_dist_m) )
     E_T_simplex_lb_l.append(E_T_simplex_lb(t, arr_rate, serv, serv_dist_m) )
@@ -764,10 +792,12 @@ def plot_simplex():
     # E_T_simplex_varki_gauri_lb_l.append(E_T_simplex_varki_gauri_lb(t, arr_rate, gamma, mu) )
   
   arr_rate_mixed_traff_l = []
+  # for arr_rate in numpy.linspace(0.2, 0.2, 1):
   for arr_rate in [*numpy.linspace(0.05, 0.8*arr_rate_ub, 5, endpoint=False), *numpy.linspace(0.8*arr_rate_ub, 1.1*arr_rate_ub, 10) ]:
     arr_rate_mixed_traff_l.append(arr_rate)
     if sim_simplex_mixed_traff:
       E_T_sim_simplex_mixed_traff_l.append(test_avq(num_f_run, arr_rate, t, r, k, serv, serv_dist_m, w_sys=w_sys, mixed_traff=True) )
+  
   mew, ms = 3, 6 # 8
   def plot_poster():
     # for better looking plot
@@ -781,7 +811,7 @@ def plot_simplex():
     plot.plot(arr_rate_approx_l, E_T_simplex_best_approx_l, label="Rep-to-all, M/G/1 approximation", zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
   def plot_rep_to_all():
     log(WARNING, "E_T_sim_simplex_l= {}".format(pprint.pformat(E_T_sim_simplex_l) ) )
-    label = 'Simulation, mixed-arrivals' if mixed_traff else 'Simulation'
+    label = 'Simulation, fixed-arrivals' if mixed_traff else 'Simulation'
     plot.plot(arr_rate_l, E_T_sim_simplex_l, label=label, marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
     # plot.plot(arr_rate_l, E_T_simplex_sim_based_approx_l, label=r'Sim-based approximation', marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
     # """
@@ -841,7 +871,7 @@ def plot_simplex():
           63.04484770016015]
       else: sim = True
     elif serv == "Bern*Pareto":
-      if L == 1 and U == 8 and p_s == 0.2 and loc == 1 and a == 3:
+      if U == 1 and L == 8 and p == 0.2 and loc == 1 and a == 3:
         if t == 11:
           pass
         else: sim = True
@@ -864,14 +894,14 @@ def plot_simplex():
   plot.ylabel(r'Average download time $E[T]$ (s)', fontsize=13)
   serv_in_latex = None
   if serv == "Exp":
-    serv_in_latex = r'$Servers \sim Exp(\mu={})$'.format(mu)
+    serv_in_latex = r'Exp(\mu={})'.format(mu)
   elif serv == "Pareto":
-    serv_in_latex = r'$Servers \sim Pareto(\lambda={}, \alpha={})$'.format(loc, a)
+    serv_in_latex = r'Pareto(\lambda={}, \alpha={})'.format(loc, a)
   elif serv == "Bern":
-    serv_in_latex = r'$Servers \sim Bern(p={})$'.format(p)
+    serv_in_latex = r'Bern(U={}, L={}, p={})'.format(U, L, p)
   elif serv == "Dolly":
-    serv_in_latex = r'$Servers \sim Dolly$'
-  plot.title(r'{}, availability $t={}$'.format(serv_in_latex, t) )
+    serv_in_latex = r'Dolly'
+  plot.title(r'$S \sim {}$, availability $t={}$'.format(serv_in_latex, t) )
   fig = plot.gcf()
   def_size = fig.get_size_inches()
   fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.4)

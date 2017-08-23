@@ -8,7 +8,79 @@ from numpy import linalg
 from rvs import *
 from patch import *
 
-MAX_E_T = 70
+def simplex_sym_l__sym__rgroup_l_m(t):
+  sym_l = []
+  sym__rgroup_l_m = {}
+  
+  if t == 1: sym_l = ['a', 'b']
+  elif t == 3: sym_l = ['a', 'b', 'c']
+  elif t == 7: sym_l = ['a', 'b', 'c', 'd']
+  for sym in sym_l:
+    rgroup_l = []
+    if t == 1:
+      if sym == 'a':
+        rgroup_l.append([0] )
+        rgroup_l.append([1, 2] )
+      elif sym == 'b':
+        rgroup_l.append([1] )
+        rgroup_l.append([0, 2] )
+    elif t == 3:
+      if sym == 'a':
+        rgroup_l.append([0] )
+        rgroup_l.append([1, 2] )
+        rgroup_l.append([3, 4] )
+        rgroup_l.append([5, 6] )
+      elif sym == 'b':
+        rgroup_l.append([1] )
+        rgroup_l.append([0, 2] )
+        rgroup_l.append([3, 5] )
+        rgroup_l.append([4, 6] )
+      elif sym == 'c':
+        rgroup_l.append([3] )
+        rgroup_l.append([0, 4] )
+        rgroup_l.append([1, 5] )
+        rgroup_l.append([2, 6] )
+    elif t == 3:
+      if sym == 'a':
+        rgroup_l.append([0] )
+        rgroup_l.append([1, 2] )
+        rgroup_l.append([3, 4] )
+        rgroup_l.append([5, 6] )
+        rgroup_l.append([7, 8] )
+        rgroup_l.append([9, 10] )
+        rgroup_l.append([11, 12] )
+        rgroup_l.append([13, 14] )
+      elif sym == 'b':
+        rgroup_l.append([1] )
+        rgroup_l.append([0, 2] )
+        rgroup_l.append([3, 5] )
+        rgroup_l.append([4, 6] )
+        rgroup_l.append([7, 9] )
+        rgroup_l.append([8, 10] )
+        rgroup_l.append([11, 13] )
+        rgroup_l.append([12, 14] )
+      elif sym == 'c':
+        rgroup_l.append([3] )
+        rgroup_l.append([0, 4] )
+        rgroup_l.append([1, 5] )
+        rgroup_l.append([2, 6] )
+        rgroup_l.append([7, 11] )
+        rgroup_l.append([8, 12] )
+        rgroup_l.append([9, 13] )
+        rgroup_l.append([10, 14] )
+      elif sym == 'd':
+        rgroup_l.append([7] )
+        rgroup_l.append([0, 8] )
+        rgroup_l.append([1, 9] )
+        rgroup_l.append([2, 10] )
+        rgroup_l.append([3, 11] )
+        rgroup_l.append([4, 12] )
+        rgroup_l.append([5, 13] )
+        rgroup_l.append([6, 14] )
+    sym__rgroup_l_m[sym] = rgroup_l
+  return (sym_l, sym__rgroup_l_m)
+
+MAX_E_T = 35 # 70
 
 def E_T_rep_n_1(arr_rate, mu, n):
   E_S = 1/n/mu
@@ -31,13 +103,13 @@ def E_T_fj_2(arr_rate, mu):
   return E_T
 
 # ****************************  Simplex possible serv time moments  **************************** #
-def avq_low_traff_serv_time_first_moment(r, t, mu):
+def E_S_avq(r, t, mu):
   if t == 0:
     return 1/mu
   else:
     return 1/(mu*r)*B(t+1, 1/r)
 
-def avq_low_traff_serv_time_second_moment(r, t, mu):
+def E_S_2_avq(r, t, mu):
   if t == 0:
     return 2/mu**2
   else:
@@ -375,8 +447,8 @@ def simplex_w_two_repair__state_prob_map(mc_truncation_state_id, mu):
   return state_prob_map
 
 def E_T_simplex_t_2(arr_rate, mu, M):
-  E_S_c = avq_low_traff_serv_time_first_moment(2, 2, mu)
-  E_S_c_2 = avq_low_traff_serv_time_second_moment(2, 2, mu)
+  E_S_c = E_S_avq(2, 2, mu)
+  E_S_c_2 = E_S_2_avq(2, 2, mu)
   E_S_p_1st = 5/(12*mu)
   E_S_p_1st_2 = 23/(72*mu**2)
   E_S_p_2nd = 1/(3*mu)
