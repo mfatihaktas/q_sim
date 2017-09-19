@@ -192,20 +192,22 @@ class Q(object):
     self.env = env
 
 class FCFS(Q): # First Come First Serve
-  def __init__(self, _id, env, serv="Exp", serv_dist_m=None):
+  def __init__(self, _id, env, serv="Exp", serv_dist_m=None, out=None):
     super().__init__(_id, env)
-    
     self.serv = serv
     if serv == "Exp":
       self.serv_time = Exp(serv_dist_m['mu'] )
     elif serv == "Pareto":
       self.serv_time = Pareto(serv_dist_m['loc'], serv_dist_m['a'] )
+    elif serv == "TPareto":
+      self.serv_time = TPareto(serv_dist_m['l'], serv_dist_m['u'], serv_dist_m['a'] )
     elif serv == "Bern":
       self.serv_time = Bern(serv_dist_m['U'], serv_dist_m['L'], serv_dist_m['p'] )
     elif serv == "Dolly":
       self.serv_time = Dolly()
     else:
       self.serv_time = None
+    self.out = out
     
     self.p_l = []
     self.p_in_serv = None
@@ -220,7 +222,6 @@ class FCFS(Q): # First Come First Serve
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
     self.syncer = simpy.Store(env) # simpy.Resource(env, capacity=1)
-    self.out = None
     self.action = env.process(self.run() )  # starts the run() method as a SimPy process
     # self.action = env.process(self.run_c() )
     self.action = env.process(self.run_helper() )

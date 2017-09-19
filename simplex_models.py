@@ -682,7 +682,3 @@ if __name__ == "__main__":
   
   # E_T_simplex_w_one_repair__matrix_analytic(t=3, arr_rate=0.55, mu=1)
   plot_E_T_simplex_split_to_one(t=1, mu=1)
-  
-  # plot_diminishing_return_as_t_incs()
-  
-  

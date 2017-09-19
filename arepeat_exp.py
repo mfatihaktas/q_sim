@@ -23,9 +23,16 @@ def plot_arepeat_k_nc():
   elif task_t == "Pareto": task_t_in_latex = r'X \sim Pareto(\lambda={}, \alpha={})'.format(loc, a)
   
   def plot_(k, n=None, c=None, sim=False):
-    if task_t == "Exp": task_t_rv = Exp(mu)
-    elif task_t == "SExp": task_t_rv = Exp(mu, D/k)
-    elif task_t == "Pareto": task_t_rv = Pareto(a, loc=loc)
+    if task_t == "Exp":
+      task_t_rv = Exp(mu)
+      task_dist_m = {"mu": mu}
+    elif task_t == "SExp":
+      task_t_rv = Exp(mu, D/k)
+      task_dist_m = {"D": D, "mu": mu}
+    elif task_t == "Pareto":
+      task_t_rv = Pareto(loc, a)
+      task_dist_m = {"loc": loc, "a": a}
+    elif task_t == "Google": task_t_rv = Google(k)
     
     d_l = []
     y_l, y_approx_l, y_sim_l = [], [], []
@@ -34,19 +41,19 @@ def plot_arepeat_k_nc():
       d_l.append(d)
       if task_t != "Google":
         if n is not None:
-          y_l.append(E_T_k_l_n(task_t, D, mu, loc, a, d, k, l, n) )
-          # y_l.append(E_C_k_l_n(task_t, D, mu, loc, a, d, k, l, n, w_cancel=True) )
+          y_l.append(E_T_k_l_n(task_t, task_dist_m, d, k, l, n) )
+          # y_l.append(E_C_k_l_n(task_t, task_dist_m, d, k, l, n, w_cancel=True) )
         elif c is not None:
-          y_l.append(E_T_k_c(task_t, D, mu, loc, a, d, k, c) )
-          # y_l.append(E_C_k_l_n(task_t, D, mu, loc, a, d, k, c, w_cancel=True) )
+          y_l.append(E_T_k_c(task_t, task_dist_m, d, k, c) )
+          # y_l.append(E_C_k_l_n(task_t, task_dist_m, d, k, c, w_cancel=True) )
       if sim:
         if n is not None:
           stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=10000)
         elif c is not None:
           stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c, num_run=10000)
-        # y_sim_l.append(sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] ) )
-        y_sim_l.append(sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] ) )
-        # y_sim_l.append(sum(stat_id__trial_sampleavg_l_m['E_C'] )/len(stat_id__trial_sampleavg_l_m['E_C'] ) )
+        # y_sim_l.append(sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] ) )
+        y_sim_l.append(sum(stat_id__trial_sampleavg_l_m['C_wc'] )/len(stat_id__trial_sampleavg_l_m['C_wc'] ) )
+        # y_sim_l.append(sum(stat_id__trial_sampleavg_l_m['C_wc'] )/len(stat_id__trial_sampleavg_l_m['C_wc'] ) )
     label = r'$n={}$'.format(n) if n is not None else r'$c={}$'.format(c)
     # plot.plot(d_l, y_l, label=label, color=next(dark_color), linestyle=':', mew=2)
     # plot.plot(d_l, y_approx_l, label=label, color=next(light_color), marker=next(marker), linestyle='', mew=2)
@@ -88,19 +95,26 @@ def plot_arepeat_k_nc_E_C_vs_E_T():
     u_l = 10*task_t_rv.mean()
     for d in numpy.linspace(0, u_l, 20):
       if task_t != "Google":
-        E_T_l.append(E_T_k_l_n(task_t, D, mu, loc, a, d, k, l, n) )
-        E_C_l.append(E_C_k_l_n(task_t, D, mu, loc, a, d, k, l, n, w_cancel=w_cancel) )
+        E_T_l.append(E_T_k_l_n(task_t, task_dist_m, d, k, l, n) )
+        E_C_l.append(E_C_k_l_n(task_t, task_dist_m, d, k, l, n, w_cancel=w_cancel) )
       if sim:
-        if task_t == "Exp": task_t_rv = Exp(mu)
-        elif task_t == "SExp": task_t_rv = Exp(mu, D/k)
-        elif task_t == "Pareto": task_t_rv = Pareto(a, loc=loc)
+        if task_t == "Exp":
+          task_t_rv = Exp(mu)
+          task_dist_m = {"mu": mu}
+        elif task_t == "SExp":
+          task_t_rv = Exp(mu, D/k)
+          task_dist_m = {"D": D, "mu": mu}
+        elif task_t == "Pareto":
+          task_t_rv = Pareto(loc, a)
+          task_dist_m = {"loc": loc, "a": a}
         elif task_t == "Google": task_t_rv = Google(k)
+        
         if n is not None:
           stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=10000)
         elif c is not None:
           stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c, num_run=10000)
-        E_T = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )
-        E_C = sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] )/60/60
+        E_T = sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] )
+        E_C = sum(stat_id__trial_sampleavg_l_m['C_wc'] )/len(stat_id__trial_sampleavg_l_m['C_wc'] )/60/60
         if task_t == "Google":
           E_T = E_T/60/60
           E_C = E_C/60/60
@@ -142,8 +156,8 @@ def plot_reped_vs_coded(w_cancel=True):
     E_T_l, E_C_l = [], []
     if c:
       for c_ in range(1,c+1):
-        E_T = E_T_k_c(task_t, D, mu, loc, a, d, k, c_)
-        E_C = E_C_k_c(task_t, D, mu, loc, a, d, k, c_, w_cancel=w_cancel)
+        E_T = E_T_k_c(task_t, task_dist_m, d, k, c_)
+        E_C = E_C_k_c(task_t, task_dist_m, d, k, c_, w_cancel=w_cancel)
         E_T_l.append(E_T)
         E_C_l.append(E_C)
         if c_ == c:
@@ -153,8 +167,8 @@ def plot_reped_vs_coded(w_cancel=True):
       E_T_l.clear()
       E_C_l.clear()
       for n_ in range(k+1, n+1):
-        E_T = E_T_k_l_n(task_t, D, mu, loc, a, d, k, l, n_)
-        E_C = E_C_k_l_n(task_t, D, mu, loc, a, d, k, l, n_, w_cancel=w_cancel)
+        E_T = E_T_k_l_n(task_t, task_dist_m, d, k, l, n_)
+        E_C = E_C_k_l_n(task_t, task_dist_m, d, k, l, n_, w_cancel=w_cancel)
         E_T_l.append(E_T)
         E_C_l.append(E_C)
         if n_ == n:
@@ -163,9 +177,16 @@ def plot_reped_vs_coded(w_cancel=True):
   
   def plot_(k=K, n=0, c=0):
     l = k
-    if task_t == "Exp": task_t_rv = Exp(mu)
-    elif task_t == "SExp": task_t_rv = Exp(mu, D/k)
-    elif task_t == "Pareto": task_t_rv = Pareto(a, loc=loc)
+    if task_t == "Exp":
+      task_t_rv = Exp(mu)
+      task_dist_m = {"mu": mu}
+    elif task_t == "SExp":
+      task_t_rv = Exp(mu, D/k)
+      task_dist_m = {"D": D, "mu": mu}
+    elif task_t == "Pareto":
+      task_t_rv = Pareto(loc, a)
+      task_dist_m = {"loc": loc, "a": a}
+    elif task_t == "Google": task_t_rv = Google(k)
     
     E_T_l, E_T_sim_l, E_C_l, E_C_sim_l = [], [], [], []
     num_run = 100000
@@ -174,12 +195,12 @@ def plot_reped_vs_coded(w_cancel=True):
     if c:
       for d in numpy.arange(0, u_l, 0.5):
         # stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c, num_run=num_run)
-        # E_T_sim_l.append(sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] ) )
-        # key = 'E_C_wc' if w_cancel else 'E_C'
+        # E_T_sim_l.append(sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] ) )
+        # key = 'C_wc' if w_cancel else 'C_wc'
         # E_C_sim_l.append(sum(stat_id__trial_sampleavg_l_m[key] )/len(stat_id__trial_sampleavg_l_m[key] ) )
         
-        E_T = E_T_k_c(task_t, D, mu, loc, a, d, k, c)
-        E_C = E_C_k_c(task_t, D, mu, loc, a, d, k, c, w_cancel=w_cancel)
+        E_T = E_T_k_c(task_t, task_dist_m, d, k, c)
+        E_C = E_C_k_c(task_t, task_dist_m, d, k, c, w_cancel=w_cancel)
         E_T_l.append(E_T)
         E_C_l.append(E_C)
         if d == 0:
@@ -190,11 +211,11 @@ def plot_reped_vs_coded(w_cancel=True):
     elif n:
       for d in numpy.arange(0, u_l, 0.5):
         # stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, k, n, num_run=num_run)
-        # E_T_sim_l.append(sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] ) )
-        # key = 'E_C_wc' if w_cancel else 'E_C'
+        # E_T_sim_l.append(sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] ) )
+        # key = 'C_wc' if w_cancel else 'C_wc'
         # E_C_sim_l.append(sum(stat_id__trial_sampleavg_l_m[key] )/len(stat_id__trial_sampleavg_l_m[key] ) )
-        E_T = E_T_k_l_n(task_t, D, mu, loc, a, d, k, l, n)
-        E_C = E_C_k_l_n(task_t, D, mu, loc, a, d, k, l, n, w_cancel=w_cancel)
+        E_T = E_T_k_l_n(task_t, task_dist_m, d, k, l, n)
+        E_C = E_C_k_l_n(task_t, task_dist_m, d, k, l, n, w_cancel=w_cancel)
         E_T_l.append(E_T)
         E_C_l.append(E_C)
         if d == 0:
@@ -214,8 +235,8 @@ def plot_reped_vs_coded(w_cancel=True):
   # plot_d_extremes(n=3*K)
   #
   if task_t == "SExp":
-    E_T_nored = E_T_k_c(task_t, D, mu, loc, a, d=0, k=K, c=0)
-    E_C_nored = E_C_k_c(task_t, D, mu, loc, a, d=0, k=K, c=0, w_cancel=w_cancel)
+    E_T_nored = E_T_k_c(task_t, task_dist_m, d=0, k=K, c=0)
+    E_C_nored = E_C_k_c(task_t, task_dist_m, d=0, k=K, c=0, w_cancel=w_cancel)
     plot.plot([E_T_nored], [E_C_nored], 'o', zorder=3, mew=4, color=ann_color)
     plot.annotate(r'$\Delta \to \infty$', xy=(E_T_nored, E_C_nored), ha='center', va='center', xytext=(E_T_nored+0.5, E_C_nored), color=ann_color, fontsize=20)
     axes = plot.gca()
@@ -238,12 +259,12 @@ def plot_reped_vs_coded(w_cancel=True):
   plot.gcf().clear()
   log(WARNING, "done; k= {}".format(K) )
 
-def plot_reped_vs_coded_zerodelay(loc, a):
-  w_cancel=True
-  K = 15 # 400 # 1050 # 15 # 400 # 10
+def plot_zerodelay_reped_vs_coded(loc, a):
+  w_cancel = True
+  added_load = False # True
+  K = 15 # 1050 # 15 # 400 # 10
   D, mu = 30, 0.5
-  loc, a = 3, 1.5 # 2 # 3
-  num_run = 10000
+  loc, a = 3, 2.5 # 3
   task_t = "Pareto" # "Google" # "Exp" # "SExp" # "Pareto"
   task_t_rv, task_t_in_latex = None, None
   if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu={})'.format(mu)
@@ -251,24 +272,40 @@ def plot_reped_vs_coded_zerodelay(loc, a):
   elif task_t == "Pareto": task_t_in_latex = r'X \sim Pareto(\lambda={}, \alpha={})'.format(loc, a)
   elif task_t == "Google": task_t_in_latex = r'X \sim Google'
   mew = 3
+  num_run = 10000*10
+  second_moment = True
   def plot_(k=K, n=0, c=0, sim=False):
     l = k
-    if task_t == "Exp": task_t_rv = Exp(mu)
-    elif task_t == "SExp": task_t_rv = Exp(mu, D/k)
-    elif task_t == "Pareto": task_t_rv = Pareto(a, loc=loc)
+    if task_t == "Exp":
+      task_t_rv = Exp(mu)
+      task_dist_m = {"mu": mu}
+    elif task_t == "SExp":
+      task_t_rv = Exp(mu, D/k)
+      task_dist_m = {"D": D, "mu": mu}
+    elif task_t == "Pareto":
+      task_t_rv = Pareto(loc, a)
+      task_dist_m = {"loc": loc, "a": a}
     elif task_t == "Google": task_t_rv = Google(k)
     
-    E_T_l, E_T_sim_l, E_C_l, E_C_sim_l = [], [], [], []
+    x_l, x_sim_l, y_l, y_sim_l = [], [], [], []
     d = 0
     color = next(dark_color)
     if c:
       for c_ in range(c+1):
-        # E_T = E_T_k_c(task_t, D, mu, loc, a, d, k, c_)
-        # E_C = E_C_k_c(task_t, D, mu, loc, a, d, k, c_, w_cancel=w_cancel)
-        E_T = E_T_2_pareto_k_c(loc, a, k, c_)
-        E_C = E_C_2_pareto_k_c(loc, a, k, c_)
-        E_T_l.append(E_T)
-        E_C_l.append(E_C)
+        E_T = E_T_k_c(task_t, task_dist_m, d, k, c_, added_load=added_load)
+        E_C = E_C_k_c(task_t, task_dist_m, d, k, c_, w_cancel=w_cancel, added_load=added_load)
+        E_T_2 = E_T_2_k(task_t, task_dist_m, k, c=c_, added_load=added_load)
+        E_C_2 = E_C_2_k(task_t, task_dist_m, k, c=c_, added_load=added_load)
+        stdev_T = math.sqrt(E_T_2 - E_T**2)
+        stdev_C = math.sqrt(E_C_2 - E_C**2)
+        if second_moment:
+          # x_l.append(stdev_T)
+          # y_l.append(stdev_C)
+          x_l.append(E_T_2)
+          y_l.append(E_C_2)
+        else:
+          x_l.append(E_T)
+          y_l.append(E_C)
         if c_ > 0:
           if task_t == "SExp":
             plot.annotate(r'$c={}$'.format(c_), xy=(E_T, E_C), xytext=(E_T+0.1, E_C), color=color)
@@ -281,11 +318,24 @@ def plot_reped_vs_coded_zerodelay(loc, a):
               plot.annotate(r'$c={}$'.format(c_), xy=(E_T, E_C), xytext=(E_T+0.3, E_C+0.3), color=color)
         if sim:
           stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c_, num_run)
-          E_T = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )/60/60
-          key = 'E_C_wc' if w_cancel else 'E_C'
-          E_C = sum(stat_id__trial_sampleavg_l_m[key] )/len(stat_id__trial_sampleavg_l_m[key] )/60/60
-          E_T_sim_l.append(E_T)
-          E_C_sim_l.append(E_C)
+          T_l = stat_id__trial_sampleavg_l_m['T']
+          E_T = sum(T_l)/len(T_l) # /60/60
+          stdev_T = math.sqrt(sum([(T - E_T)**2 for T in T_l] )/len(T_l) )
+          E_T_2 = sum(stat_id__trial_sampleavg_l_m['T_2'] )/len(stat_id__trial_sampleavg_l_m['T_2'] )
+          
+          C_l = stat_id__trial_sampleavg_l_m['C_wc']
+          E_C = sum(C_l)/len(C_l)
+          stdev_C = math.sqrt(sum([(C - E_C)**2 for C in C_l] )/len(C_l) )
+          E_C_2 = sum(stat_id__trial_sampleavg_l_m['C_2'] )/len(stat_id__trial_sampleavg_l_m['C_2'] )
+          if second_moment:
+            x_sim_l.append(E_T_2)
+            y_sim_l.append(E_C_2)
+            # x_sim_l.append(stdev_T)
+            # y_sim_l.append(stdev_C)
+          else:
+            x_sim_l.append(E_T)
+            y_sim_l.append(E_C)
+          
           if task_t == "Google":
             if k == 400:
               if c_ == 0:
@@ -299,30 +349,50 @@ def plot_reped_vs_coded_zerodelay(loc, a):
                 plot.annotate(r'$c={}$'.format(c_), xy=(E_T, E_C), xytext=(E_T+0.025, E_C+1), color=color)
             elif k == 15:
               if c_ == 0:
-                plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T, E_C), xytext=(E_T-0.0275, E_C+0.05) )
+                # plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T, E_C), xytext=(E_T-0.0275, E_C+0.05) )
+                plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T, E_C), xytext=(E_T-0.0375, E_C+0.05) )
               else:
                 plot.annotate(r'$c={}$'.format(c_), xy=(E_T+0.003, E_C), xytext=(E_T, E_C), color=color)
-      plot.plot(E_T_l, E_C_l, label='Replication', color=color, marker=next(marker), zorder=0, mew=2, linestyle=':')
-      # plot.plot(E_T_sim_l, E_C_sim_l, label='Simulation, replication', color=color, marker=next(marker), linestyle=':', mew=2)
+      plot.plot(x_l, y_l, label='Replication', color=color, marker=next(marker), zorder=0, mew=2, linestyle=':')
+      if sim:
+        plot.plot(x_sim_l, y_sim_l, label='Simulation, replication', color=color, marker=next(marker), linestyle=':', mew=2)
     elif n:
       counter = 0
       # for n_ in [*numpy.arange(k, k+50, 2), *numpy.arange(k+50, n+1, 100) ]:
-      for n_ in numpy.arange(k, n+1, 1):
-        # E_T = E_T_k_l_n(task_t, D, mu, loc, a, d, k, l, n_)
-        # E_C = E_C_k_l_n(task_t, D, mu, loc, a, d, k, l, n_, w_cancel=w_cancel)
-        E_T = E_T_2_pareto_k_n(loc, a, k, n_)
-        E_C = E_C_2_pareto_k_n(loc, a, k, n_)
-        E_T_l.append(E_T)
-        E_C_l.append(E_C)
+      for n_ in numpy.arange(k, n+1, 15):
+        E_T = E_T_k_l_n(task_t, task_dist_m, d, k, l, n_, added_load=added_load)
+        E_C = E_C_k_l_n(task_t, task_dist_m, d, k, l, n_, w_cancel=w_cancel, added_load=added_load)
+        E_T_2 = E_T_2_k(task_t, task_dist_m, k, n=n_, added_load=added_load)
+        E_C_2 = E_C_2_k(task_t, task_dist_m, k, n=n_, added_load=added_load)
+        stdev_T = math.sqrt(E_T_2 - E_T**2)
+        stdev_C = math.sqrt(E_C_2 - E_C**2)
+        if second_moment:
+          # x_l.append(E_T_2)
+          # y_l.append(E_C_2)
+          x_l.append(stdev_T)
+          y_l.append(stdev_C)
+        else:
+          x_l.append(E_T)
+          y_l.append(E_C)
         
         if sim:
           counter += 1
           stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, k, n_, num_run)
-          E_T = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )/60/60
-          key = 'E_C_wc' if w_cancel else 'E_C'
-          E_C = sum(stat_id__trial_sampleavg_l_m[key] )/len(stat_id__trial_sampleavg_l_m[key] )/60/60
-          E_T_sim_l.append(E_T)
-          E_C_sim_l.append(E_C)
+          T_l = stat_id__trial_sampleavg_l_m['T']
+          E_T = sum(T_l)/len(T_l) # /60/60
+          stdev_T = math.sqrt(sum([(T - E_T)**2 for T in T_l] )/len(T_l) )
+          E_T_2 = sum(stat_id__trial_sampleavg_l_m['T_2'] )/len(stat_id__trial_sampleavg_l_m['T_2'] )
+          
+          C_l = stat_id__trial_sampleavg_l_m['C_wc']
+          E_C = sum(C_l)/len(C_l)
+          stdev_C = math.sqrt(sum([(C - E_C)**2 for C in C_l] )/len(C_l) )
+          E_C_2 = sum(stat_id__trial_sampleavg_l_m['C_2'] )/len(stat_id__trial_sampleavg_l_m['C_2'] )
+          if second_moment:
+            x_sim_l.append(stdev_T)
+            y_sim_l.append(stdev_C)
+          else:
+            x_sim_l.append(E_T)
+            y_sim_l.append(E_C)
           if task_t == "Google":
             if counter % 10 == 0:
               plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
@@ -376,13 +446,18 @@ def plot_reped_vs_coded_zerodelay(loc, a):
         #     elif n_ != k and n_ % k == 0:
         #       plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
         #       plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T-2, E_C-2), color=color)
-      plot.plot(E_T_l, E_C_l, label='Coding', color=color, zorder=1, marker=next(marker), mew=1, linestyle=':')
-      # plot.plot(E_T_sim_l, E_C_sim_l, label='Simulation, coding', color=color, zorder=1, marker=next(marker), linestyle=':', mew=1)
-  plot_(c=5)
-  plot_(n=6*K)
+      plot.plot(x_l, y_l, label='Coding', color=color, zorder=1, marker=next(marker), mew=1, linestyle=':')
+      if sim:
+        plot.plot(x_sim_l, y_sim_l, label='Simulation, coding', color=color, zorder=1, marker=next(marker), linestyle=':', mew=1)
+  # plot_(c=5)
+  # plot_(n=6*K)
+  
+  plot_(c=5, sim=True)
+  # plot_(n=6*K, sim=True)
+  
   #
-  # E_T_nored = E_T_k_c(task_t, D, mu, loc, a, d=0, k=K, c=0)
-  # E_C_nored = E_C_k_c(task_t, D, mu, loc, a, d=0, k=K, c=0, w_cancel=w_cancel)
+  # E_T_nored = E_T_k_c(task_t, task_dist_m, d=0, k=K, c=0)
+  # E_C_nored = E_C_k_c(task_t, task_dist_m, d=0, k=K, c=0, w_cancel=w_cancel)
   # if task_t == "SExp":
   #   plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=(E_T_nored, E_C_nored), xytext=(E_T_nored-0.6, E_C_nored+9) )
   # elif task_t == "Pareto":
@@ -396,19 +471,20 @@ def plot_reped_vs_coded_zerodelay(loc, a):
   plot.legend()
   # plot.legend(loc='lower right')
   plot.title(r'${}, k= {}$'.format(task_t_in_latex, K) )
-  # plot.xlabel(r'Expected Latency $E[T]$ (s)', fontsize=12)
-  # plot.xlabel(r'Expected latency $E[T]$ (hour)', fontsize=12)
-  plot.xlabel(r'Expected Latency $E[T^2]$', fontsize=12)
-  # plot.ylabel(r'Expected cost $E[C^c]$' if w_cancel else r'$E[C]$', fontsize=12)
-  plot.ylabel(r'Expected cost $E[C^2]$', fontsize=12)
+  # legend = "$E[T^2]$" if second_moment else "$E[T]$"
+  legend = "Stdev of $T$" if second_moment else "$E[T]$"
+  plot.xlabel(r'{}'.format(legend), fontsize=12)
+  # legend = "$E[C^2]$" if second_moment else "$E[C]$"
+  legend = "Stdev of $C$" if second_moment else "$E[C]$"
+  plot.ylabel(r'{}'.format(legend), fontsize=12)
   fig = plot.gcf()
   fig.tight_layout()
   def_size = fig.get_size_inches()
   fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
   if task_t == "Pareto":
-    plot.savefig("plot_reped_vs_coded_zerodelay_{}_k_{}_a_{}.png".format(task_t, K, a) )
+    plot.savefig("plot_zerodelay_reped_vs_coded_{}_k_{}_a_{}.png".format(task_t, K, a) )
   else:
-    plot.savefig("plot_reped_vs_coded_zerodelay_{}_k_{}.pdf".format(task_t, K) )
+    plot.savefig("plot_zerodelay_reped_vs_coded_{}_k_{}.pdf".format(task_t, K) )
   plot.gcf().clear()
   log(WARNING, "done; k= {}".format(K) )
 
@@ -419,11 +495,11 @@ def plot_reduct_in_E_T_atnocost_w_zerodelay_red():
     E_T_wo_red, E_T = 0, 0
     if red_type == 'coded':
       E_T_wo_red = E_T_pareto_k_n(loc, a, d, k, n=k)
-      E_C_wo_red = E_C_pareto_k_n(loc, a, d, k, n=k)
+      E_C_wo_red = E_C_pareto_k_n_wrelaunch(loc, a, d, k, n=k)
       
       n_ = k+1
       while 1:
-        E_C = E_C_pareto_k_n(loc, a, d, k, n_)
+        E_C = E_C_pareto_k_n_wrelaunch(loc, a, d, k, n_)
         # print("n_= {}, E_C_wo_red= {}, E_C= {}".format(n_, E_C_wo_red, E_C) )
         if math.isnan(E_C):
           return reduction_in_E_T_w_red_atnocost__approx(red_type, loc, a, k)
@@ -481,7 +557,13 @@ def plot_reduct_in_E_T_atnocost_w_zerodelay_red():
     plot.plot(x_l, y_l, label=r'{},$k={}$'.format(legend, k), color=next(dark_color), marker=next(marker), mew=2, zorder=0, linestyle=':')
     # plot.plot(x_l, y_approx_l, label=r'{},$k={}$, approx'.format(legend, k), color=next(dark_color), marker=next(marker), mew=2, zorder=1, linestyle='')
   
-  plot_('reped', k=10)
+  plot_('reped', k=1)
+  plot_('coded', k=1)
+  
+  plot_('reped', k=2)
+  plot_('coded', k=2)
+  
+  # plot_('reped', k=10)
   # plot_('coded', k=10)
   
   # plot_('reped', k=50)
@@ -579,7 +661,7 @@ def plot_arepeat_k_nc_wrelaunch():
   E_T = True # False # True
   w_cancel = True # False
   def plot_(k, n=None, c=None, sim=False):
-    task_t_rv = Pareto(a, loc=loc)
+    task_t_rv = Pareto(loc, a)
     
     l = k
     x_l = []
@@ -611,12 +693,12 @@ def plot_arepeat_k_nc_wrelaunch():
         elif c is not None:
           stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c, num_run=10000, w_relaunch=True)
         if E_T:
-          y_sim_wrelaunch_l.append(sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] ) )
+          y_sim_wrelaunch_l.append(sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] ) )
         else:
           if w_cancel:
-            y_sim_wrelaunch_l.append(sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] ) )
+            y_sim_wrelaunch_l.append(sum(stat_id__trial_sampleavg_l_m['C_wc'] )/len(stat_id__trial_sampleavg_l_m['C_wc'] ) )
           else:
-            y_sim_wrelaunch_l.append(sum(stat_id__trial_sampleavg_l_m['E_C'] )/len(stat_id__trial_sampleavg_l_m['E_C'] ) )
+            y_sim_wrelaunch_l.append(sum(stat_id__trial_sampleavg_l_m['C_wc'] )/len(stat_id__trial_sampleavg_l_m['C_wc'] ) )
     c = next(dark_color)
     if n == k:
       d = Delta_for_min_E_T_pareto_k_wrelaunch(loc, a, k)
@@ -694,7 +776,7 @@ def plot_arepeat_k_nc_wrelaunch_E_C_vs_E_T():
     E_T_l, E_C_l = [], []
     E_T_sim_l, E_C_sim_l = [], []
     
-    if task_t == "Pareto": task_t_rv = Pareto(a, loc=loc)
+    if task_t == "Pareto": task_t_rv = Pareto(loc, a)
     elif task_t == "Google": task_t_rv = Google(k)
     
     # for d in [*numpy.linspace(0, 5*loc, 50), *numpy.linspace(5*loc, 200*loc, 100)]:
@@ -708,8 +790,8 @@ def plot_arepeat_k_nc_wrelaunch_E_C_vs_E_T():
             stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, k, n, num_run, w_relaunch=True)
           elif c is not None:
             stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c, num_run, w_relaunch=True)
-          E_T = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )
-          E_C = sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] )
+          E_T = sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] )
+          E_C = sum(stat_id__trial_sampleavg_l_m['C_wc'] )/len(stat_id__trial_sampleavg_l_m['C_wc'] )
           if task_t == "Google":
             E_T = E_T/60/60
             E_C = E_C/60/60
@@ -753,13 +835,13 @@ def plot_arepeat_k_nc_wrelaunch_E_C_vs_E_T():
           plot.annotate(r'$\Delta=0$', xy=(x, y), xytext=(x, y), fontsize=12)
       else: # task_t = "Google"
         stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, 0, k, k, k, num_run, w_relaunch=True)
-        x = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )/60/60
-        y = sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] )/60/60
+        x = sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] )/60/60
+        y = sum(stat_id__trial_sampleavg_l_m['C_wc'] )/len(stat_id__trial_sampleavg_l_m['C_wc'] )/60/60
         plot.annotate(r'$\Delta=0$', xy=(x, y), xytext=(x+0.005, y+2.5), fontsize=12)
         
         stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d_ul, k, k, k, num_run, w_relaunch=True)
-        x = sum(stat_id__trial_sampleavg_l_m['E_T'] )/len(stat_id__trial_sampleavg_l_m['E_T'] )/60/60
-        y = sum(stat_id__trial_sampleavg_l_m['E_C_wc'] )/len(stat_id__trial_sampleavg_l_m['E_C_wc'] )/60/60
+        x = sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] )/60/60
+        y = sum(stat_id__trial_sampleavg_l_m['C_wc'] )/len(stat_id__trial_sampleavg_l_m['C_wc'] )/60/60
         plot.annotate(r'$\Delta \rightarrow \infty$', xy=(x-0.005, y-2.5), xytext=(x, y), fontsize=12)
     elif n is not None and n > k:
       x = E_T_pareto_k_n_wrelaunch(loc, a, 0, k, n)
@@ -786,10 +868,10 @@ def plot_arepeat_k_nc_wrelaunch_E_C_vs_E_T():
   plot_(K, n=K+30)
   k, n = K, K+30
   x = E_T_pareto_k_n(loc, a, 0, k, n, w_relaunch=True)
-  y = E_C_pareto_k_n(loc, a, 0, k, n, w_cancel=w_cancel, w_relaunch=True)
+  y = E_C_pareto_k_n_wrelaunch(loc, a, 0, k, n, w_cancel=w_cancel, w_relaunch=True)
   plot.plot(x, y, color='black', label=r'$\Delta=0$', marker='o', zorder=1, ms=8, mew=2)
   x = E_T_pareto_k_n(loc, a, 10**5, k, n, w_relaunch=True)
-  y = E_C_pareto_k_n(loc, a, 10**5, k, n, w_cancel=w_cancel, w_relaunch=True)
+  y = E_C_pareto_k_n_wrelaunch(loc, a, 10**5, k, n, w_cancel=w_cancel, w_relaunch=True)
   plot.annotate(r'$\Delta \rightarrow \infty$', xy=(x, y), xytext=(x+0.5, y), fontsize=13)
   plot_(K, c=1)
   plot_(K, c=2)
@@ -830,9 +912,9 @@ if __name__ == "__main__":
   # plot_arepeat_shiftedexp_k_n()
   
   # plot_reped_vs_coded(w_cancel=True)
-  plot_reped_vs_coded_zerodelay(loc=3, a=2)
-  # plot_reped_vs_coded_zerodelay(loc=3, a=1.2)
-  # plot_reped_vs_coded_zerodelay(loc=3, a=1.5)
+  plot_zerodelay_reped_vs_coded(loc=3, a=2)
+  # plot_zerodelay_reped_vs_coded(loc=3, a=1.2)
+  # plot_zerodelay_reped_vs_coded(loc=3, a=1.5)
   
   # plot_arepeat_k_nc()
   # plot_arepeat_k_nc_E_C_vs_E_T()
@@ -840,6 +922,4 @@ if __name__ == "__main__":
   # plot_arepeat_k_nc_wrelaunch_E_C_vs_E_T()
   # plot_arepeat_Pr_T_g_t_pareto_k_wrelaunch()
   
-  # plot_arepeat_k_c()
-  # plot_arepeat_k_c_E_C_vs_E_T()
-  
+  # plot_reduct_in_E_T_atnocost_w_zerodelay_red()

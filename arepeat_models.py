@@ -82,7 +82,7 @@ def Pr_T_g_t_Exp_k_n_approx(mu, d, k, n, t):
          + (1-q**k) - sum_ + q**k*I(q__, 0, n-k+1)
         # + (1-q**k) - I(q__, k*(1-q), n-k+1) + q**k*I(q__, 0, n-k+1) # This does not work very well unfortunately
 
-def Pr_T_g_t_k_n(task_t, D, mu, loc, a, d, k, n, t):
+def Pr_T_g_t_k_n(task_t, task_dist_m, d, k, n, t):
   if task_t == "Exp":
     return Pr_T_g_t_Exp_k_n(mu, d, k, n, t)
   elif task_t == "SExp":
@@ -489,37 +489,115 @@ def E_C_pareto_k_c_approx(loc, a, d, k, w_cancel=True):
       
       return k*(q*E_X__X_leq_d + (1-q)*(2*E_Y + d) )
 
+# ##############################  E[T^2], E[C^2]  ############################## #
+# ### X ~ Pareto ### #
 def E_pareto_X_i_j(loc, a, n, i, j):
   if i > j:
-    j_ = j
+    _j = j
     j = i
-    i = j_
+    i = _j
   if a <= max(2/(n-i+1), 1/(n-j+1) ):
     return 0 # None
   return loc**2*G(n+1)/G(n+1-2/a) * G(n-i+1-2/a)/G(n-i+1-1/a) * G(n-j+1-1/a)/G(n-j+1)
+
+def E_T_2_pareto_k_c(loc, a, k, c):
+  a_ = (c+1)*a
+  if a_ > 1:
+    return E_pareto_X_i_j(loc, a_, k, k, k)
+  else:
+    return None
+
+def E_C_2_pareto_k_c(loc, a, k, c):
+  a_ = (c+1)*a
+  # if a_ > 2:
+  #   return (k*(c+1))**2 * loc**2*a_/(a_-2)
+  # else:
+  #   None
+  E_C_2 = 0
+  for i in range(k+1):
+    for j in range(k+1):
+      E_C_2 += E_pareto_X_i_j(loc, a_, k, i, j)
+  
+  return (c+1)**2 * E_C_2
 
 def E_T_2_pareto_k_n(loc, a, k, n):
   return E_pareto_X_i_j(loc, a, n, k, k)
 
 def E_C_2_pareto_k_n(loc, a, k, n):
-  E_C_2 = 0
-  for i in range(1, k):
-    for j in range(1, k):
+  E_C_2 = (n-k)**2*E_pareto_X_i_j(loc, a, n, k, k)
+  for i in range(1, k+1):
+    E_C_2 += 2*(n-k)*E_pareto_X_i_j(loc, a, n, i, k)
+  for i in range(1, k+1):
+    for j in range(1, k+1):
       E_C_2 += E_pareto_X_i_j(loc, a, n, i, j)
-  for i in range(1, k):
-    E_C_2 += 2*(n-k+1)*E_pareto_X_i_j(loc, a, n, i, k)
-  E_C_2 += (n-k+1)**2*E_pareto_X_i_j(loc, a, n, k, k)
+  
   return E_C_2
 
-def E_T_2_pareto_k_c(loc, a, k, c):
-  return E_pareto_X_i_j(loc, (c+1)*a, k, k, k)
+# ### X ~ SExp ### #
+def E_sexp_X_i_j(mu, n, i, j):
+  if i > j:
+    _j = j
+    j = i
+    i = _j
+  return (H_2(n) - H_2(n-i) + (H(n) - H(n-i))*(H(n) - H(n-j)) )/mu**2
 
-def E_C_2_pareto_k_c(loc, a, k, c):
-  a_ = (c+1)*a
-  if a_ > 2:
-    return k**2*(c+1)**2 * loc**2*a_/(a_-2)
-  else:
-    None
+def E_T_2_sexp_k_c(D, mu, k, c):
+  return (D/k + H(k)/(c+1)/mu)**2 + H_2(k)/(c+1)**2/mu**2
+
+def E_C_2_sexp_k_c(D, mu, k, c):
+  return ((c+1)*D + k/mu)**2 + (k/mu)**2
+
+def E_T_2_sexp_k_n(D, mu, k, n):
+  return (H_2(n) - H_2(n-k))/mu**2 + (D/k + (H(n) - H(n-k))/mu)**2
+
+def E_C_2_sexp_k_n(D, mu, k, n):
+  E_C_2 = (n*D/k)**2 + 2*n*D/mu + (n-k)**2*E_sexp_X_i_j(mu, n, k, k)
+  for i in range(1, k+1):
+    E_C_2 += 2*(n-k)*E_sexp_X_i_j(mu, n, i, k)
+  for i in range(1, k+1):
+    for j in range(1, k+1):
+      E_C_2 += E_sexp_X_i_j(mu, n, i, j)
+  
+  return E_C_2
+
+# ### Wrappers ### #
+def E_T_2_k(task_t, task_dist_m, k, c=None, n=None, added_load=False):
+  if task_t == "SExp":
+    D, mu = task_dist_m["D"], task_dist_m["mu"]
+    if c is not None:
+      if added_load: D = D*(c+1)
+      return E_T_2_sexp_k_c(D, mu, k, c)
+    elif n is not None:
+      if added_load: D = D*n/k
+      return E_T_2_sexp_k_n(D, mu, k, n)
+  elif task_t == "Pareto":
+    loc, a = task_dist_m["loc"], task_dist_m["a"]
+    if c is not None:
+      if added_load: loc = loc*(c+1)
+      return E_T_2_pareto_k_c(loc, a, k, c)
+    elif n is not None:
+      if added_load: loc = loc*n/k
+      return E_T_2_pareto_k_n(loc, a, k, n)
+
+def E_C_2_k(task_t, task_dist_m, k, c=None, n=None, added_load=False):
+  if task_t == "SExp":
+    if added_load:
+      D = D*n/k
+    D, mu = task_dist_m["D"], task_dist_m["mu"]
+    if c is not None:
+      if added_load: D = D*(c+1)
+      return E_C_2_sexp_k_c(D, mu, k, c)
+    elif n is not None:
+      if added_load: D = D*n/k
+      return E_C_2_sexp_k_n(D, mu, k, n)
+  elif task_t == "Pareto":
+    loc, a = task_dist_m["loc"], task_dist_m["a"]
+    if c is not None:
+      if added_load: loc = loc*(c+1)
+      return E_C_2_pareto_k_c(loc, a, k, c)
+    elif n is not None:
+      if added_load: loc = loc*n/k
+      return E_C_2_pareto_k_n(loc, a, k, n)
 
 # ***************************  X ~ Pareto, (k, n/c, \Delta) with Relaunch  *************************** #
 def Pr_T_g_t_pareto_k_wrelaunch(loc, a, d, k, t):
@@ -690,39 +768,59 @@ def E_C_pareto_k_c_wrelaunch(loc, a, d, k, c, w_cancel=True):
              + k*loc*(c+1)*(1-q)*(c+1)*a/((c+1)*a-1)
 
 # ******************************  Wrappers  ****************************** #
-def E_T_k_l_n(task_t, D, mu, loc, a, d, k, l, n):
+def E_T_k_l_n(task_t, task_dist_m, d, k, l, n, added_load=False):
   if task_t == "Exp":
+    mu = task_dist_m["mu"]
     if l == k: return E_T_exp_k_n(mu, d, k, n)
     else: return E_T_exp_k_l_n(mu, d, k, l, n)
   elif task_t == "SExp":
+    D, mu = task_dist_m["D"], task_dist_m["mu"]
     if l == k: return E_T_shiftedexp_k_n(D, mu, d, k, n)
     else: return E_T_shiftedexp_k_l_n(D, mu, d, k, l, n)
   elif task_t == "Pareto":
+    loc, a = task_dist_m["loc"], task_dist_m["a"]
+    if added_load:
+      loc = loc*n/k
     return E_T_pareto_k_n(loc, a, d, k, n)
 
-def E_C_k_l_n(task_t, D, mu, loc, a, d, k, l, n, w_cancel, approx=False):
+def E_C_k_l_n(task_t, task_dist_m, d, k, l, n, w_cancel, added_load=False):
   if task_t == "Exp":
+    mu = task_dist_m["mu"]
     if l == k: return E_C_exp_k_n(mu, d, k, l, n, w_cancel)
     else: return E_C_exp_k_l_n(mu, d, k, l, n, w_cancel)
   elif task_t == "SExp":
+    D, mu = task_dist_m["D"], task_dist_m["mu"]
     return E_C_shiftedexp_k_l_n(D, mu, d, k, l, n, w_cancel)
   elif task_t == "Pareto":
+    loc, a = task_dist_m["loc"], task_dist_m["a"]
+    if added_load:
+      loc = loc*n/k
     return E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=w_cancel)
 
-def E_T_k_c(task_t, D, mu, loc, a, d, k, c):
+def E_T_k_c(task_t, task_dist_m, d, k, c, added_load=False):
   if task_t == "Exp":
+    mu = task_dist_m["mu"]
     return E_T_exp_k_c(mu, d, k, c)
   elif task_t == "SExp":
+    D, mu = task_dist_m["D"], task_dist_m["mu"]
     return E_T_shiftedexp_k_c(D, mu, d, k, c)
   elif task_t == "Pareto":
+    loc, a = task_dist_m["loc"], task_dist_m["a"]
+    if added_load:
+      loc = loc*(c+1)
     return E_T_pareto_k_c(loc, a, d, k, c)
 
-def E_C_k_c(task_t, D, mu, loc, a, d, k, c, w_cancel, approx=False):
+def E_C_k_c(task_t, task_dist_m, d, k, c, w_cancel, approx=False, added_load=False):
   if task_t == "Exp":
+    mu = task_dist_m["mu"]
     return E_C_exp_k_c(mu, d, k, c, w_cancel)
   elif task_t == "SExp":
+    D, mu = task_dist_m["D"], task_dist_m["mu"]
     return E_C_shiftedexp_k_c(D, mu, d, k, c, w_cancel)
   elif task_t == "Pareto":
+    loc, a = task_dist_m["loc"], task_dist_m["a"]
+    if added_load:
+      loc = loc*(c+1)
     if approx:
       return E_C_pareto_k_c_approx(loc, a, d, k, c, w_cancel)
     return E_C_pareto_k_c(loc, a, d, k, c, w_cancel)

@@ -226,7 +226,7 @@ def test_ff_avq(num_f_run, t, cold_ar, hot_ar, serv, serv_dist_m, mds=False):
   return (E_T_cold, E_T_hot)
 
 def plot_ff_simplex():
-  t = 1
+  t = 3
   serv = "Exp" # "Dolly"
   mu = 1
   cold_ar = 0.1 # 0.5
@@ -282,7 +282,22 @@ def plot_ff_simplex():
           None]
     elif t == 3:
       if cold_ar == 0.1:
-        pass
+        E_T_hot_sim_simplex_l= [
+          0.4939003286095989,
+          0.5715098498251754,
+          0.6839367636377401,
+          0.8648712234306651,
+          1.2162541140583187,
+          2.1526032250152802,
+          2.3332214430320124,
+          2.77347691353428,
+          3.1892878047378503,
+          3.8146350092352512,
+          5.053509482106505,
+          6.571664953851065,
+          10.8035629393868,
+          25.898741689274527,
+          None] # 484.0153086904779
       elif cold_ar == 0.5:
         E_T_hot_sim_simplex_l= [
           0.589749465116383,
@@ -412,7 +427,7 @@ def plot_reptoall_over_ff():
   cold_ar = 0.5 # 0.1 # 0.5
   if serv == "Exp":
     serv_dist_m = {'mu': mu}
-    ar_ub = hot_ar_ub_ff_simplex_approx(cold_ar, t, mu)
+    ar_ub = 0.9*hot_ar_ub_ff_simplex_approx(cold_ar, t, mu)
   elif serv == "Dolly":
     if t == 1: ar_ub = 0.28
     elif t == 3: ar_ub = 0.4
@@ -524,11 +539,58 @@ def plot_reptoall_over_ff():
           1.9805536042871632,
           1.9915303364254016,
           1.9846564963461162]
-    elif t == 33:
+    elif t == 3:
       if cold_ar == 0.1:
         pass
       elif cold_ar == 0.5:
-        pass
+        E_T_reptoall_hotcold_sim_l= [
+          0.6840010904077812,
+          0.7859533196791282,
+          0.9274142482662505,
+          1.1707063798084094,
+          1.6891848540864387,
+          3.055811156306783,
+          3.587534635804969,
+          4.143524780469451,
+          5.352753879415308,
+          7.174386591939361,
+          11.264606827298268,
+          21.55016485251362,
+          None, # 157.58532507782218
+          None, # 380.1302925876542
+          None] # 699.7387982678907
+        E_T_ff_hot_sim_l= [
+          0.5907714676944101,
+          0.6710283396413771,
+          0.8068957630374675,
+          1.000439845878967,
+          1.3513351803595934,
+          2.0536752009713415,
+          2.2300187670792453,
+          2.429466341104507,
+          2.6903484553485266,
+          3.000872233306323,
+          3.4410421781408966,
+          3.935681394156022,
+          None, # 4.643556010602577
+          None, # 5.59704091169721
+          None] # 7.344123932313496
+        E_T_ff_cold_sim_l= [
+          2.009345254639259,
+          1.9861399350607394,
+          1.9959564824533977,
+          1.9931726443065612,
+          1.999767945808216,
+          1.9806110151269938,
+          2.0030805971338523,
+          2.007778635142899,
+          1.9774619376748654,
+          1.9949836103359992,
+          1.993188037134782,
+          1.9826785520434822,
+          1.99915258644733,
+          2.001614284033611,
+          2.0032270043889446]
     elif t == 77:
       pass
     else: sim = True
@@ -556,16 +618,16 @@ def plot_reptoall_over_ff():
       gain_in_hot = None
       pain_in_cold = None
     else:
-      gain_in_hot = (E_T_ff_hot_sim_l[i] - E_T_reptoall)/E_T_ff_hot_sim_l[i] * 100
+      gain_in_hot = (E_T_reptoall - E_T_ff_hot_sim_l[i])/E_T_ff_hot_sim_l[i] * 100
       pain_in_cold = (E_T_reptoall - E_T_ff_cold_sim_l[i])/E_T_ff_cold_sim_l[i] * 100
     gain_l.append(gain_in_hot)
     pain_l.append(pain_in_cold)
-  plot.plot(ar_l, gain_l, label="Gain in hot", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-  plot.plot(ar_l, pain_l, label="Pain in cold", marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  plot.plot(ar_l, gain_l, label="Gain in hot data", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  plot.plot(ar_l, pain_l, label="Pain in cold data", marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   
   plot.legend(prop={'size':11} )
   plot.xlabel(r'Hot data arrival rate $\lambda$ (Request/s)', fontsize=12)
-  plot.ylabel(r'Pain or gain in percentange', fontsize=12)
+  plot.ylabel(r'Pain or gain in percentage', fontsize=12)
   plot.title('Pain and gain of Rep-to-all over Fairness-First\n' + r'$S \sim Exp(\mu={})$, $t={}$, $\lambda_c={}$'.format(mu, t, cold_ar) )
   fig = plot.gcf()
   def_size = fig.get_size_inches()

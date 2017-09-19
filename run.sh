@@ -38,7 +38,9 @@ elif [ $1 = 'mm' ]; then
   $PYTHON mds_models.py
 elif [ $1 = 's' ]; then
   # $PYTHON simplex_models.py
-  $PYTHON sching_pareto.py
+  # $PYTHON sching_pareto.py
+  # $PYTHON straggler_exp.py
+  $PYTHON scheduling.py
 elif [ $1 = 'c' ]; then
   $PYTHON codes_stability.py
 elif [ $1 = 'd' ]; then
@@ -49,14 +51,17 @@ elif [ $1 = 'dep' ]; then
 elif [ $1 = 'a' ]; then
   # $PYTHON arepeat_sim_components.py
   # $PYTHON arepeat_models.py
-  # $PYTHON arepeat_exp.py
-  $PYTHON app.py
+  $PYTHON arepeat_exp.py
+  # $PYTHON app.py
 elif [ $1 = 'sl' ]; then
   $PYTHON slowdown.py
+elif [ $1 = 'n' ]; then
+  $PYTHON new.py
 elif [ $1 = 'g' ]; then
   $PYTHON google_data.py
 elif [ $1 = 'f' ]; then
-  $PYTHON fairness_sim.py
+  # $PYTHON fairness_sim.py
+  $PYTHON fj_heavytail.py
 elif [ $1 = 'me' ]; then
   rm *.log *.png
   NUM_Q_MIN=3

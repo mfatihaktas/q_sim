@@ -106,3 +106,21 @@ def B(m, n, u_l=1):
 
 def G(z):
   return scipy.special.gamma(z)
+
+# Order stats
+def cdf_n_k(n, k, X, x): # Pr{X_n:k < x}
+  cdf = 0
+  for i in range(k, n+1):
+    cdf += binomial(n, i) * X.cdf(x)**i * X.tail(x)**(n-i)
+  return cdf
+
+def moment_i_n_k(i, n, k, X): # E[X_n:k]
+  return mpmath.quad(lambda x: i*x**(i-1) * (1 - cdf_n_k(n, k, X, x) ), [0, mpmath.inf] )
+
+# Qing
+def PK(E_V, E_V_2, ar):
+  if ar*E_V >= 1:
+    return None
+  E_T = E_V + ar*E_V_2/2/(1 - ar*E_V)
+  if E_T > 100: return None
+  return E_T

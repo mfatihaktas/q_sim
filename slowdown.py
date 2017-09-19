@@ -45,10 +45,18 @@ def plot_Pr_slow():
   With PS, X' ~ X/k
 """
 def plot_E_T():
+  # k tasks served at a q with server ~ Pareto(loc, a)
   def E_T_w_q(k, loc, a):
     return k*loc*a/(a-1)
+  # k tasks served at a server ~ Pareto(loc, a)
   def E_T_w_ps(k, loc, a):
     return k*loc*G(k+1)*G(1-1/a)/G(k+1-1/a)
+  # k tasks served at a server ~ Pareto(loc, a) by m tasks at a time
+  def E_T_w_q_ps(k, loc, a, m):
+    if k % m:
+      log(ERROR, "k % m= {}".format(k % m) )
+      return 1
+    return k/m * m*loc*G(m+1)*G(1-1/a)/G(m+1-1/a)
   
   loc = 3
   a = 2
@@ -71,8 +79,19 @@ def plot_E_T():
     x_l.append(a)
     E_T_w_q_l.append(E_T_w_q(k, loc, a) )
     E_T_w_ps_l.append(E_T_w_ps(k, loc, a) )
-  plot.plot(x_l, E_T_w_q_l, label=r'qing', color=next(dark_color), marker=next(marker) )
+  plot.plot(x_l, E_T_w_q_l, label=r'q', color=next(dark_color), marker=next(marker) )
   plot.plot(x_l, E_T_w_ps_l, label=r'ps', color=next(dark_color), marker=next(marker) )
+  
+  def plot_E_T_w_q_ps(m):
+    x_l, y_l = [], []
+    for a in numpy.linspace(2, 10, 50):
+      x_l.append(a)
+      y_l.append(E_T_w_q_ps(k, loc, a, m) )
+    plot.plot(x_l, y_l, label=r'q-ps, m= {}'.format(m), color=next(dark_color), marker=next(marker) )
+  
+  plot_E_T_w_q_ps(m=2)
+  plot_E_T_w_q_ps(m=5)
+  
   plot.legend()
   plot.title(title)
   plot.xlabel(xlabel)
@@ -80,5 +99,8 @@ def plot_E_T():
   plot.savefig("plot_E_T.png")
 
 if __name__ == "__main__":
+  # plot_Pr_slow()
+  plot_E_T()
+
   # plot_Pr_slow()
   plot_E_T()

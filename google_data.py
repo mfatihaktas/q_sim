@@ -3,7 +3,7 @@ import matplotlib, numpy, pprint
 # matplotlib.rcParams['ps.fonttype'] = 42
 matplotlib.use('Agg')
 import matplotlib.pyplot as plot
-import gzip, csv
+import gzip, csv, pylab
 from collections import namedtuple
 from rvs import *
 
@@ -211,17 +211,20 @@ def plot_num_tasks_hist():
       # if num_task > 1 and num_task < 2000:
       num_tasks_l.append(num_task)
   
-  num_task__num_job_m = {}
-  for n in num_tasks_l:
-    if n not in num_task__num_job_m:
-      num_task__num_job_m[n] = 0
-    num_task__num_job_m[n] += 1
-  print("num_task__num_job_m= {}".format(pprint.pformat(num_task__num_job_m) ) )
-  # plot.hist(num_tasks_l, bins=20, histtype='step')
-  # plot.xlabel("Number of tasks")
-  # plot.ylabel("Frequency")
-  # plot.savefig("plot_num_tasks_hist.png", bbox_inches='tight')
-  # plot.gcf().clear()
+  # num_task__num_job_m = {}
+  # for n in num_tasks_l:
+  #   if n not in num_task__num_job_m:
+  #     num_task__num_job_m[n] = 0
+  #   num_task__num_job_m[n] += 1
+  # print("num_task__num_job_m= {}".format(pprint.pformat(num_task__num_job_m) ) )
+  
+  # plot.hist(num_tasks_l, bins=1000, histtype='step')
+  plot.hist(num_tasks_l, bins=100, histtype='step', normed=True, lw=2)
+  
+  plot.xlabel("Number of tasks")
+  plot.ylabel("Frequency")
+  plot.savefig("plot_num_tasks_hist.png", bbox_inches='tight')
+  plot.gcf().clear()
   log(WARNING, "done.")
 
 def plot_task_lifetime_hist(k):
@@ -271,7 +274,8 @@ def plot_task_lifetime_hist(k):
 
 def pplot_task_lifetime_hist(k):
   lifetime_l = []
-  with open("filtered_task_lifetimes_for_jobs_w_num_task_{}.dat".format(k), mode="rt") as f:
+  # with open("filtered_task_lifetimes_for_jobs_w_num_task_{}.dat".format(k), mode="rt") as f:
+  with open("task_lifetimes_for_jobs_w_num_task_{}.dat".format(k), mode="rt") as f:
     reader = csv.reader(f)
     for line in reader:
       lifetime_l.append(float(line[0] ) )
@@ -281,53 +285,48 @@ def pplot_task_lifetime_hist(k):
   # 
   # plot.hist(lifetime_l, bins=100, histtype='step', normed=True, lw=2)
   
-  # results, edges = numpy.histogram(lifetime_l, bins=50, normed=True)
-  # binWidth = edges[1] - edges[0]
-  # plot.bar(edges[:-1], results*binWidth, binWidth)
-  
   x_l = lifetime_l[::-1]
   y_l = numpy.arange(lifetime_l.size)/lifetime_l.size
   # y_l = [math.log(y + 0.000001) for y in y_l]
   # m, b = numpy.polyfit(x_l, y_l, 1)
   # plot.plot(x_l, m*x_l+b, 'r', lw=1, linestyle=':')
   
-  step_size = 10
-  num_rank = math.ceil(x_l[0]/step_size)
-  # rank__avg_lifetime_l = []
-  rank__num_lifetime_l = []
-  i = 0
-  for r in range(1, num_rank+1):
-    sum_ = 0
-    counter = 0
-    while i < len(x_l) and x_l[i] > x_l[0]-r*step_size:
-      counter += 1
-      sum_ += x_l[i]
-      i += 1
-    rank__num_lifetime_l.append(counter)
-    # avg = 0
-    # if counter:
-    #   avg = sum_/counter
-    # rank__avg_lifetime_l.append(avg)
-  # print("i= {}, rank__avg_lifetime_l=\n{}".format(i, rank__avg_lifetime_l) )
-  rank__num_lifetime_l = list(reversed(rank__num_lifetime_l) )
-  rank_freq_l = [n/sum(rank__num_lifetime_l) for n in rank__num_lifetime_l]
-  rank_tailprob_l = [sum(rank_freq_l[r-1:]) for r in range(1, num_rank+1) ]
+  # step_size = 10
+  # num_rank = math.ceil(x_l[0]/step_size)
+  # # rank__avg_lifetime_l = []
+  # rank__num_lifetime_l = []
+  # i = 0
+  # for r in range(1, num_rank+1):
+  #   sum_ = 0
+  #   counter = 0
+  #   while i < len(x_l) and x_l[i] > x_l[0]-r*step_size:
+  #     counter += 1
+  #     sum_ += x_l[i]
+  #     i += 1
+  #   rank__num_lifetime_l.append(counter)
+  #   # avg = 0
+  #   # if counter:
+  #   #   avg = sum_/counter
+  #   # rank__avg_lifetime_l.append(avg)
+  # # print("i= {}, rank__avg_lifetime_l=\n{}".format(i, rank__avg_lifetime_l) )
+  # rank__num_lifetime_l = list(reversed(rank__num_lifetime_l) )
+  # rank_freq_l = [n/sum(rank__num_lifetime_l) for n in rank__num_lifetime_l]
+  # rank_tailprob_l = [sum(rank_freq_l[r-1:]) for r in range(1, num_rank+1) ]
   
-  # plot.plot(range(1, num_rank+1), rank__avg_lifetime_l, 'bo', linestyle=':')
-  plot.xlabel(r'Rank', fontsize=13)
-  plot.ylabel(r'Tail distribution', fontsize=13)
-  plot.step(range(1, num_rank+1), rank_tailprob_l, 'bo', linestyle=':')
-  plot.yscale('log')
-  # plot.xscale('log')
+  # # plot.plot(range(1, num_rank+1), rank__avg_lifetime_l, 'bo', linestyle=':')
+  # # plot.xlabel(r'Rank', fontsize=13)
+  # # plot.ylabel(r'Tail distribution', fontsize=13)
+  # # plot.step(range(1, num_rank+1), rank_tailprob_l, 'bo', linestyle=':')
+  # # plot.yscale('log')
+  # # plot.xscale('log')
   
   # plot.step(x_l, y_l, 'bo', lw=1, linestyle=':')
-  # plot.step(x_l, y_l, 'bo', linestyle=':')
+  plot.step(x_l, y_l, 'bo', linestyle=':')
   
-  # plot.xlabel(r'$x$ (s)')
-  # plot.ylabel(r'$log(Pr\{X > x\})$')
-  # plot.yscale('log')
-  # plot.xlabel(r'Task lifetime x (s)', fontsize=13)
-  # plot.ylabel(r'Tail distribution', fontsize=13)
+  plot.xscale('log')
+  plot.yscale('log')
+  plot.xlabel(r'Task lifetime (s)', fontsize=13)
+  plot.ylabel(r'Tail distribution', fontsize=13)
   # plot.ylabel(r'Fraction of tasks completed in x')
   # plot.title(r'Jobs with {} tasks'.format(k), fontsize=13)
   plot.title(r'k= {}'.format(k), fontsize=13)
@@ -341,6 +340,24 @@ def pplot_task_lifetime_hist(k):
   # plot.savefig("pplot_task_lifetime_hist_k_{}.pdf".format(k) )
   plot.savefig("pplot_task_lifetime_hist_k_{}.png".format(k) )
   fig.clear()
+  log(WARNING, "done; k= {}".format(k) )
+
+def plot_qq_task_lifetimes(k):
+  lifetime_l = []
+  # with open("filtered_task_lifetimes_for_jobs_w_num_task_{}.dat".format(k), mode="rt") as f:
+  with open("task_lifetimes_for_jobs_w_num_task_{}.dat".format(k), mode="rt") as f:
+    reader = csv.reader(f)
+    for line in reader:
+      lifetime_l.append(float(line[0] ) )
+  
+  lifetime_l = numpy.sort(lifetime_l)
+  print("len(lifetime_l)= {}".format(len(lifetime_l) ) )
+  
+  # For different dists: https://docs.scipy.org/doc/scipy/reference/stats.html
+  # scipy.stats.probplot(lifetime_l, dist="expon", plot=plot)
+  # scipy.stats.probplot(lifetime_l, dist="pareto", sparams=(1.2,), plot=plot)
+  
+  plot.savefig("plot_qq_task_lifetimes_k_{}.png".format(k) )
   log(WARNING, "done; k= {}".format(k) )
 
 if __name__ == "__main__":
@@ -372,3 +389,6 @@ if __name__ == "__main__":
   pplot_task_lifetime_hist(k=400)
   pplot_task_lifetime_hist(k=1000)
   pplot_task_lifetime_hist(k=1050)
+  
+  # plot_qq_task_lifetimes(k=400)
+  
