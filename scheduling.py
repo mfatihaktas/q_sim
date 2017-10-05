@@ -80,7 +80,7 @@ class MultiQ(object):
     p.job_id = self.jid_counter
     return self.store.put(p)
 
-# *********************************  Fairness-First  *********************************** #
+# *********************************  Sim  *********************************** #
 def sim_multiq(num_f_run, ar, n, sching_m, serv, serv_dist_m):
   E_T_sum = 0
   for f in range(num_f_run):
@@ -121,8 +121,8 @@ def plot_multiq():
       sim = True
   
   ar_l = []
-  # for ar in numpy.arange(1, ar_ub, 1):
-  for ar in numpy.linspace(9, 9.9, 6):
+  for ar in numpy.arange(1, ar_ub, 1):
+  # for ar in numpy.linspace(9, 9.9, 6):
     ar_l.append(ar)
     
     # sching_m = {"t": "rand"}

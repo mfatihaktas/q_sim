@@ -106,6 +106,9 @@ class TPareto(): # Truncated
   def tail(self, x):
     return 1 - self.cdf(x)
   
+  def mean(self):
+    return self.moment(1)
+  
   def moment(self, k):
     if k == self.a:
       return math.log(self.u_l/self.loc)
@@ -207,18 +210,21 @@ class Bern(RV):
 #   def gen_sample(self):
 #     return self.bern.gen_sample()*self.pareto.gen_sample()
 
-class DiscreteUniform():
+class DUniform(): # Discrete
   def __init__(self, lb, ub):
     RV.__init__(self, l_l=lb, u_l=ub)
   
   def __str__(self):
-    return "DiscreteUniform[{}, {}]".format(self.l_l, self.u_l)
+    return "DUniform[{}, {}]".format(self.l_l, self.u_l)
+  
+  def mean(self):
+    return (self.u_l + self.l_l)/2
   
   def pdf(self, x):
     return float(1/(self.u_l - self.l_l + 1) )
   
   def gen_sample(self):
-    return randint(self.l_l, self.u_l+1)
+    return random.randint(self.l_l, self.u_l)
 
 class BoundedZipf():
   def __init__(self, lb, ub, a=1):

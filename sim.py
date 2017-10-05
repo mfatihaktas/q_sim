@@ -369,20 +369,20 @@ class FCFS(Q): # First Come First Serve
     for p in self.p_l:
       if p.job_id == cp._id:
         self.p_l.remove(p)
-  
+
 class QMonitor(object):
-  def __init__(self, env, q, dist):
+  def __init__(self, env, q, poll_interval):
     self.q = q
     self.env = env
-    self.dist = dist
+    self.poll_interval = poll_interval
     
-    self.t_l = [] # time steps that the numbers polled from the q
-    self.n_l = [] # num of packets in the q
+    self.pollt_l = []
+    self.qlength_l = []
     self.action = env.process(self.run() )
   
   def run(self):
     while True:
-      yield self.env.timeout(self.dist() )
+      yield self.env.timeout(self.poll_interval)
       
-      self.t_l.append(self.env.now)
-      self.n_l.append(self.q.length() )
+      self.pollt_l.append(self.env.now)
+      self.qlength_l.append(self.q.length() )

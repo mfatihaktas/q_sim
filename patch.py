@@ -106,6 +106,7 @@ def B(m, n, u_l=1):
 
 def G(z):
   return scipy.special.gamma(z)
+  # return mpmath.quad(lambda x: x**(z-1) * math.exp(-z), [0, mpmath.inf] )
 
 # Order stats
 def cdf_n_k(n, k, X, x): # Pr{X_n:k < x}

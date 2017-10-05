@@ -36,11 +36,14 @@ elif [ $1 = 'm' ]; then
   fi
 elif [ $1 = 'mm' ]; then
   $PYTHON mds_models.py
+elif [ $1 = 'p' ]; then
+  $PYTHON procsharing.py
 elif [ $1 = 's' ]; then
   # $PYTHON simplex_models.py
   # $PYTHON sching_pareto.py
   # $PYTHON straggler_exp.py
-  $PYTHON scheduling.py
+  # $PYTHON scheduling.py
+  $PYTHON multi_scheduling.py
 elif [ $1 = 'c' ]; then
   $PYTHON codes_stability.py
 elif [ $1 = 'd' ]; then
