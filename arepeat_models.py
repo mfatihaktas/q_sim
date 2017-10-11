@@ -829,7 +829,21 @@ def E_C_pareto_k_n_retainl_atd(loc, a, k, n, d):
       E_C += sum_ * binomial(k, r) * q**r * (1-q)**(k-r)
     
     return E_C + E_C_pareto_k_n_wrelaunch(loc, a, 0, k, n)
-  
+
+# ### X ~ TPareto ### #
+def E_TPareto_X_n_i(l, u, a, n, i):
+  return l* G(n+1)/G(i)/G(n-i+1) * mpmath.quad(lambda x: (1 - (1-u**(-a))*x)**(-1/a) * x**(i-1)*(1-x)**(n-i), [0, 1] )
+
+def E_T_k_n_TPareto(l, u, a, k, n):
+  return E_TPareto_X_n_i(l, u, a, n, k)
+
+def E_C_k_n_TPareto(l, u, a, k, n):
+  E_C = 0
+  for i in range(k+1):
+    E_C += E_TPareto_X_n_i(l, u, a, n, i)
+  E_C += (n-k)*E_TPareto_X_n_i(l, u, a, n, k)
+  return E_C
+
 # ******************************  Wrappers  ****************************** #
 def E_T_k_l_n(task_t, task_dist_m, d, k, l, n, added_load=False):
   if task_t == "Exp":
@@ -846,6 +860,9 @@ def E_T_k_l_n(task_t, task_dist_m, d, k, l, n, added_load=False):
       # loc = loc*n/k
       a = 1/(1 - k/n*(a-1)/a)
     return E_T_pareto_k_n(loc, a, d, k, n)
+  elif task_t == "TPareto":
+    l, u, a = task_dist_m["l"], task_dist_m["u"], task_dist_m["a"]
+    return E_T_k_n_TPareto(l, u, a, k, n)
 
 def E_C_k_l_n(task_t, task_dist_m, d, k, l, n, w_cancel, added_load=False):
   if task_t == "Exp":
@@ -861,6 +878,9 @@ def E_C_k_l_n(task_t, task_dist_m, d, k, l, n, w_cancel, added_load=False):
       # loc = loc*n/k
       a = 1/(1 - k/n*(a-1)/a)
     return E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=w_cancel)
+  elif task_t == "TPareto":
+    l, u, a = task_dist_m["l"], task_dist_m["u"], task_dist_m["a"]
+    return E_C_k_n_TPareto(l, u, a, k, n)
 
 def E_T_k_c(task_t, task_dist_m, d, k, c, added_load=False):
   if task_t == "Exp":

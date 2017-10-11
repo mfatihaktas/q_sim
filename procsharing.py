@@ -180,6 +180,7 @@ def plot_psq():
   plot.savefig("plot_psq.png")
   log(WARNING, "done; psize_dist= {}".format(psize_dist) )
 
+# ****************************************  Fitting the tail  ************************************ #
 def fit_tpareto(sample_l):
   # sample_l = numpy.sort(sample_l)[::-1]
   n = len(sample_l)
@@ -214,8 +215,7 @@ def fit_tpareto(sample_l):
   # plot.xlabel(r'$a$', fontsize=12)
   # plot.ylabel(r'$eq$', fontsize=12)
   # plot.savefig("fit_tpareto.png")
-  log(WARNING, "done.")
-  
+  log(WARNING, "done; l= {}, u= {}, a= {}".format(l, u, a_) )
   return l, u, a_
 
 def plot_psq_tail():
@@ -223,13 +223,17 @@ def plot_psq_tail():
   # psize_dist = Exp(mu, D=D)
   # proc_in_latex = "Exp(D={}, \mu={})".format(D, mu)
   
-  # l, a = 1, 1.5 # 4
-  # psize_dist = Pareto(l, a)
-  # proc_in_latex = r'Pareto(\lambda={}, \alpha={})'.format(l, a)
+  l, a = 1, 2 # 4
+  psize_dist = Pareto(l, a)
+  proc_in_latex = r'Pareto(\lambda={}, \alpha={})'.format(l, a)
   
-  l, u, a = 1, 100, 1.5
-  psize_dist = TPareto(l, u, a)
-  proc_in_latex = r'TPareto(l={}, u={}, \alpha={})'.format(l, u, a)
+  # l, u, a = 1, 100, 1.5
+  # psize_dist = TPareto(l, u, a)
+  # proc_in_latex = r'TPareto(l={}, u={}, \alpha={})'.format(l, u, a)
+  
+  # l, u, p = 1, 10, 0.2
+  # psize_dist = Bern(l, u, p)
+  # proc_in_latex = r'Bern(l={}, u={}, p={})'.format(l, u, p)
   
   # l, u = 1, 100
   # psize_dist = DUniform(l, u)
@@ -238,7 +242,7 @@ def plot_psq_tail():
   
   ar_ub = 1/psize_dist.mean()
   
-  ar_l, fitted_a_l = [], []
+  ar_l, ro_l, fitted_a_l = [], [], []
   def plot_(ar, h):
     log(WARNING, "ar= {}, h= {}".format(ar, h) )
     
@@ -247,13 +251,15 @@ def plot_psq_tail():
     psq = PSQ(env, h)
     pg.out = psq
     pg.init()
-    env.run(until=50000*10)
+    env.run(until=50000*300)
     
     sl_l = numpy.sort(psq.slowdown_l)
+    if float(sum(sl_l) )/len(sl_l) > 1000:
+      log(WARNING, "unstable; ar= {}".format(ar) )
+      return None
     x_l = sl_l[::-1]
     # y_sim_l = numpy.arange(sl_l.size)/sl_l.size
     # plot.plot(x_l, y_sim_l, label="ar= {}".format(ar), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-    
     i_ = None
     for i in range(len(x_l)-1, 0, -1):
       if x_l[i] > 1.01:
@@ -264,14 +270,14 @@ def plot_psq_tail():
     plot.plot(x_l, y_sim_l, label="ar= {}".format(ar), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
     
     l, u, a = fit_tpareto(x_l)
-    print("l= {}, u= {}, a= {}".format(l, u, a) )
     ar_l.append(ar)
+    ro_l.append(ar*psize_dist.mean()/h)
     fitted_a_l.append(a)
-    # rv = TPareto(l, u, a)
-    # y_l = []
-    # for x in x_l:
-    #   y_l.append(rv.tail(x) )
-    # plot.plot(x_l, y_l, label="fitted, ar= {}".format(ar), color=next(dark_color), linestyle='-')
+    rv = TPareto(l, u, a)
+    y_l = []
+    for x in x_l:
+      y_l.append(rv.tail(x) )
+    plot.plot(x_l, y_l, label="fitted, ar= {}".format(ar), color=next(dark_color), linestyle='-')
     
     plot.legend()
     plot.xscale('log')
@@ -281,13 +287,15 @@ def plot_psq_tail():
     plot.title(r'$P \sim {}$, $\lambda$= {}'.format(proc_in_latex, ar) )
     plot.savefig("plot_psq_h_{}_ar_{}.png".format(h, ar) )
     plot.gcf().clear()
+    return 0
   
-  h = 4
-  for ar in numpy.linspace(0.05, 1.5*ar_ub, 5):
-    plot_(ar, h)
+  h = 1
+  for ar in numpy.arange(0.05, 5*ar_ub, 0.05):
+    if plot_(ar, h) is None:
+      break
   
-  plot.plot(ar_l, fitted_a_l, label="h= {}".format(h), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-  plot.xlabel(r'$\lambda$', fontsize=13)
+  plot.plot(ro_l, fitted_a_l, label="h= {}".format(h), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  plot.xlabel(r'$\rho$', fontsize=13)
   plot.ylabel(r'$\alpha$', fontsize=13)
   plot.title(r'$P \sim {}$'.format(proc_in_latex) )
   plot.savefig("plot_fitted_tail_h_{}.png".format(h) )
@@ -295,6 +303,43 @@ def plot_psq_tail():
   
   log(WARNING, "done; psize_dist= {}".format(psize_dist) )
 
+def MG1_T():
+  l, u, a = 1, 100, 2
+  def Lt_S(s): # Laplace transform of service time
+    # Pareto(l, a)
+    # return a*(l*s)**a * math.exp(l*s) * G(-a)*scipy.special.gammaincc(-a, l*s)
+    
+    K = a*l**a/(1 - (l/u)**a)
+    # return K*(l**(-a)*scipy.special.expn(a+1, s*l) - u**(-a)*scipy.special.expn(a+1, s*u) )
+    # return 1/(s+1)
+    return K*mpmath.quad(lambda x: x**(-a-1)*math.exp(-s*x), [l, u] )
+    # return mpmath.quad(lambda x: math.exp(-s*x), [0, mpmath.inf] )
+  
+  def Lt_T(ar, ro, s): # Laplace transform of response time
+    return (1-ro)*Lt_S(s)*s/(ar*Lt_S(s) + s - ar)
+  # for t in numpy.linspace(l, 10*l, 10):
+  #   f_ = mpmath.invertlaplace(Lt_S, t, method='talbot')
+  #   print("f_= {}".format(f_) )
+  
+  ar, ro = 1, 0.5
+  s_l, Lt_S_l, Lt_T_l = [], [], []
+  # for s in numpy.linspace(0, 2, 100):
+  for s in numpy.linspace(0, 0.25, 10):
+    s_l.append(s)
+    Lt_S_l.append(Lt_S(s) )
+    Lt_T_l.append(Lt_T(ar, ro, s) )
+  plot.plot(s_l, Lt_S_l, label=r'$S$', marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  plot.plot(s_l, Lt_T_l, label=r'$T$, $\rho$= {}'.format(ro), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  
+  plot.legend()
+  plot.xlabel(r'$s$', fontsize=12)
+  plot.ylabel(r'$L(s)$', fontsize=12)
+  # plot.title(r'$P \sim {}$'.format(proc_in_latex) )
+  plot.savefig("MG1_T.png")
+  plot.gcf().clear()
+  log(WARNING, "done.")
+
 if __name__ == "__main__":
   # plot_psq()
-  plot_psq_tail()
+  # plot_psq_tail()
+  MG1_T()

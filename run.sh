@@ -29,11 +29,7 @@ elif [ $1 = 'x' ]; then
 elif [ $1 = 'm' ]; then
   # $MATLAB -r "run exp.m; quit"
   # rm *.png; $PYTHON mds_exp.py # > mds_exp.log
-  if [ -z "$2" ]; then
-    $PYTHON mds_exp.py
-  else
-    $PYTHON mds_exp.py & # > mds_exp.log
-  fi
+  $PYTHON multiq_sching.py
 elif [ $1 = 'mm' ]; then
   $PYTHON mds_models.py
 elif [ $1 = 'p' ]; then
@@ -42,8 +38,7 @@ elif [ $1 = 's' ]; then
   # $PYTHON simplex_models.py
   # $PYTHON sching_pareto.py
   # $PYTHON straggler_exp.py
-  # $PYTHON scheduling.py
-  $PYTHON multi_scheduling.py
+  $PYTHON scheduling.py
 elif [ $1 = 'c' ]; then
   $PYTHON codes_stability.py
 elif [ $1 = 'd' ]; then

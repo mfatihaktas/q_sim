@@ -321,17 +321,18 @@ def plot_zerodelay_reped_vs_coded(loc, a):
   K = 15 # 1050 # 15 # 400 # 10
   D, mu = 30, 0.5
   loc, a = 3, 2 # 2.5 # 3
-  task_t = "Pareto" # "Google" # "Exp" # "SExp" # "Pareto"
+  l, u, a = 1, 100, 1.5
+  task_t = "TPareto" # "Pareto" # "Google" # "Exp" # "SExp" # "Pareto"
   task_t_rv, task_t_in_latex = None, None
   if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu={})'.format(mu)
   elif task_t == "SExp": task_t_in_latex = r'X \sim SExp(D/k, \mu={}), D={}'.format(mu, D)
   elif task_t == "Pareto": task_t_in_latex = r'X \sim Pareto(\lambda={}, \alpha={})'.format(loc, a)
+  elif task_t == "TPareto": task_t_in_latex = r'X \sim TPareto(l={}, u={}, \alpha={})'.format(l, u, a)
   elif task_t == "Google": task_t_in_latex = r'X \sim Google'
   mew = 3
   num_run = 10000*10
   first_moment, second_moment, stdev, coeffvar = True, False, False, False # , True
   def plot_(k=K, n=0, c=0, sim=False):
-    l = k
     if task_t == "Exp":
       task_t_rv = Exp(mu)
       task_dist_m = {"mu": mu}
@@ -341,6 +342,9 @@ def plot_zerodelay_reped_vs_coded(loc, a):
     elif task_t == "Pareto":
       task_t_rv = Pareto(loc, a)
       task_dist_m = {"loc": loc, "a": a}
+    elif task_t == "TPareto":
+      task_t_rv = TPareto(l, u, a)
+      task_dist_m = {"l": l, "u": u, "a": a}
     elif task_t == "Google": task_t_rv = Google(k)
     
     x_l, x_sim_l, y_l, y_sim_l = [], [], [], []
@@ -466,8 +470,8 @@ def plot_zerodelay_reped_vs_coded(loc, a):
       # for n_ in [*numpy.arange(k, k+4, 1), *numpy.linspace(k+4, 2*k-1, 15), *numpy.arange(2*k, n+1, k) ]:
       #   n_ = int(n_)
       for n_ in numpy.arange(k, n+1, 1):
-        E_T = E_T_k_l_n(task_t, task_dist_m, d, k, l, n_, added_load=added_load)
-        E_C = E_C_k_l_n(task_t, task_dist_m, d, k, l, n_, w_cancel=w_cancel, added_load=added_load)
+        E_T = E_T_k_l_n(task_t, task_dist_m, d, k, k, n_, added_load=added_load)
+        E_C = E_C_k_l_n(task_t, task_dist_m, d, k, k, n_, w_cancel=w_cancel, added_load=added_load)
         E_T_2 = E_T_2_k(task_t, task_dist_m, k, n=n_, added_load=added_load)
         E_C_2 = E_C_2_k(task_t, task_dist_m, k, n=n_, added_load=added_load)
         stdev_T = 0 # math.sqrt(E_T_2 - E_T**2)
@@ -591,8 +595,9 @@ def plot_zerodelay_reped_vs_coded(loc, a):
       # plot.errorbar(x_l, y_l, xerr=xerr_l, yerr=yerr_l, label='Coding', color=color, zorder=1, marker=next(marker), mew=1, linestyle=':')
       if sim:
         plot.plot(x_sim_l, y_sim_l, label='Simulation, coding', color=color, zorder=1, marker=next(marker), linestyle=':', mew=1)
-  plot_(c=5)
-  plot_(n=6*K)
+  # plot_(c=5)
+  # plot_(n=6*K)
+  plot_(n=4*K)
   
   # plot_(c=5, sim=True)
   # plot_(n=6*K, sim=True)
@@ -1180,7 +1185,7 @@ if __name__ == "__main__":
   # plot_arepeat_shiftedexp_k_n()
   
   # plot_reped_vs_coded(w_cancel=True)
-  # plot_zerodelay_reped_vs_coded(loc=3, a=2)
+  plot_zerodelay_reped_vs_coded(loc=3, a=2)
   # plot_zerodelay_reped_vs_coded(loc=3, a=1.2)
   # plot_zerodelay_reped_vs_coded(loc=3, a=1.5)
   
@@ -1195,4 +1200,4 @@ if __name__ == "__main__":
   # plot_k_nc_retainl_atd()
   # plot_k_nc_retainl_atd__C_vs_T()
   
-  plot_cost_reduction_vs_redundant_occupation()
+  # plot_cost_reduction_vs_redundant_occupation()

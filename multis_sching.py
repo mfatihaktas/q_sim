@@ -74,13 +74,13 @@ class JQ(object):
         continue
       else:
         self.jid__t_l_map.pop(t._id, None)
-        self.out_c.put_c({'jid': t._id, 'm': 'done', 'departed_from': [t.prev_hop_id for t in t_l] } )
+        self.out_c.put_c({'jid': t._id, 'm': 'jdone', 'departed_from': [t.prev_hop_id for t in t_l] } )
   
   def put(self, t):
     sim_log(DEBUG, self.env, self, "recved", t)
     return self.store.put(t)
 
-class TServer(object): # Task
+class Server(object):
   def __init__(self, _id, env, serv, serv_dist_m, out, out_c):
     self._id = _id
     self.env = env
@@ -100,7 +100,7 @@ class TServer(object): # Task
     self.cancel_flag = False
   
   def __repr__(self):
-    return "TServer[id = {}]".format(self._id)
+    return "Server[id = {}]".format(self._id)
   
   def idle(self):
     return (self.t_inserv is None)
@@ -125,13 +125,13 @@ class TServer(object): # Task
     return self.store.put(t)
   
   def put_c(self, m):
-    if m['m'] == 'done':
+    if m['m'] == 'jdone':
       if self.t_inserv.jid != m['jid']:
         log(ERROR, "t_inserv.jid= {} != m['jid']= {}".format(self.t_inserv.jid, m['jid']) )
     self.cancel_flag = True
     self.cancel.succeed()
 
-class MultiQ(object):
+class MultiS(object):
   def __init__(self, env, N, sching_m, serv, serv_dist_m):
     self.env = env
     self.N = N
@@ -141,12 +141,12 @@ class MultiQ(object):
     
     self.jq = JQ(env, range(self.N) )
     self.jq.out_c = self
-    self.s_l = [TServer(i, env, serv, serv_dist_m, out=self.jq, out_c=self) for i in range(self.N) ]
+    self.s_l = [Server(i, env, serv, serv_dist_m, out=self.jq, out_c=self) for i in range(self.N) ]
     
     self.j_l = []
     self.nidleq = self.N
     self.waiting_for_nidleq = None
-    self.jid_qid_l = {}
+    self.jid_sid_l = {}
     self.action = env.process(self.run() )
     
     self.jid_enttime = {}
@@ -154,7 +154,7 @@ class MultiQ(object):
     self.nj_departed = 0
   
   def __repr__(self):
-    return "MultiQ[N = {}]".format(self.N)
+    return "MultiS[N = {}]".format(self.N)
   
   def length(self):
     return len(self.j_l)
@@ -188,7 +188,7 @@ class MultiQ(object):
         toi_l = self.idle_qid_l()[:nidleq_needed]
       elif self.sching_t == "red-to-idle":
         pass
-      self.jid_qid_l[j._id] = toi_l
+      self.jid_sid_l[j._id] = toi_l
       self.nidleq -= nidleq_needed
       for i in toi_l:
         self.s_l[i].put(j.deep_copy() )
@@ -208,17 +208,17 @@ class MultiQ(object):
       self.nidleq += 1
       if self.waiting_for_nidleq is not None and self.waiting_for_nidleq == self.nidleq:
         self.got_nidleq.succeed()
-    elif 'jid' in m and m['m'] == 'done':
+    elif 'jid' in m and m['m'] == 'jdone':
       jid = m['jid']
       self.qt_l.append(self.env.now - self.jid_enttime[jid] )
       self.jid_enttime.pop(jid, None)
       self.nj_departed += 1
       
       departed_from_qid_l = m['departed_from']
-      for i in self.jid_qid_l[jid]:
+      for i in self.jid_sid_l[jid]:
         if i not in departed_from_qid_l:
           self.s_l[i].put_c({'jid': jid, 'm': 'cancel'} )
-      self.jid_qid_l.pop(jid)
+      self.jid_sid_l.pop(jid)
 
 def W_M_G_c(c, ar, E_S, E_S_2):
   # from https://en.wikipedia.org/wiki/M/G/k_queue
@@ -231,7 +231,7 @@ def W_M_G_c(c, ar, E_S, E_S_2):
   coeff_var = math.sqrt(E_S_2 - E_S**2)/E_S
   return (coeff_var**2 + 1)/2 * W_M_M_c(c, ar, 1/E_S)
 
-def E_T_multiq(ar, N, k, n, serv, serv_dist_m):
+def E_T_multiS(ar, N, k, n, serv, serv_dist_m):
   E_S = E_T_k_l_n(serv, serv_dist_m, 0, k, k, n)
   E_S_2 = E_T_2_k(serv, serv_dist_m, k, n=n)
   E_X = E_T_k_l_n(serv, serv_dist_m, 0, k, k, N)
@@ -250,15 +250,15 @@ def E_T_multiq(ar, N, k, n, serv, serv_dist_m):
   
   return E_S + ar*E_X_2/2/(1 - ar*E_X)
 
-# *********************************  Sim  *********************************** #
-def sim_multiq(num_f_run, ar, N, sching_m, k_dist, serv, serv_dist_m):
+# *********************************************  Sim  ******************************************** #
+def sim_multis(num_f_run, ar, N, sching_m, k_dist, serv, serv_dist_m):
   E_T_sum = 0
   for f in range(num_f_run):
     log(WARNING, "ar= {}, N= {}, sching_m= {}".format(ar, N, sching_m) )
     
     env = simpy.Environment()
     jg = JG(env, ar, k_dist)
-    mq = MultiQ(env, N, sching_m, serv, serv_dist_m)
+    mq = MultiS(env, N, sching_m, serv, serv_dist_m)
     jg.out = mq
     jg.init()
     qm = QMonitor(env, mq, poll_interval= 0.1)
@@ -273,13 +273,13 @@ def sim_multiq(num_f_run, ar, N, sching_m, k_dist, serv, serv_dist_m):
     # plot.xlabel(r'time', fontsize=12)
     # plot.ylabel(r'Q length', fontsize=12)
     # plot.title('sching_m= {}'.format(sching_m) )
-    # plot.savefig("plot_sim_multiq_n_k_{}.png".format(sching_m['n-k'] ), bbox_inches='tight')
+    # plot.savefig("plot_sim_multis_n_k_{}.png".format(sching_m['n-k'] ), bbox_inches='tight')
     # plot.gcf().clear()
   E_T = E_T_sum/num_f_run
   print(">> E_T_sim= {}".format(E_T) )
   return E_T
 
-def plot_multiq():
+def plot_multis():
   N = 100
   # k_dist = DUniform(4, 4)
   k_dist = DUniform(2, 20)
@@ -313,11 +313,11 @@ def plot_multiq():
       x_l.append(ar)
       if sim:
         sching_m = {"t": "red", "n-k": n_k}
-        E_T = sim_multiq(num_f_run, ar, N, sching_m, k_dist, serv, serv_dist_m)
+        E_T = sim_multis(num_f_run, ar, N, sching_m, k_dist, serv, serv_dist_m)
         y_sim_l.append(E_T)
       
       k = int(k_dist.mean() )
-      E_T = E_T_multiq(ar, N, k, k + n_k, serv, serv_dist_m)
+      E_T = E_T_multiS(ar, N, k, k + n_k, serv, serv_dist_m)
       print("E_T= {}".format(E_T) )
       y_l.append(E_T)
       
@@ -329,7 +329,7 @@ def plot_multiq():
   def plot_E_T_vs_n_k(ar):
     for n_k in range(N-k_dist.u_l):
       sching_m = {"t": "red", "n-k": n_k}
-      E_T = sim_multiq(num_f_run, ar, N, sching_m, k_dist, serv, serv_dist_m)
+      E_T = sim_multis(num_f_run, ar, N, sching_m, k_dist, serv, serv_dist_m)
       if E_T > 100:
         break
       x_l.append(n_k)
@@ -347,9 +347,9 @@ def plot_multiq():
   def_size = fig.get_size_inches()
   # fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
   fig.tight_layout()
-  plot.savefig("plot_multiq_N_{}.png".format(N) )
+  plot.savefig("plot_multis_N_{}.png".format(N) )
   log(WARNING, "done; N= {}".format(N) )
 
 if __name__ == "__main__":
-  plot_multiq()
+  plot_multis()
   

@@ -111,7 +111,7 @@ class TPareto(): # Truncated
   
   def moment(self, k):
     if k == self.a:
-      return math.log(self.u_l/self.loc)
+      return math.log(self.u_l/self.l)
     else:
       return self.a*self.l**k/(self.a-k) * \
              (1 - (self.l/self.u)**(self.a-k))/(1 - (self.l/self.u)**self.a)
@@ -179,16 +179,16 @@ class Dolly(RV):
     return 12 + u/100 # for safety
 
 class Bern(RV):
-  def __init__(self, U, L, p):
-    RV.__init__(self, l_l=U, u_l=L)
+  def __init__(self, L, U, p):
+    RV.__init__(self, l_l=L, u_l=U)
     
     self.p = p
   
   def __str__(self):
-    return "Bern"
+    return "Bern(l= {}, u= {}, p= {})".format(self.l_l, self.u_l, self.p)
   
   def mean(self):
-    return self.p*self.u_l + (1 - self.p)*self.l_l
+    return (1 - self.p)*self.l_l + self.p*self.u_l
   
   def gen_sample(self):
     u = random.uniform(0, 1)
