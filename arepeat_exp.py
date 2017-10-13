@@ -321,7 +321,7 @@ def plot_zerodelay_reped_vs_coded(loc, a):
   K = 15 # 1050 # 15 # 400 # 10
   D, mu = 30, 0.5
   loc, a = 3, 2 # 2.5 # 3
-  l, u, a = 1, 100, 1.5
+  # l, u, a = 1, 100, 1.5
   task_t = "TPareto" # "Pareto" # "Google" # "Exp" # "SExp" # "Pareto"
   task_t_rv, task_t_in_latex = None, None
   if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu={})'.format(mu)

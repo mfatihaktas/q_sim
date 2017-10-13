@@ -223,13 +223,13 @@ def plot_psq_tail():
   # psize_dist = Exp(mu, D=D)
   # proc_in_latex = "Exp(D={}, \mu={})".format(D, mu)
   
-  l, a = 1, 2 # 4
-  psize_dist = Pareto(l, a)
-  proc_in_latex = r'Pareto(\lambda={}, \alpha={})'.format(l, a)
+  # l, a = 1, 2 # 4
+  # psize_dist = Pareto(l, a)
+  # proc_in_latex = r'Pareto(\lambda={}, \alpha={})'.format(l, a)
   
-  # l, u, a = 1, 100, 1.5
-  # psize_dist = TPareto(l, u, a)
-  # proc_in_latex = r'TPareto(l={}, u={}, \alpha={})'.format(l, u, a)
+  l, u, a = 1, 100, 1.5
+  psize_dist = TPareto(l, u, a)
+  proc_in_latex = r'TPareto(l={}, u={}, \alpha={})'.format(l, u, a)
   
   # l, u, p = 1, 10, 0.2
   # psize_dist = Bern(l, u, p)
@@ -242,7 +242,8 @@ def plot_psq_tail():
   
   ar_ub = 1/psize_dist.mean()
   
-  ar_l, ro_l, fitted_a_l = [], [], []
+  ar_l, ro_l = [], []
+  fitted_l_l, fitted_u_l, fitted_a_l = [], [], []
   def plot_(ar, h):
     log(WARNING, "ar= {}, h= {}".format(ar, h) )
     
@@ -251,7 +252,7 @@ def plot_psq_tail():
     psq = PSQ(env, h)
     pg.out = psq
     pg.init()
-    env.run(until=50000*300)
+    env.run(until=5000) # 50000 *20
     
     sl_l = numpy.sort(psq.slowdown_l)
     if float(sum(sl_l) )/len(sl_l) > 1000:
@@ -271,7 +272,9 @@ def plot_psq_tail():
     
     l, u, a = fit_tpareto(x_l)
     ar_l.append(ar)
-    ro_l.append(ar*psize_dist.mean()/h)
+    ro_l.append(ar*psize_dist.mean() )
+    fitted_l_l.append(l)
+    fitted_u_l.append(u)
     fitted_a_l.append(a)
     rv = TPareto(l, u, a)
     y_l = []
@@ -290,18 +293,24 @@ def plot_psq_tail():
     return 0
   
   h = 1
-  for ar in numpy.arange(0.05, 5*ar_ub, 0.05):
+  # for ar in numpy.arange(0.05, 5*ar_ub, 0.05):
+  for ar in numpy.arange(0.05, 5*0.05, 0.05):
     if plot_(ar, h) is None:
       break
   
-  plot.plot(ro_l, fitted_a_l, label="h= {}".format(h), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-  plot.xlabel(r'$\rho$', fontsize=13)
-  plot.ylabel(r'$\alpha$', fontsize=13)
   plot.title(r'$P \sim {}$'.format(proc_in_latex) )
-  plot.savefig("plot_fitted_tail_h_{}.png".format(h) )
-  plot.gcf().clear()
+  fig, axes = plot.subplots(3, 1, sharex=True)
+  axes[0].plot(ro_l, fitted_l_l, label="h= {}".format(h), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  axes[0].set_ylabel(r'$l$', fontsize=13)
+  axes[1].plot(ro_l, fitted_u_l, label="h= {}".format(h), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  axes[1].set_ylabel(r'$u$', fontsize=13)
+  axes[2].plot(ro_l, fitted_a_l, label="h= {}".format(h), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  axes[2].set_ylabel(r'$\alpha$', fontsize=13)
+  axes[2].set_xlabel(r'$\rho$', fontsize=13)
   
-  log(WARNING, "done; psize_dist= {}".format(psize_dist) )
+  plot.savefig("plot_fitted_lua_h_{}.png".format(h) )
+  plot.gcf().clear()
+  log(WARNING, "done.")
 
 def MG1_T():
   l, u, a = 1, 100, 2
@@ -341,5 +350,5 @@ def MG1_T():
 
 if __name__ == "__main__":
   # plot_psq()
-  # plot_psq_tail()
-  MG1_T()
+  plot_psq_tail()
+  # MG1_T()
