@@ -4,7 +4,7 @@ from scipy import special
 dark_color = itertools.cycle(('green', 'red', 'goldenrod', 'blue', 'purple', 'gray', 'brown', 'magenta', 'goldenrod', 'gold', 'olive', 'orangered', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise', 'darkgray'))
 light_color = itertools.cycle(('silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise'))
 linestyle = itertools.cycle(('-', '--', '-.', ':') )
-marker = itertools.cycle(('^', 'p', '+', 'x', '*', 'v', '<', '>', 'd', '1' , '2', '3', '4') )
+marker = itertools.cycle(('^', 'p', '+', 'x', 'v', '<', '>', 'd', '1' , '2', '3', '4') )
 skinny_marker_l = ['x', '+', '1', '2', '3', '4']
 
 mew, ms = 3, 5

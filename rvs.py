@@ -143,6 +143,22 @@ class Google(RV):
   def gen_sample(self):
     return self.sample_l[math.floor(self.num_sample*random.random() ) ]
 
+class SimRV(RV):
+  def __init__(self, sample_l):
+    RV.__init__(self, l_l=min(sample_l), u_l=max(sample_l) )
+    
+    self.sample_l = sample_l
+    self.num_sample = len(self.sample_l)
+  
+  def __str__(self):
+    return "SimRV"
+  
+  def mean(self):
+    return sum(self.sample_l)/self.num_sample
+  
+  def gen_sample(self):
+    return self.sample_l[math.floor(self.num_sample*random.random() ) ]
+
 class Dolly(RV):
   # Kristen et al. A Better Model for Job Redundancy: Decoupling Server Slowdown and Job Size
   def __init__(self):
