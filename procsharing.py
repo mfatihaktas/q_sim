@@ -137,7 +137,7 @@ class QMonitor(object):
     while True:
       yield self.env.timeout(self.poll_interval)
       
-      self.qbusy_l.append(len(q.p_l) != 0)
+      self.qbusy_l.append(len(self.q.p_l) != 0)
       # self.pollt_l.append(self.env.now)
       # self.qlength_l.append(self.q.length() )
 
@@ -281,7 +281,7 @@ def plot_psq_tail():
   
   ar_ub = 1/psize_dist.mean()
   
-  ar_l, ro_l = []
+  ar_l, ro_l = [], []
   tpar_l_l, tpar_u_l, tpar_a_l = [], [], []
   par_l_l, par_a_l = [], []
   def plot_(num_frun, ar, h):
@@ -314,14 +314,14 @@ def plot_psq_tail():
       # y_l = numpy.arange(x_l.size)/x_l.size
       # plot.plot(x_l, y_l, label="ar= {}".format(ar), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
       
-      ro_sum += sum(qm.busy_l)/len(qm.busy_l)
+      ro_sum += sum(qm.qbusy_l)/len(qm.qbusy_l)
       l, u, a = fit_tpareto(x_l)
       tpar_l_sum += l
       tpar_u_sum += u
       tpar_a_sum += a
       l, a = fit_pareto(x_l)
       par_l_sum += l
-      par_u_sum += u
+      par_a_sum += a
     ar_l.append(ar)
     ro_l.append(ro_sum/num_frun)
     
@@ -352,9 +352,9 @@ def plot_psq_tail():
     # plot.savefig("plot_psq_h_{}_ar_{}.png".format(h, ar) )
     # plot.gcf().clear()
     return 0
-  num_frun = 3
+  num_frun = 1 # 5
   h = 8
-  for ar in numpy.arange(0.01, 5*ar_ub, 0.025):
+  for ar in numpy.arange(0.01, 5*ar_ub, 0.01):
   # for ar in numpy.linspace(0.05, ar_ub, 10):
     if plot_(num_frun, ar, h) is None:
       break
@@ -366,14 +366,18 @@ def plot_psq_tail():
   axes[1].set_yscale('log')
   axes[1].plot(ro_l, tpar_u_l, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   axes[1].set_ylabel(r'$u$', fontsize=13)
-  axes[1].set_xlabel(r'$\rho', fontsize=13)
+  axes[1].set_xlabel(r'$\rho$', fontsize=13)
   plot.savefig("plot_fitted_tpar_h_{}.png".format(h) )
   plot.gcf().clear()
   
-  plot.title(r'$P \sim {}, h= {}$'.format(proc_in_latex, h) )
-  plot.plot(ro_l, par_a_l, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  # plot.title(r'$P \sim {}, h= {}$'.format(proc_in_latex, h) )
+  fig, axes = plot.subplots(2, 1, sharex=True)
+  axes[0].plot(ro_l, par_l_l, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms+1)
+  axes[0].set_ylabel(r'$\lambda$', fontsize=13)
+  axes[1].plot(ro_l, par_a_l, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms+1)
+  axes[1].set_ylabel(r'$\alpha$', fontsize=13)
+  # plot.plot(ro_l, par_a_l, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms+1)
   plot.xlabel(r'$\rho$', fontsize=13)
-  plot.ylabel(r'$\alpha$', fontsize=13)
   plot.savefig("plot_fitted_par_h_{}.png".format(h) )
   plot.gcf().clear()
   log(WARNING, "done.")
@@ -544,9 +548,9 @@ def plot_EC_vs_ET_wsim():
     # plot.gcf().clear()
     
     plot.plot(x_tpar_l[0], y_tpar_l[0], zorder=2, marker='x', color='blue', mew=3, ms=9)
-    plot.plot(x_tpar_l, y_tpar_l, zorder=0, label=r'Using fitted Truncated-Pareto', color=next(dark_color), linestyle='-')
+    plot.plot(x_tpar_l, y_tpar_l, zorder=0, label=r'Using fitted Truncated-Pareto', color=next(dark_color), linestyle='-.', lw=2)
     plot.plot(x_par_l[0], y_par_l[0], zorder=2, marker='x', color='blue', mew=3, ms=9)
-    plot.plot(x_par_l, y_par_l, zorder=0, label=r'Using fitted Pareto', color=next(dark_color), linestyle='-.')
+    plot.plot(x_par_l, y_par_l, zorder=0, label=r'Using fitted Pareto', color=next(dark_color), linestyle='-', lw=2)
     # plot.legend()
     # plot.xscale('log')
     # plot.yscale('log')
@@ -556,7 +560,7 @@ def plot_EC_vs_ET_wsim():
     # plot.savefig("plot_EC_vs_ET_model.png" )
     # plot.gcf().clear()
   
-  num_frun = 3 # 5
+  num_frun = 1 # 3 # 5
   h = 8
   k = 100
   ar = 0.01 # 0.05 # 0.1*ar_ub

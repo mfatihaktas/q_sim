@@ -844,6 +844,31 @@ def E_C_k_n_TPareto(l, u, a, k, n):
   E_C += (n-k)*E_TPareto_X_n_i(l, u, a, n, k)
   return E_C
 
+# ### If redundancy affects the tail ### #
+def a_wred(ro_0, a_0, ro):
+  # K = ro/(1 - ro)*(1-ro_0)/ro_0
+  # return K*a_0/((K-1)*a_0 + 1)
+  return a_0*(1-ro)/(1-ro_0)
+
+def plot_a_wred():
+  ro_0 = 0.1
+  a_0 = 10
+  
+  ro_l, a_l = [], []
+  for ro in numpy.linspace(ro_0, 0.95, 25):
+    ro_l.append(ro)
+    a_l.append(a_wred(ro_0, a_0, ro) )
+  plot.plot(ro_l, a_l, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  plot.xlabel(r'$\rho$', fontsize=13)
+  plot.ylabel(r'$\alpha$', fontsize=13)
+  fig = plot.gcf()
+  def_size = fig.get_size_inches()
+  # fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
+  fig.tight_layout()
+  plot.savefig("plot_a_wred.png")
+  plot.gcf().clear()
+  log(WARNING, "done.")
+
 # ******************************  Wrappers  ****************************** #
 def E_T_k_l_n(task_t, task_dist_m, d, k, l, n, added_load=False):
   if task_t == "Exp":
@@ -941,6 +966,6 @@ def plot_deneme():
 if __name__ == "__main__":
   # plot_Pr_T_g_t_G_1red()
   # plot_pareto_zerodelay_red()
-  plot_deneme()
+  # plot_deneme()
   
-  
+  plot_a_wred()
