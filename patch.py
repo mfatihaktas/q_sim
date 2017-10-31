@@ -1,7 +1,7 @@
 import inspect, math, mpmath, scipy, itertools
 from scipy import special
 
-dark_color = itertools.cycle(('green', 'red', 'blue', 'magenta', 'goldenrod', 'purple', 'gray', 'brown', 'goldenrod', 'gold', 'olive', 'orangered', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise', 'darkgray'))
+dark_color = itertools.cycle(('green', 'red', 'blue', 'turquoise', 'goldenrod', 'purple', 'gray', 'brown', 'magenta', 'gold', 'olive', 'orangered', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'darkgray'))
 light_color = itertools.cycle(('silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise'))
 linestyle = itertools.cycle(('-', '--', '-.', ':') )
 marker = itertools.cycle(('^', 'p', 'x', 'd', '+', 'v', '<', '>', '1' , '2', '3', '4') )
@@ -125,3 +125,65 @@ def PK(E_V, E_V_2, ar):
   E_T = E_V + ar*E_V_2/2/(1 - ar*E_V)
   if E_T > 100: return None
   return E_T
+
+def fit_pareto(s_l):
+  n = len(s_l)
+  
+  fit_upper_tail = False # True
+  if not fit_upper_tail:
+    l = s_l[-1]
+    D = 0
+    for s in s_l:
+      D += math.log(s) - math.log(l)
+    a = (n-1)/D
+  elif fit_upper_tail:
+    l = s_l[-1]
+    i = int(math.sqrt(n) ) # int(n*0.3)
+    s_l = s_l[:i]
+    l_ = s_l[-1]
+    D = 0
+    for s in s_l:
+      D += math.log(s) - math.log(l_)
+    a = i/D
+  log(WARNING, "done; l= {}, a= {}".format(l, a) )
+  return l, a
+
+def fit_tpareto(s_l):
+  # s_l is ordered in descending order
+  n = len(s_l)
+  log(WARNING, "n= {}".format(n) )
+  fit_upper_tail = False # True
+  def solve_a(eq):
+    a = 0.01
+    _a = None
+    while True:
+      if eq(a) > 0:
+        _a = a
+        a += 0.01
+      else:
+        return _a if _a is not None else 0.01
+  
+  u = s_l[0]
+  if not fit_upper_tail:
+    l = s_l[-1]
+    r = l/u
+    # Did not work somehow
+    # a = sympy.Symbol('a')
+    # a = sympy.solve(n/a + n*r**a*math.log(r)/(1-r**a) - sum([math.log(x/l) for x in s_l] ) )
+    a = solve_a(lambda a: n/a + n*r**a*math.log(r)/(1-r**a) - sum([math.log(x/l) for x in s_l] ) )
+  else:
+    i = int(math.sqrt(n) ) # int(n*0.3)
+    X_ip1 = s_l[i+1]
+    r = X_ip1/u
+    a = solve_a(lambda a: i/a + i*r**a*math.log(r)/(1-r**a) - sum([math.log(x) - math.log(X_ip1) for x in s_l[:i+1] ] ) )
+    l = i**(1/a) * X_ip1*(n - (n-i)*(X_ip1/u)**a)**(-1/a)
+  log(WARNING, "done; l= {}, u= {}, a= {}".format(l, u, a) )
+  return l, u, a
+
+def fit_sexp(s_l):
+  # https://www.statlect.com/fundamentals-of-statistics/exponential-distribution-maximum-likelihood
+  D = min(s_l)
+  n = len(s_l)
+  mu = n/(sum(s_l) - n*D)
+  
+  return D, mu

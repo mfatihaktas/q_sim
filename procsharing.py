@@ -27,7 +27,6 @@ class Proc(object):
     p.entrance_time = self.entrance_time
     return p
 
-# *******************************  PacketGenerator  ****************************** #
 class PG(object): # Packet Generator
   def __init__(self, env, ar, psize_dist):
     self.env = env
@@ -58,8 +57,8 @@ class PSQ(object): # Process Sharing Queue
     self.sinterrupt = None
     self.got_busy = None
     
-    self.restime_l = []
-    self.slowdown_l = []
+    self.lt_l = []
+    self.sl_l = []
     
     self.store = simpy.Store(env)
     self.action = env.process(self.serv_run() )
@@ -67,6 +66,9 @@ class PSQ(object): # Process Sharing Queue
   
   def __repr__(self):
     return "PSQ[h= {}]".format(self.h)
+  
+  def busy(self):
+    return len(self.p_l) != 0
   
   def serv_run(self):
     while True:
@@ -101,9 +103,9 @@ class PSQ(object): # Process Sharing Queue
         p = self.p_l.pop(i_min)
         sim_log(DEBUG, self.env, self, "serv done", p)
         
-        lifetime = self.env.now - p.entrance_time
-        self.restime_l.append(lifetime)
-        self.slowdown_l.append(lifetime/p.size)
+        lt = self.env.now - p.entrance_time
+        self.lt_l.append(lt)
+        self.sl_l.append(lt/p.size)
   
   def put_run(self):
     while True:
@@ -122,6 +124,41 @@ class PSQ(object): # Process Sharing Queue
     
     return self.store.put(p.deep_copy() )
 
+class DollyQ(object):
+  def __init__(self, env):
+    self.env = env
+    
+    self.serv_time = Dolly()
+    self.store = simpy.Store(env)
+    self.action = env.process(self.run() )
+    
+    self.num_t = 0
+    self.lt_l = []
+    self.sl_l = []
+  
+  def __repr__(self):
+    return "DollyQ"
+  
+  def busy(self):
+    return self.num_t != 0
+  
+  def run(self):
+    while True:
+      p = (yield self.store.get() )
+      yield (self.env.timeout(p.size * self.serv_time.gen_sample() ) )
+      
+      lt = self.env.now - p.entrance_time
+      self.lt_l.append(lt)
+      self.sl_l.append(lt/p.size)
+      self.num_t -= 1
+  
+  def put(self, p, preempt=False):
+    p.entrance_time = self.env.now
+    sim_log(DEBUG, self.env, self, "recved", p)
+    
+    self.num_t += 1
+    return self.store.put(p.deep_copy() )
+
 class QMonitor(object):
   def __init__(self, env, q, poll_interval):
     self.q = q
@@ -137,7 +174,7 @@ class QMonitor(object):
     while True:
       yield self.env.timeout(self.poll_interval)
       
-      self.qbusy_l.append(len(self.q.p_l) != 0)
+      self.qbusy_l.append(self.q.busy() )
       # self.pollt_l.append(self.env.now)
       # self.qlength_l.append(self.q.length() )
 
@@ -154,7 +191,7 @@ def sim_psq(num_f_run, ar, h, psize_dist):
     pg.init()
     env.run(until=50000)
     
-    l = psq.slowdown_l
+    l = psq.sl_l
     if len(l): sum_ += float(sum(l) )/len(l)
   E_sl = sum_/num_f_run
   print(">> E_sl= {}".format(E_sl) )
@@ -203,60 +240,6 @@ def plot_psq():
   log(WARNING, "done; psize_dist= {}".format(psize_dist) )
 
 # ****************************************  Fitting the tail  ************************************ #
-def fit_pareto(sample_l):
-  n = len(sample_l)
-  
-  fit_upper_tail = False # True
-  if not fit_upper_tail:
-    l = sample_l[-1]
-    D = 0
-    for s in sample_l:
-      D += math.log(s) - math.log(l)
-    a = (n-1)/D
-  elif fit_upper_tail:
-    l = sample_l[-1]
-    i = int(math.sqrt(n) ) # int(n*0.3)
-    sample_l = sample_l[:i]
-    l_ = sample_l[-1]
-    D = 0
-    for s in sample_l:
-      D += math.log(s) - math.log(l_)
-    a = i/D
-  log(WARNING, "done; l= {}, a= {}".format(l, a) )
-  return l, a
-
-def fit_tpareto(sample_l):
-  # sample_l is ordered in descending order
-  n = len(sample_l)
-  log(WARNING, "n= {}".format(n) )
-  fit_upper_tail = False # True
-  def solve_a(eq):
-    a = 0.01
-    _a = None
-    while True:
-      if eq(a) > 0:
-        _a = a
-        a += 0.01
-      else:
-        return _a if _a is not None else 0.01
-  
-  u = sample_l[0]
-  if not fit_upper_tail:
-    l = sample_l[-1]
-    r = l/u
-    # Did not work somehow
-    # a = sympy.Symbol('a')
-    # a = sympy.solve(n/a + n*r**a*math.log(r)/(1-r**a) - sum([math.log(x/l) for x in sample_l] ) )
-    a = solve_a(lambda a: n/a + n*r**a*math.log(r)/(1-r**a) - sum([math.log(x/l) for x in sample_l] ) )
-  else:
-    i = int(math.sqrt(n) ) # int(n*0.3)
-    X_ip1 = sample_l[i+1]
-    r = X_ip1/u
-    a = solve_a(lambda a: i/a + i*r**a*math.log(r)/(1-r**a) - sum([math.log(x) - math.log(X_ip1) for x in sample_l[:i+1] ] ) )
-    l = i**(1/a) * X_ip1*(n - (n-i)*(X_ip1/u)**a)**(-1/a)
-  log(WARNING, "done; l= {}, u= {}, a= {}".format(l, u, a) )
-  return l, u, a
-
 def plot_psq_tail():
   # D, mu = 1, 0.5
   # psize_dist = Exp(mu, D=D)
@@ -293,13 +276,14 @@ def plot_psq_tail():
     for f in range(num_frun):
       env = simpy.Environment()
       pg = PG(env, ar, psize_dist)
-      psq = PSQ(env, h)
-      pg.out = psq
+      # q = PSQ(env, h)
+      q = DollyQ(env)
+      pg.out = q
       pg.init()
-      qm = QMonitor(env, psq, poll_interval=0.1)
+      qm = QMonitor(env, q, poll_interval=0.1)
       env.run(until=50000*20)
       
-      sl_l = numpy.sort(psq.slowdown_l)
+      sl_l = numpy.sort(q.sl_l)
       E_Sl = float(sum(sl_l) )/len(sl_l)
       print(">>> E_Sl= {}".format(E_Sl) )
       if E_Sl > 1000*10:
@@ -311,8 +295,8 @@ def plot_psq_tail():
       for i in range(len(x_l)-1, 0, -1):
         if x_l[i] > 1.01: i_ = i; break
       x_l = x_l[:i_]
-      # y_l = numpy.arange(x_l.size)/x_l.size
-      # plot.plot(x_l, y_l, label="ar= {}".format(ar), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+      y_l = numpy.arange(x_l.size)/x_l.size
+      plot.plot(x_l, y_l, label="ar= {}".format(ar), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
       
       ro_sum += sum(qm.qbusy_l)/len(qm.qbusy_l)
       l, u, a = fit_tpareto(x_l)
@@ -330,32 +314,31 @@ def plot_psq_tail():
     tpar_l_l.append(l)
     tpar_u_l.append(u)
     tpar_a_l.append(a)
-    # rv = TPareto(l, u, a)
-    # y_l = []
-    # for x in x_l: y_l.append(rv.tail(x) )
-    # plot.plot(x_l, y_l, label=r'$TPareto(l= %.2f, u= %.2f, \alpha= %.2f), \lambda= %.2f$' % (l, u, a, ar), color=next(dark_color), linestyle='-')
+    rv = TPareto(l, u, a)
+    y_l = []
+    for x in x_l: y_l.append(rv.tail(x) )
+    plot.plot(x_l, y_l, label=r'$TPareto(l= %.2f, u= %.2f, \alpha= %.2f), \lambda= %.2f$' % (l, u, a, ar), color=next(dark_color), linestyle='-')
     
     l, a = tpar_l_sum/num_frun, tpar_a_sum/num_frun
     par_l_l.append(l)
     par_a_l.append(a)
-    # rv = Pareto(l, a)
-    # y_l = []
-    # for x in x_l: y_l.append(rv.tail(x) )
-    # plot.plot(x_l, y_l, label=r'$Pareto(l= %.2f, \alpha= %.2f), \lambda= %.2f$' % (l, a, ar), color=next(dark_color), linestyle='-')
+    rv = Pareto(l, a)
+    y_l = []
+    for x in x_l: y_l.append(rv.tail(x) )
+    plot.plot(x_l, y_l, label=r'$Pareto(l= %.2f, \alpha= %.2f), \lambda= %.2f$' % (l, a, ar), color=next(dark_color), linestyle='-')
     
-    # plot.legend()
-    # plot.xscale('log')
-    # plot.yscale('log')
-    # plot.xlabel(r'Slowdown', fontsize=13)
-    # plot.ylabel(r'Tail distribution', fontsize=13)
-    # plot.title(r'$P \sim {}$, $h= {}$, $\lambda= {}$'.format(proc_in_latex, h, ar) )
-    # plot.savefig("plot_psq_h_{}_ar_{}.png".format(h, ar) )
-    # plot.gcf().clear()
+    plot.legend()
+    plot.xscale('log')
+    plot.yscale('log')
+    plot.xlabel(r'Slowdown', fontsize=13)
+    plot.ylabel(r'Tail distribution', fontsize=13)
+    plot.title(r'$P \sim {}$, $h= {}$, $\lambda= {}$'.format(proc_in_latex, h, ar) )
+    plot.savefig("plot_psq_h_{}_ar_{}.png".format(h, ar) )
+    plot.gcf().clear()
     return 0
   num_frun = 1 # 5
   h = 8
   for ar in numpy.arange(0.01, 5*ar_ub, 0.01):
-  # for ar in numpy.linspace(0.05, ar_ub, 10):
     if plot_(num_frun, ar, h) is None:
       break
   
@@ -468,7 +451,7 @@ def MG1_T():
   log(WARNING, "done.")
 
 def plot_EC_vs_ET_wsim():
-  l, u, a = 1, 10**10, 1.1 # 1, 100, 1.5
+  l, u, a = 1, 10**10, 1.1 # 1, 10**5, 1.1 # 1, 100, 1.5
   psize_dist = TPareto(l, u, a)
   proc_in_latex = r'TPareto(l={}, u={}, \alpha={})'.format(l, u, a)
   log(WARNING, "psize_dist= {}".format(psize_dist) )
@@ -477,20 +460,22 @@ def plot_EC_vs_ET_wsim():
   def sim(ar, h):
     env = simpy.Environment()
     pg = PG(env, ar, psize_dist)
-    psq = PSQ(env, h)
-    pg.out = psq
+    q = PSQ(env, h)
+    # q = DollyQ(env)
+    pg.out = q
     pg.init()
+    qm = QMonitor(env, q, poll_interval=0.1)
     env.run(until=50000*20)
     
-    E_Sl = float(sum(psq.slowdown_l) )/len(psq.slowdown_l)
-    print(">>> E_Sl= {}".format(E_Sl) )
-    if E_Sl > 1000*10: return None # 200 1000*1
-    return psq.restime_l # psq.slowdown_l
+    ro = sum(qm.qbusy_l)/len(qm.qbusy_l)
+    E_Sl = float(sum(q.sl_l) )/len(q.sl_l)
+    print(">>> ro= {}, E_Sl= {}".format(ro, E_Sl) )
+    # if ro > 0.95: return None # 200 1000*1
+    if E_Sl > 1000*6: return None # 200 1000*1
+    return q.lt_l # q.sl_l
   
   def plot_EC_vs_ET(num_frun, h, ar, k):
-    x_sim_l, y_sim_l = [], []
-    x_tpar_l, y_tpar_l = [], []
-    x_par_l, y_par_l = [], []
+    x_sim_l, y_sim_l, x_tpar_l, y_tpar_l, x_par_l, y_par_l = [], [], [], [], [], []
     n_k = 0
     done = False
     while not done:
@@ -547,9 +532,9 @@ def plot_EC_vs_ET_wsim():
     # plot.savefig("plot_EC_vs_ET_sim.png" )
     # plot.gcf().clear()
     
-    plot.plot(x_tpar_l[0], y_tpar_l[0], zorder=2, marker='x', color='blue', mew=3, ms=9)
+    # plot.plot(x_tpar_l[0], y_tpar_l[0], zorder=2, marker='x', color='blue', mew=3, ms=9)
     plot.plot(x_tpar_l, y_tpar_l, zorder=0, label=r'Using fitted Truncated-Pareto', color=next(dark_color), linestyle='-.', lw=2)
-    plot.plot(x_par_l[0], y_par_l[0], zorder=2, marker='x', color='blue', mew=3, ms=9)
+    # plot.plot(x_par_l[0], y_par_l[0], zorder=2, marker='x', color='blue', mew=3, ms=9)
     plot.plot(x_par_l, y_par_l, zorder=0, label=r'Using fitted Pareto', color=next(dark_color), linestyle='-', lw=2)
     # plot.legend()
     # plot.xscale('log')
@@ -560,7 +545,7 @@ def plot_EC_vs_ET_wsim():
     # plot.savefig("plot_EC_vs_ET_model.png" )
     # plot.gcf().clear()
   
-  num_frun = 1 # 3 # 5
+  num_frun = 3 # 5
   h = 8
   k = 100
   ar = 0.01 # 0.05 # 0.1*ar_ub
@@ -573,13 +558,17 @@ def plot_EC_vs_ET_wsim():
   plot.ylabel(r'$E[C]$', fontsize=13)
   # plot.title(r'$T \sim {}$, $k= {}$'.format(proc_in_latex, k) )
   plot.title(r'$k= {}$'.format(k) )
-  plot.savefig("plot_EC_vs_ET.png")
+  fig = plot.gcf()
+  # def_size = fig.get_size_inches()
+  # fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
+  fig.tight_layout()
+  plot.savefig("plot_EC_vs_ET.pdf")
   plot.gcf().clear()
   log(WARNING, "done; k= {}".format(k) )
 
 if __name__ == "__main__":
   # plot_psq()
-  plot_psq_tail()
+  # plot_psq_tail()
   # MG1_T()
   
-  # plot_EC_vs_ET_wsim()
+  plot_EC_vs_ET_wsim()

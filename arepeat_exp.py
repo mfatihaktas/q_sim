@@ -25,13 +25,13 @@ def plot_arepeat_k_nc():
   def plot_(k, n=None, c=None, sim=False):
     if task_t == "Exp":
       task_t_rv = Exp(mu)
-      task_dist_m = {"mu": mu}
+      task_dist_m = {'mu': mu}
     elif task_t == "SExp":
       task_t_rv = Exp(mu, D/k)
-      task_dist_m = {"D": D, "mu": mu}
+      task_dist_m = {'D': D, 'mu': mu}
     elif task_t == "Pareto":
       task_t_rv = Pareto(loc, a)
-      task_dist_m = {"loc": loc, "a": a}
+      task_dist_m = {'loc': loc, 'a': a}
     elif task_t == "Google": task_t_rv = Google(k)
     
     d_l = []
@@ -100,13 +100,13 @@ def plot_arepeat_k_nc_E_C_vs_E_T():
       if sim:
         if task_t == "Exp":
           task_t_rv = Exp(mu)
-          task_dist_m = {"mu": mu}
+          task_dist_m = {'mu': mu}
         elif task_t == "SExp":
           task_t_rv = Exp(mu, D/k)
-          task_dist_m = {"D": D, "mu": mu}
+          task_dist_m = {'D': D, 'mu': mu}
         elif task_t == "Pareto":
           task_t_rv = Pareto(loc, a)
-          task_dist_m = {"loc": loc, "a": a}
+          task_dist_m = {'loc': loc, 'a': a}
         elif task_t == "Google": task_t_rv = Google(k)
         
         if n is not None:
@@ -140,16 +140,29 @@ def plot_arepeat_k_nc_E_C_vs_E_T():
   log(WARNING, "done; k= {}".format(K) )
 
 # ***************************************  REP vs. CODING  *************************************** #
-def plot_reped_vs_coded(w_cancel=True):
+def plot_EC_vs_ET_wdelay(w_cancel=True):
   K = 10
   D = 30
   mu = 0.5
   loc, a = 3, 2
   task_t = "SExp" # "Exp" # "SExp" # "Pareto"
   task_t_rv, task_t_in_latex = None, None
-  if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu={})'.format(mu)
-  elif task_t == "SExp": task_t_in_latex = r'X \sim D/k + Exp(\mu), D={}, k={}, \mu={}'.format(D, K, mu)
-  elif task_t == "Pareto": task_t_in_latex = r'X \sim Pareto(\lambda={}, \alpha={})'.format(loc, a)
+  if task_t == "Exp":
+    task_t_in_latex = r'X \sim Exp(\mu={})'.format(mu)
+    task_t_rv = Exp(mu)
+    task_dist_m = {'mu': mu}
+  elif task_t == "SExp":
+    task_t_in_latex = r'k= {}, {} \sim D/k + Exp(\mu), D={}, \mu={}'.format(K, 'Tasks', D, mu)
+    task_t_rv = Exp(mu, D/K)
+    task_dist_m = {'D': D, 'mu': mu}
+  elif task_t == "Pareto":
+    task_t_in_latex = r'k= {}, X \sim Pareto(\lambda={}, \alpha={})'.format(K, loc, a)
+    task_t_rv = Pareto(loc, a)
+    task_dist_m = {'loc': loc, 'a': a}
+  elif task_t == "Google":
+    task_t_in_latex = r'k= {}, X \sim Google'.format(K)
+    task_t_rv = Google(K)
+  
   ann_color = 'black'
   def plot_d_extremes(c=0, n=0):
     l, k, d = K, K, 0
@@ -172,22 +185,11 @@ def plot_reped_vs_coded(w_cancel=True):
         E_T_l.append(E_T)
         E_C_l.append(E_C)
         if n_ == n:
-          plot.annotate(r'$\Delta=0$', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T, E_C-5), color=ann_color, fontsize=20)
+          plot.annotate(r'$\Delta=0$', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T, E_C-5), color=ann_color, fontsize=18)
       plot.plot(E_T_l, E_C_l, color=ann_color, alpha=0.6, linestyle='--')
   
   def plot_(k=K, n=0, c=0):
     l = k
-    if task_t == "Exp":
-      task_t_rv = Exp(mu)
-      task_dist_m = {"mu": mu}
-    elif task_t == "SExp":
-      task_t_rv = Exp(mu, D/k)
-      task_dist_m = {"D": D, "mu": mu}
-    elif task_t == "Pareto":
-      task_t_rv = Pareto(loc, a)
-      task_dist_m = {"loc": loc, "a": a}
-    elif task_t == "Google": task_t_rv = Google(k)
-    
     E_T_l, E_T_sim_l, E_C_l, E_C_sim_l = [], [], [], []
     num_run = 100000
     u_l = 25 + 1
@@ -221,27 +223,27 @@ def plot_reped_vs_coded(w_cancel=True):
         if d == 0:
           plot.annotate(r'$n={}$'.format(n), ha='center', va='center', xy=(E_T, E_C), xytext=(E_T-0.4, E_C), color=color, fontsize=12)
       # label=r'Code,$n={}$'.format(n)
-      plot.plot(E_T_l, E_C_l, color=color, marker=next(marker), ms=9, mew=2, zorder=1, lw=2, linestyle=':')
+      plot.plot(E_T_l, E_C_l, color=color, marker=next(marker), ms=7, mew=2, zorder=1, lw=2, linestyle=':')
       # plot.plot(E_T_sim_l, E_C_sim_l, label=r'Code,$n={}$'.format(n), color=next(dark_color), marker=next(marker), ms=8, zorder=1, mew=2, linestyle=':')
-  plot_(c=1)
-  plot_(c=2)
-  plot_(c=3)
-  plot_d_extremes(c=3)
+  # plot_(c=1)
+  # plot_(c=2)
+  # plot_(c=3)
+  # plot_d_extremes(c=3)
   
-  # plot_(n=K+1)
-  # plot_(n=K+2)
-  # for n in range(K+5, 3*K+1, 5):
-  #   plot_(n=n)
-  # plot_d_extremes(n=3*K)
+  plot_(n=K+1)
+  plot_(n=K+2)
+  for n in range(K+5, 3*K+1, 5):
+    plot_(n=n)
+  plot_d_extremes(n=3*K)
   #
   if task_t == "SExp":
     x_nored = E_T_k_c(task_t, task_dist_m, d=0, k=K, c=0)
     y_nored = E_C_k_c(task_t, task_dist_m, d=0, k=K, c=0, w_cancel=w_cancel)
     plot.plot([x_nored], [y_nored], 'o', zorder=3, mew=4, color=ann_color)
-    plot.annotate(r'$\Delta \to \infty$', xy=(x_nored, y_nored), ha='center', va='center', xytext=(x_nored+0.5, y_nored), color=ann_color, fontsize=20)
+    plot.annotate(r'$\Delta \to \infty$', xy=(x_nored, y_nored), ha='center', va='center', xytext=(x_nored+0.55, y_nored), color=ann_color, fontsize=18)
     axes = plot.gca()
-    # axes.set_xlim([3.2, 9.2] )
-    axes.set_xlim([3.9, 9.2] ) # for only rep
+    axes.set_xlim([3, 9.2] )
+    # axes.set_xlim([3.9, 9.2] ) # for only rep
     # axes.set_ylim([47, 115] )
   # legend = plot.legend()
   # # legend = plot.legend(loc='center left', bbox_to_anchor=(0.85, 0.7), fontsize=10)
@@ -249,13 +251,11 @@ def plot_reped_vs_coded(w_cancel=True):
   # frame.frameon=True
   # frame.set_edgecolor('black')
   plot.title(r'${}$'.format(task_t_in_latex), fontsize=12)
-  plot.xlabel(r'Expected Latency $E[T]$ (s)', fontsize=12)
-  # w_cancel_text = "w/ cancel $E[C^c]$" if w_cancel else "w/o cancel $E[C]$"
-  w_cancel_text = r'$E[C]$'
-  plot.ylabel(r'Expected Cost {} (s)'.format(w_cancel_text), fontsize=12)
+  plot.xlabel(r'$E[T]$', fontsize=13)
+  plot.ylabel(r'$E[C]$', fontsize=13)
   fig = plot.gcf()
-  # plot.savefig("plot_reped_vs_coded_{}_k_{}.pdf".format(task_t, K, w_cancel), bbox_extra_artists=(legend,), bbox_inches='tight', dpi=fig.dpi)
-  plot.savefig("plot_reped_vs_coded_{}_k_{}.pdf".format(task_t, K, w_cancel), bbox_inches='tight', dpi=fig.dpi)
+  # plot.savefig("plot_EC_vs_ET_wdelay_{}_k_{}.pdf".format(task_t, K, w_cancel), bbox_extra_artists=(legend,), bbox_inches='tight', dpi=fig.dpi)
+  plot.savefig("plot_EC_vs_ET_wdelay_{}_k_{}.pdf".format(task_t, K, w_cancel), bbox_inches='tight', dpi=fig.dpi)
   plot.gcf().clear()
   log(WARNING, "done; k= {}".format(K) )
 
@@ -265,10 +265,10 @@ def plot_cost_reduction_vs_redundant_occupation():
   loc, a = 3, 1.5 # 3
   task_t = "Pareto" # "SExp"
   if task_t == "SExp":
-    task_dist_m = {"D": D, "mu": mu}
+    task_dist_m = {'D': D, 'mu': mu}
     task_t_in_latex = r'X \sim SExp(D/k, \mu={}), D={}'.format(mu, D)
   elif task_t == "Pareto":
-    task_dist_m = {"loc": loc, "a": a}
+    task_dist_m = {'loc': loc, 'a': a}
     task_t_in_latex = r'X \sim Pareto(\lambda={}, \alpha={})'.format(loc, a)
   
   def E_redundant_server_occupation(n, k):
@@ -317,34 +317,33 @@ def plot_cost_reduction_vs_redundant_occupation():
 
 def plot_zerodelay_reped_vs_coded(loc, a):
   w_cancel = True
-  added_load = False # True
-  K = 15 # 1050 # 15 # 400 # 10
+  load_m = None # {'ro_0': 0.3, 'a_0': 1.2}
+  K = 10 # 50 # 1050 # 15 # 400 # 10
   D, mu = 30, 0.5
-  loc, a = 3, 2 # 2.5 # 3
+  loc, a = 3, 1.5 # 2 # 2.5 # 3
   # l, u, a = 1, 100, 1.5
-  task_t = "TPareto" # "Pareto" # "Google" # "Exp" # "SExp" # "Pareto"
-  task_t_rv, task_t_in_latex = None, None
+  task_t = "Pareto" # "TPareto" # "Google" # "Exp" # "SExp" # "Pareto"
   if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu={})'.format(mu)
-  elif task_t == "SExp": task_t_in_latex = r'X \sim SExp(D/k, \mu={}), D={}'.format(mu, D)
-  elif task_t == "Pareto": task_t_in_latex = r'X \sim Pareto(\lambda={}, \alpha={})'.format(loc, a)
-  elif task_t == "TPareto": task_t_in_latex = r'X \sim TPareto(l={}, u={}, \alpha={})'.format(l, u, a)
+  elif task_t == "SExp": task_t_in_latex = r'{} \sim D/k + Exp(\mu), D= {}, \mu= {}'.format('Tasks', D, mu)
+  elif task_t == "Pareto": task_t_in_latex = r'{} \sim Pareto(\lambda={}, \alpha={})'.format('Tasks', loc, a)
+  elif task_t == "TPareto": task_t_in_latex = r'{} \sim TPareto(l={}, u={}, \alpha={})'.format('Tasks', l, u, a)
   elif task_t == "Google": task_t_in_latex = r'X \sim Google'
   mew = 3
   num_run = 10000*10
-  first_moment, second_moment, stdev, coeffvar = True, False, False, False # , True
+  first_moment, second_moment, stdev, coeffvar = True, False, False, False
   def plot_(k=K, n=0, c=0, sim=False):
     if task_t == "Exp":
       task_t_rv = Exp(mu)
-      task_dist_m = {"mu": mu}
+      task_dist_m = {'mu': mu}
     elif task_t == "SExp":
       task_t_rv = Exp(mu, D/k)
-      task_dist_m = {"D": D, "mu": mu}
+      task_dist_m = {'D': D, 'mu': mu}
     elif task_t == "Pareto":
       task_t_rv = Pareto(loc, a)
-      task_dist_m = {"loc": loc, "a": a}
+      task_dist_m = {'loc': loc, 'a': a}
     elif task_t == "TPareto":
       task_t_rv = TPareto(l, u, a)
-      task_dist_m = {"l": l, "u": u, "a": a}
+      task_dist_m = {"l": l, "u": u, 'a': a}
     elif task_t == "Google": task_t_rv = Google(k)
     
     x_l, x_sim_l, y_l, y_sim_l = [], [], [], []
@@ -353,13 +352,13 @@ def plot_zerodelay_reped_vs_coded(loc, a):
     color = next(dark_color)
     if c:
       for c_ in range(c+1):
-        E_T = E_T_k_c(task_t, task_dist_m, d, k, c_, added_load=added_load)
-        E_C = E_C_k_c(task_t, task_dist_m, d, k, c_, w_cancel=w_cancel, added_load=added_load)
-        E_T_2 = E_T_2_k(task_t, task_dist_m, k, c=c_, added_load=added_load)
-        E_C_2 = E_C_2_k(task_t, task_dist_m, k, c=c_, added_load=added_load)
+        E_T = E_T_k_c(task_t, task_dist_m, d, k, c_, load_m)
+        E_C = E_C_k_c(task_t, task_dist_m, d, k, c_, w_cancel, load_m)
+        E_T_2 = E_T_2_k(task_t, task_dist_m, k, c_, load_m)
+        E_C_2 = E_C_2_k(task_t, task_dist_m, k, c_, load_m)
         stdev_T = 0 # math.sqrt(E_T_2 - E_T**2)
         stdev_C = 0 # math.sqrt(E_C_2 - E_C**2)
-        coeffvar_T = stdev_T/E_T
+        coeffvar_T = 0 # stdev_T/E_T
         coeffvar_C = stdev_C/E_C
         
         if c_:
@@ -383,9 +382,9 @@ def plot_zerodelay_reped_vs_coded(loc, a):
         if c_ == 0:
           if first_moment:
             if task_t == "SExp":
-              xy, xytext = (E_T, E_C), (E_T-0.6, E_C+9)
+              xy, xytext = (E_T, E_C), (E_T-0.95, E_C+9)
             elif task_t == "Pareto":
-              # plot.axhline(y=E_C, color='k', alpha=0.4, linestyle='--')
+              plot.axhline(y=E_C, color='k', alpha=0.4, linestyle='--')
               if a == 1.2:
                 xy, xytext = (E_T, E_C), (E_T-20, E_C+3)
               elif a == 1.5:
@@ -466,18 +465,23 @@ def plot_zerodelay_reped_vs_coded(loc, a):
       if sim:
         plot.plot(x_sim_l, y_sim_l, label='Simulation, replication', color=color, marker=next(marker), linestyle=':', mew=2)
     elif n:
+      if first_moment and load_m is not None:
+        n_ = n_max_before_ETpain(load_m['ro_0'], load_m['a_0'], k)
+        E_T = E_T_k_l_n(task_t, task_dist_m, d, k, k, n_, load_m)
+        E_C = E_C_k_l_n(task_t, task_dist_m, d, k, k, n_, w_cancel, load_m)
+        plot.plot([E_T], [E_C], label=r'$n_{\max}$', color=next(dark_color), zorder=2, marker=next(marker), linestyle=':', mew=3, ms=7)
       counter = 0
       # for n_ in [*numpy.arange(k, k+4, 1), *numpy.linspace(k+4, 2*k-1, 15), *numpy.arange(2*k, n+1, k) ]:
       #   n_ = int(n_)
       for n_ in numpy.arange(k, n+1, 1):
-        E_T = E_T_k_l_n(task_t, task_dist_m, d, k, k, n_, added_load=added_load)
-        E_C = E_C_k_l_n(task_t, task_dist_m, d, k, k, n_, w_cancel=w_cancel, added_load=added_load)
-        E_T_2 = E_T_2_k(task_t, task_dist_m, k, n=n_, added_load=added_load)
-        E_C_2 = E_C_2_k(task_t, task_dist_m, k, n=n_, added_load=added_load)
+        E_T = E_T_k_l_n(task_t, task_dist_m, d, k, k, n_, load_m)
+        E_C = E_C_k_l_n(task_t, task_dist_m, d, k, k, n_, w_cancel, load_m)
+        E_T_2 = E_T_2_k(task_t, task_dist_m, k, n_, load_m)
+        E_C_2 = E_C_2_k(task_t, task_dist_m, k, n_, load_m)
         stdev_T = 0 # math.sqrt(E_T_2 - E_T**2)
         stdev_C = 0 # math.sqrt(E_C_2 - E_C**2)
-        coeffvar_T = stdev_T/E_T
-        coeffvar_C = stdev_C/E_C
+        coeffvar_T = 0 # stdev_T/E_T
+        coeffvar_C = 0 # stdev_C/E_C
         
         if n_ != k:
           xerr_l.append(stdev_T)
@@ -528,7 +532,7 @@ def plot_zerodelay_reped_vs_coded(loc, a):
             y_sim_l.append(coeffvar_C)
           if task_t == "Google":
             if n_ != k and n_ % k == 0:
-              plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
+              plot.plot(E_T, E_C, 'x', color="blue", zorder=3, mew=2, ms=6)
               xy = (E_T, E_C)
               if k == 400: xytext = (E_T+0.02, E_C+1)
               elif k == 1050: xytext = (E_T+0.02, E_C+1)
@@ -539,76 +543,75 @@ def plot_zerodelay_reped_vs_coded(loc, a):
             if n_ > K and n_ < k+3:
               plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T+0.1, E_C), color=color)
             elif n_ != k and n_ % k == 0:
-              plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
+              plot.plot(E_T, E_C, 'x', color="blue", zorder=3, mew=3, ms=7)
               plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T+0.1, E_C), color=color)
           elif coeffvar:
             if n_ != k and n_ % k == 0:
-              plot.plot(coeffvar_T, coeffvar_C, 'x', color="blue", mew=mew, zorder=3)
+              plot.plot(coeffvar_T, coeffvar_C, 'x', color="blue", zorder=3, mew=3, ms=7)
               plot.annotate(r'$n={}$'.format(n_), xy=(coeffvar_T, coeffvar_C), xytext=(coeffvar_T+0.003, coeffvar_C), color=color)
         elif task_t == "Pareto":
           if first_moment:
             if a == 1.2:
               if n_ > K and n_ < k+3:
-                plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
+                plot.plot(E_T, E_C, 'x', color="blue", zorder=3, mew=3, ms=7)
                 plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T+2, E_C-2), color=color)
                 # elif n_ == k+3:
-                #   plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
+                #   plot.plot(E_T, E_C, 'x', color="blue", zorder=3, mew=3, ms=7)
                 #   plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T-4, E_C-6), color=color)
               elif n_ == 30:
-                plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
+                plot.plot(E_T, E_C, 'x', color="blue", zorder=3, mew=3, ms=7)
                 plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T-15, E_C-8), color=color)
               elif n_ != k and n_ % k == 0:
-                plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
+                plot.plot(E_T, E_C, 'x', color="blue", zorder=3, mew=3, ms=7)
                 plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T-15, E_C-3), color=color)
             elif a == 1.5:
               if n_ > K and n_ < k+3:
-                plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
+                plot.plot(E_T, E_C, 'x', color="blue", zorder=3, mew=3, ms=7)
                 plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T, E_C-5), color=color)
                 # elif n_ == k+3:
-                #   plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
+                #   plot.plot(E_T, E_C, 'x', color="blue", zorder=3, mew=3, ms=7)
                 #   plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T-3.5, E_C-5), color=color)
               elif n_ == 40 or n_ == 60:
-                plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
+                plot.plot(E_T, E_C, 'x', color="blue", zorder=3, mew=3, ms=7)
                 plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T-4, E_C+1), color=color)
               elif n_ != k and n_ % k == 0:
-                plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
+                plot.plot(E_T, E_C, 'x', color="blue", zorder=3, mew=3, ms=7)
                 plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T-4, E_C-2), color=color)
             elif a == 2:
               if n_ > K and n_ < k+3:
-                plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
+                plot.plot(E_T, E_C, 'x', color="blue", zorder=3, mew=3, ms=7)
                 plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T, E_C-5), color=color)
                 # elif n_ == k+3:
-                #   plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
+                #   plot.plot(E_T, E_C, 'x', color="blue", zorder=3, mew=3, ms=7)
                 #   plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T-1.5, E_C-5), color=color)
               elif n_ != k and n_ % k == 0:
-                plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
+                plot.plot(E_T, E_C, 'x', color="blue", zorder=3, mew=3, ms=7)
                 plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T-2, E_C-2), color=color)
             elif a == 2.5:
               if n_ != k and n_ % k == 0:
-                plot.plot(E_T, E_C, 'x', color="blue", mew=mew, zorder=3)
+                plot.plot(E_T, E_C, 'x', color="blue", zorder=3, mew=3, ms=7)
                 plot.annotate(r'$n={}$'.format(n_), xy=(E_T, E_C), xytext=(E_T*0.78, E_C), color=color)
           elif coeffvar:
             if n_ != k and n_ % k == 0:
-              plot.plot(coeffvar_T, coeffvar_C, 'x', color="blue", mew=mew, zorder=3)
+              plot.plot(coeffvar_T, coeffvar_C, 'x', color="blue", zorder=3, mew=3, ms=7)
               plot.annotate(r'$n={}$'.format(n_), xy=(coeffvar_T, coeffvar_C), xytext=(coeffvar_T+0.003, coeffvar_C), color=color)
-      plot.plot(x_l, y_l, label='Coding', color=color, zorder=1, marker=next(marker), mew=1, linestyle=':')
+      plot.plot(x_l, y_l, label='Coding', color=color, zorder=1, marker=next(marker), mew=mew, linestyle=':')
       # plot.errorbar(x_l, y_l, xerr=xerr_l, yerr=yerr_l, label='Coding', color=color, zorder=1, marker=next(marker), mew=1, linestyle=':')
       if sim:
         plot.plot(x_sim_l, y_sim_l, label='Simulation, coding', color=color, zorder=1, marker=next(marker), linestyle=':', mew=1)
-  # plot_(c=5)
-  # plot_(n=6*K)
-  plot_(n=4*K)
+  plot_(c=5)
+  plot_(n=6*K)
+  # plot_(n=5*K)
   
   # plot_(c=5, sim=True)
   # plot_(n=6*K, sim=True)
-  
   #
   plot.legend()
   # plot.legend(loc='lower right')
   # plot.xscale('log')
   # plot.yscale('log')
   
-  plot.title(r'${}, k= {}$'.format(task_t_in_latex, K) )
+  plot.title(r'$k= {}, {}$'.format(K, task_t_in_latex) )
   if first_moment:
     legend_T, legend_C = "$E[T]$", "$E[C]$"
   elif second_moment:
@@ -618,14 +621,14 @@ def plot_zerodelay_reped_vs_coded(loc, a):
   elif coeffvar:
     legend_T, legend_C = "Coefficient of variance for $T$", "Coefficient of variance for $C$"
   
-  plot.xlabel(r'{}'.format(legend_T), fontsize=12)
-  plot.ylabel(r'{}'.format(legend_C), fontsize=12)
+  plot.xlabel(r'{}'.format(legend_T), fontsize=14)
+  plot.ylabel(r'{}'.format(legend_C), fontsize=14)
   fig = plot.gcf()
   fig.tight_layout()
   def_size = fig.get_size_inches()
   fig.set_size_inches(def_size[0]/1.1, def_size[1]/1.1)
   if task_t == "Pareto":
-    plot.savefig("plot_zerodelay_reped_vs_coded_{}_k_{}_a_{}.png".format(task_t, K, a) )
+    plot.savefig("plot_zerodelay_reped_vs_coded_{}_k_{}_a_{}.pdf".format(task_t, K, a) )
   else:
     plot.savefig("plot_zerodelay_reped_vs_coded_{}_k_{}.pdf".format(task_t, K) )
   plot.gcf().clear()
@@ -1184,7 +1187,7 @@ if __name__ == "__main__":
   # plot_dE_T_shiftedexp_k_n_dk()
   # plot_arepeat_shiftedexp_k_n()
   
-  # plot_reped_vs_coded(w_cancel=True)
+  # plot_EC_vs_ET_wdelay(w_cancel=True)
   plot_zerodelay_reped_vs_coded(loc=3, a=2)
   # plot_zerodelay_reped_vs_coded(loc=3, a=1.2)
   # plot_zerodelay_reped_vs_coded(loc=3, a=1.5)

@@ -48,9 +48,11 @@ elif [ $1 = 'dep' ]; then
   $PYTHON deprecated.py
 elif [ $1 = 'a' ]; then
   # $PYTHON arepeat_sim_components.py
-  $PYTHON arepeat_models.py
-  # $PYTHON arepeat_exp.py
+  # $PYTHON arepeat_models.py
+  $PYTHON arepeat_exp.py
   # $PYTHON app.py
+elif [ $1 = 'r' ]; then
+  $PYTHON rvs.py
 elif [ $1 = 'sl' ]; then
   $PYTHON slowdown.py
 elif [ $1 = 'n' ]; then

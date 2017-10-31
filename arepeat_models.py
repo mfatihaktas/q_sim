@@ -844,7 +844,7 @@ def E_C_k_n_TPareto(l, u, a, k, n):
   E_C += (n-k)*E_TPareto_X_n_i(l, u, a, n, k)
   return E_C
 
-# ### If redundancy affects the tail ### #
+# ### When redundancy changes the tail ### #
 def a_wred(ro_0, a_0, ro):
   # K = ro/(1 - ro)*(1-ro_0)/ro_0
   # return K*a_0/((K-1)*a_0 + 1)
@@ -869,8 +869,160 @@ def plot_a_wred():
   plot.gcf().clear()
   log(WARNING, "done.")
 
+def plot_Tnp1_over_Tn():
+  ro_0, a_0 = 0.3, 1.2
+  def Tnp1_over_Tn(k, n):
+    a_n = a_wred(ro_0, a_0, ro_0*n/k)
+    a_np1 = a_wred(ro_0, a_0, ro_0*(n+1)/k)
+    R = (n+1)/(n-k+1) * G(n+2-1/a_np1-k)/G(n+2-1/a_np1) * G(n+1-1/a_n)/G(n+1-1/a_n-k)
+    # return math.log(R) if R > 0 else None
+    return R
+  
+  def approx_Tnp1_over_Tn(k, n):
+    a_n = a_wred(ro_0, a_0, ro_0*n/k)
+    a_np1 = a_wred(ro_0, a_0, ro_0*(n+1)/k)
+    # return (n+1)/(n-k+1) * ((n+1-1/a_n)/(n+2-1/a_np1))**k
+    
+    # b_1 = n-k+1-1/a_n
+    # b_2 = n-k+2-1/a_np1
+    # R = (n+1)/(n-k+1) * k**(b_1 - b_2) * G(b_2)/G(b_1)
+    
+    R = ((n+2)/(n-k+2))**(1/a_np1) * ((n+1)/(n-k+1))**(-1/a_n)
+    # return math.log(R) if R > 0 else None
+    return R
+  
+  def plot_lb_a_n_over_a_np1(k):
+    def lb_a_n_over_a_np1(k, n):
+      return math.log(1 + k/(n-k+1))/math.log(1 + k/(n-k+2))
+    
+    n_l, lb_a_n_over_a_np1_l = [], []
+    for n in numpy.arange(k, 5*k, 1):
+      n_l.append(n)
+      lb_a_n_over_a_np1_l.append(lb_a_n_over_a_np1(k, n) )
+    plot.plot(n_l, lb_a_n_over_a_np1_l, label=r'$k= {}$'.format(k), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+    
+  # plot_lb_a_n_over_a_np1(k=15)
+  # plot_lb_a_n_over_a_np1(k=100)
+  # plot.legend()
+  # plot.xlabel(r'$n$', fontsize=13)
+  # plot.ylabel(r'$\alpha_n/\alpha_{n+1} \geq$', fontsize=13)
+  # fig = plot.gcf()
+  # fig.tight_layout()
+  # plot.savefig("plot_lb_a_n_over_a_np1.png")
+  # plot.gcf().clear()
+  
+  k = 100
+  n_l, r_l, r_approx_l = [], [], []
+  for n in numpy.arange(k, 2*k, 1):
+    n_l.append(n)
+    r_l.append(Tnp1_over_Tn(k, n) )
+    r_approx_l.append(approx_Tnp1_over_Tn(k, n) )
+  plot.plot(n_l, r_l, label='Exact', marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  plot.plot(n_l, r_approx_l, label='Approx', marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  plot.legend()
+  plot.xlabel(r'$n$', fontsize=13)
+  plot.ylabel(r'$E[T_{n+1}]/E[T_n]$', fontsize=13)
+  plot.title(r'$k= {}$'.format(k) )
+  fig = plot.gcf()
+  def_size = fig.get_size_inches()
+  # fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
+  fig.tight_layout()
+  plot.savefig("plot_Tnp1_over_Tn.png")
+  plot.gcf().clear()
+  log(WARNING, "done.")
+
+def plot_Trj_over_Tri():
+  ro_0, a_0 = 0.3, 1.2
+  def Trj_over_Tri(ri, rj):
+    task_t = 'Pareto'
+    ni = math.floor(k*ri)
+    task_dist_m = {'loc': 1, 'a': a_wred(ro_0, a_0, ro_0*ri) }
+    Tri = E_T_k_l_n(task_t, task_dist_m, 0, k, k, ni)
+    
+    nj = math.floor(k*rj)
+    task_dist_m = {'loc': 1, 'a': a_wred(ro_0, a_0, ro_0*rj) }
+    Trj = E_T_k_l_n(task_t, task_dist_m, 0, k, k, nj)
+    return Trj/Tri
+  
+  def suffcond_ai_over_aj_for_ETgain(k, ri, rj):
+    ni = math.floor(k*ri)
+    nj = math.floor(k*rj)
+    if ni == k or nj == k: return None
+    return math.log(ni/(ni-k+1) )/math.log((nj+1)/(nj-k) )
+  # def approx_suffcond_ai_over_aj_for_ETgain(k, ri, rj):
+  #   return math.log(k*ri/(k*(ri-1)+1) )/math.log((k*rj+1)/(k*(rj-1) ) )
+  
+  def suffcond_ai_over_aj_for_ETpain(k, ri, rj):
+    ni = math.floor(k*ri)
+    nj = math.floor(k*rj)
+    if ni == k or nj == k: return None
+    return math.log((ni+1)/(ni-k) )/math.log(nj/(nj-k+1) )
+  
+  def approxcond_an_over_anp1_for_ETpain(k, n):
+    return math.log(1 + k/(n-k+1) )/math.log(1 + k/(n-k+2) )
+  
+  # def looser_suffcond_ai_over_aj_for_ETpain(k, ri, rj):
+  #   return (k*ri+1)*rj/(ri-1)/(k-1)
+  
+  def plot_cond_an_over_anp1(k):
+    n_l, suff_for_ETgain_l, suff_for_ETpain_l = [], [], []
+    approx_for_ETpain_l = []
+    for n in numpy.arange(k, 4*k, 1):
+      n_l.append(n)
+      ri, rj = n/k, (n+1)/k
+      suff_for_ETgain_l.append(suffcond_ai_over_aj_for_ETgain(k, ri, rj) )
+      suff_for_ETpain_l.append(suffcond_ai_over_aj_for_ETpain(k, ri, rj) )
+      approx_for_ETpain_l.append(approxcond_an_over_anp1_for_ETpain(k, n) )
+    plot.plot(n_l, suff_for_ETgain_l, label=r'$k= {}$, Gain if {}'.format(k, r'$\alpha_n/\alpha_{n+1} \leq$'), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+    plot.plot(n_l, suff_for_ETpain_l, label=r'$k= {}$, Pain if {}'.format(k, r'$\alpha_n/\alpha_{n+1} \geq$'), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+    plot.plot(n_l, approx_for_ETpain_l, label=r'$k= {}$, Pain if {}'.format(k, r'$\alpha_n/\alpha_{n+1} \gtrapprox$'), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  # plot_cond_an_over_anp1(k=15)
+  plot_cond_an_over_anp1(k=15)
+  plot.legend()
+  # plot.xscale('log')
+  # plot.yscale('log')
+  plot.xlabel(r'$n$', fontsize=13)
+  plot.ylabel(r'', fontsize=13)
+  fig = plot.gcf()
+  fig.tight_layout()
+  plot.savefig("plot_an_over_anp1.png")
+  plot.gcf().clear()
+  
+  # n_l, r_l, r_approx_l = [], [], []
+  # for n in numpy.arange(k, 2*k, 1):
+  #   n_l.append(n)
+  #   r_l.append(Tnp1_over_Tn(n) )
+  #   r_approx_l.append(approx_Tnp1_over_Tn(n) )
+  # plot.plot(n_l, r_l, label='Exact', marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  # plot.plot(n_l, r_approx_l, label='Approx', marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  # plot.legend()
+  # plot.xlabel(r'$n$', fontsize=13)
+  # plot.ylabel(r'$E[T_{n+1}]/E[T_n]$', fontsize=13)
+  # plot.title(r'$k= {}$'.format(k) )
+  # fig = plot.gcf()
+  # def_size = fig.get_size_inches()
+  # # fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
+  # fig.tight_layout()
+  # plot.savefig("plot_Tnp1_over_Tn.png")
+  # plot.gcf().clear()
+  log(WARNING, "done.")
+
+def n_max_before_ETpain(ro_0, a_0, k):
+  def approxcond_an_over_anp1_for_ETpain(k, n):
+    return math.log(1 + k/(n-k+1) )/math.log(1 + k/(n-k+2) )
+  n = k
+  a_n = a_wred(ro_0, a_0, ro=1)
+  while True:
+    # if ro >= 0.9: return None
+    a_np1 = a_wred(ro_0, a_0, ro=ro_0*(n+1)/k)
+    if a_n/a_np1 >= approxcond_an_over_anp1_for_ETpain(k, n):
+      break
+    a_n = a_np1
+    n += 1
+  return n
+
 # ******************************  Wrappers  ****************************** #
-def E_T_k_l_n(task_t, task_dist_m, d, k, l, n, added_load=False):
+def E_T_k_l_n(task_t, task_dist_m, d, k, l, n, load_m=None):
   if task_t == "Exp":
     mu = task_dist_m["mu"]
     if l == k: return E_T_exp_k_n(mu, d, k, n)
@@ -881,15 +1033,17 @@ def E_T_k_l_n(task_t, task_dist_m, d, k, l, n, added_load=False):
     else: return E_T_shiftedexp_k_l_n(D, mu, d, k, l, n)
   elif task_t == "Pareto":
     loc, a = task_dist_m["loc"], task_dist_m["a"]
-    if added_load:
-      # loc = loc*n/k
-      a = 1/(1 - k/n*(a-1)/a)
+    if load_m is not None:
+      ro_0, a_0 = load_m['ro_0'], load_m['a_0']
+      ro = ro_0*n/k
+      if ro >= 0.9: return None
+      a = a_wred(ro_0, a_0, ro)
     return E_T_pareto_k_n(loc, a, d, k, n)
   elif task_t == "TPareto":
     l, u, a = task_dist_m["l"], task_dist_m["u"], task_dist_m["a"]
     return E_T_k_n_TPareto(l, u, a, k, n)
 
-def E_C_k_l_n(task_t, task_dist_m, d, k, l, n, w_cancel, added_load=False):
+def E_C_k_l_n(task_t, task_dist_m, d, k, l, n, w_cancel, load_m=None):
   if task_t == "Exp":
     mu = task_dist_m["mu"]
     if l == k: return E_C_exp_k_n(mu, d, k, l, n, w_cancel)
@@ -899,9 +1053,11 @@ def E_C_k_l_n(task_t, task_dist_m, d, k, l, n, w_cancel, added_load=False):
     return E_C_shiftedexp_k_l_n(D, mu, d, k, l, n, w_cancel)
   elif task_t == "Pareto":
     loc, a = task_dist_m["loc"], task_dist_m["a"]
-    if added_load:
-      # loc = loc*n/k
-      a = 1/(1 - k/n*(a-1)/a)
+    if load_m is not None:
+      ro_0, a_0 = load_m['ro_0'], load_m['a_0']
+      ro = ro_0*n/k
+      if ro >= 0.9: return None
+      a = a_wred(ro_0, a_0, ro)
     return E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=w_cancel)
   elif task_t == "TPareto":
     l, u, a = task_dist_m["l"], task_dist_m["u"], task_dist_m["a"]
@@ -968,4 +1124,6 @@ if __name__ == "__main__":
   # plot_pareto_zerodelay_red()
   # plot_deneme()
   
-  plot_a_wred()
+  # plot_a_wred()
+  # plot_Tnp1_over_Tn()
+  plot_Trj_over_Tri()
