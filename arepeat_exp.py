@@ -185,7 +185,8 @@ def plot_EC_vs_ET_wdelay(w_cancel=True):
         E_T_l.append(E_T)
         E_C_l.append(E_C)
         if n_ == n:
-          plot.annotate(r'$\Delta=0$', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T, E_C-5), color=ann_color, fontsize=18)
+          # plot.annotate(r'$\Delta=0$', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T, E_C-5), color=ann_color, fontsize=18)
+          plot.annotate(r'$\Delta=0$', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T+0.75, E_C-8), color=ann_color, fontsize=18)
       plot.plot(E_T_l, E_C_l, color=ann_color, alpha=0.6, linestyle='--')
   
   def plot_(k=K, n=0, c=0):
@@ -221,7 +222,11 @@ def plot_EC_vs_ET_wdelay(w_cancel=True):
         E_T_l.append(E_T)
         E_C_l.append(E_C)
         if d == 0:
-          plot.annotate(r'$n={}$'.format(n), ha='center', va='center', xy=(E_T, E_C), xytext=(E_T-0.4, E_C), color=color, fontsize=12)
+          if n == k + 5:
+            plot.annotate('Less\nredundancy', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T+1, E_C-2.5), color=color, fontsize=12)
+          if n == k + 10:
+            plot.annotate('More\nredundancy', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T+1, E_C-2.5), color=color, fontsize=12)
+          # plot.annotate(r'$n={}$'.format(n), ha='center', va='center', xy=(E_T, E_C), xytext=(E_T-0.4, E_C), color=color, fontsize=12)
       # label=r'Code,$n={}$'.format(n)
       plot.plot(E_T_l, E_C_l, color=color, marker=next(marker), ms=7, mew=2, zorder=1, lw=2, linestyle=':')
       # plot.plot(E_T_sim_l, E_C_sim_l, label=r'Code,$n={}$'.format(n), color=next(dark_color), marker=next(marker), ms=8, zorder=1, mew=2, linestyle=':')
@@ -230,19 +235,23 @@ def plot_EC_vs_ET_wdelay(w_cancel=True):
   # plot_(c=3)
   # plot_d_extremes(c=3)
   
-  plot_(n=K+1)
-  plot_(n=K+2)
-  for n in range(K+5, 3*K+1, 5):
-    plot_(n=n)
-  plot_d_extremes(n=3*K)
+  # plot_(n=K+1)
+  # plot_(n=K+2)
+  # for n in range(K+5, 3*K+1, 5):
+  #   plot_(n=n)
+  # plot_d_extremes(n=3*K)
+  
+  plot_(n=K+5)
+  plot_(n=K+10)
+  plot_d_extremes(n=K+10)
   #
   if task_t == "SExp":
     x_nored = E_T_k_c(task_t, task_dist_m, d=0, k=K, c=0)
     y_nored = E_C_k_c(task_t, task_dist_m, d=0, k=K, c=0, w_cancel=w_cancel)
     plot.plot([x_nored], [y_nored], 'o', zorder=3, mew=4, color=ann_color)
-    plot.annotate(r'$\Delta \to \infty$', xy=(x_nored, y_nored), ha='center', va='center', xytext=(x_nored+0.55, y_nored), color=ann_color, fontsize=18)
+    plot.annotate(r'$\Delta \to \infty$', xy=(x_nored, y_nored), ha='center', va='center', xytext=(x_nored+0.4, y_nored), color=ann_color, fontsize=18)
     axes = plot.gca()
-    axes.set_xlim([3, 9.2] )
+    # axes.set_xlim([3, 9.2] )
     # axes.set_xlim([3.9, 9.2] ) # for only rep
     # axes.set_ylim([47, 115] )
   # legend = plot.legend()
@@ -250,7 +259,7 @@ def plot_EC_vs_ET_wdelay(w_cancel=True):
   # frame = legend.get_frame()
   # frame.frameon=True
   # frame.set_edgecolor('black')
-  plot.title(r'${}$'.format(task_t_in_latex), fontsize=12)
+  # plot.title(r'${}$'.format(task_t_in_latex), fontsize=12)
   plot.xlabel(r'$E[T]$', fontsize=13)
   plot.ylabel(r'$E[C]$', fontsize=13)
   fig = plot.gcf()
@@ -317,10 +326,10 @@ def plot_cost_reduction_vs_redundant_occupation():
 
 def plot_zerodelay_reped_vs_coded(loc, a):
   w_cancel = True
-  load_m = None # {'ro_0': 0.3, 'a_0': 1.2}
-  K = 10 # 50 # 1050 # 15 # 400 # 10
+  load_m = {'ro_0': 0.15, 'a_0': 1.2} # None
+  K = 20 # 1050 # 15 # 400 # 10
   D, mu = 30, 0.5
-  loc, a = 3, 1.5 # 2 # 2.5 # 3
+  loc, a = 3, 10 # 1.5 # 2 # 2.5 # 3
   # l, u, a = 1, 100, 1.5
   task_t = "Pareto" # "TPareto" # "Google" # "Exp" # "SExp" # "Pareto"
   if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu={})'.format(mu)
@@ -359,7 +368,7 @@ def plot_zerodelay_reped_vs_coded(loc, a):
         stdev_T = 0 # math.sqrt(E_T_2 - E_T**2)
         stdev_C = 0 # math.sqrt(E_C_2 - E_C**2)
         coeffvar_T = 0 # stdev_T/E_T
-        coeffvar_C = stdev_C/E_C
+        coeffvar_C = 0 # stdev_C/E_C
         
         if c_:
           xerr_l.append(stdev_T)
@@ -384,16 +393,14 @@ def plot_zerodelay_reped_vs_coded(loc, a):
             if task_t == "SExp":
               xy, xytext = (E_T, E_C), (E_T-0.95, E_C+9)
             elif task_t == "Pareto":
-              plot.axhline(y=E_C, color='k', alpha=0.4, linestyle='--')
-              if a == 1.2:
-                xy, xytext = (E_T, E_C), (E_T-20, E_C+3)
-              elif a == 1.5:
-                xy, xytext = (E_T, E_C), (E_T-6, E_C+3)
-              elif a == 2:
-                xy, xytext = (E_T, E_C), (E_T-1.2, E_C+3)
-              else:
-                xy, xytext = (E_T, E_C), (E_T+0.01, E_C+3)
-            plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=xy, xytext=xytext)
+              # plot.axhline(y=E_C, color='k', alpha=0.4, linestyle='--')
+              xy = (E_T, E_C)
+              if a == 1.2: xytext = (E_T-20, E_C+3)
+              elif a == 1.5: xytext = (E_T-6, E_C+3)
+              elif a == 2: xytext = (E_T-1.2, E_C+3)
+              else: xytext = (E_T-90, E_C+30) # (E_T+0.01, E_C+3)
+            # plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=xy, xytext=xytext)
+            plot.annotate('No redundancy'.format(K), xy=xy, xytext=xytext)
             plot.errorbar([E_T], [E_C], xerr=[stdev_T], yerr=[stdev_C], color='black')
           elif coeffvar:
             if task_t == "SExp":
@@ -469,7 +476,8 @@ def plot_zerodelay_reped_vs_coded(loc, a):
         n_ = n_max_before_ETpain(load_m['ro_0'], load_m['a_0'], k)
         E_T = E_T_k_l_n(task_t, task_dist_m, d, k, k, n_, load_m)
         E_C = E_C_k_l_n(task_t, task_dist_m, d, k, k, n_, w_cancel, load_m)
-        plot.plot([E_T], [E_C], label=r'$n_{\max}$', color=next(dark_color), zorder=2, marker=next(marker), linestyle=':', mew=3, ms=7)
+        # plot.plot([E_T], [E_C], label=r'$n_{\max}$', color=next(dark_color), zorder=2, marker=next(marker), linestyle=':', mew=3, ms=7)
+        # plot.plot([E_T], [E_C], label=r'$Max redundancy$', color=next(dark_color), zorder=2, marker=next(marker), linestyle=':', mew=3, ms=7)
       counter = 0
       # for n_ in [*numpy.arange(k, k+4, 1), *numpy.linspace(k+4, 2*k-1, 15), *numpy.arange(2*k, n+1, k) ]:
       #   n_ = int(n_)
@@ -501,7 +509,8 @@ def plot_zerodelay_reped_vs_coded(loc, a):
         elif coeffvar:
           x_l.append(coeffvar_T)
           y_l.append(coeffvar_C)
-        
+        # if n_ == k:
+        #   plot.annotate('No \nredundancy', xy=(E_T, E_C), xytext=(E_T-75, E_C+30) )
         if sim:
           stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, k, n_, num_run)
           T_l = stat_id__trial_sampleavg_l_m['T']
@@ -595,6 +604,7 @@ def plot_zerodelay_reped_vs_coded(loc, a):
             if n_ != k and n_ % k == 0:
               plot.plot(coeffvar_T, coeffvar_C, 'x', color="blue", zorder=3, mew=3, ms=7)
               plot.annotate(r'$n={}$'.format(n_), xy=(coeffvar_T, coeffvar_C), xytext=(coeffvar_T+0.003, coeffvar_C), color=color)
+      # plot.plot(x_l, y_l, label='Coding', color=color, zorder=1, marker=next(marker), mew=mew, linestyle=':')
       plot.plot(x_l, y_l, label='Coding', color=color, zorder=1, marker=next(marker), mew=mew, linestyle=':')
       # plot.errorbar(x_l, y_l, xerr=xerr_l, yerr=yerr_l, label='Coding', color=color, zorder=1, marker=next(marker), mew=1, linestyle=':')
       if sim:
@@ -608,21 +618,21 @@ def plot_zerodelay_reped_vs_coded(loc, a):
   #
   plot.legend()
   # plot.legend(loc='lower right')
-  # plot.xscale('log')
-  # plot.yscale('log')
+  plot.xscale('log')
+  plot.yscale('log')
   
-  plot.title(r'$k= {}, {}$'.format(K, task_t_in_latex) )
+  # plot.title(r'$k= {}, {}$'.format(K, task_t_in_latex) )
   if first_moment:
-    legend_T, legend_C = "$E[T]$", "$E[C]$"
+    leg_T, leg_C = "$E[T]$", "$E[C]$"
   elif second_moment:
-    legend_T, legend_C = "$E[T^2]$", "$E[C^2]$"
+    leg_T, leg_C = "$E[T^2]$", "$E[C^2]$"
   elif stdev:
-    legend_T, legend_C = "Standard deviation of $T$", "Standard deviation of $C$"
+    leg_T, leg_C = "Standard deviation of $T$", "Standard deviation of $C$"
   elif coeffvar:
-    legend_T, legend_C = "Coefficient of variance for $T$", "Coefficient of variance for $C$"
+    leg_T, leg_C = "Coefficient of variance for $T$", "Coefficient of variance for $C$"
   
-  plot.xlabel(r'{}'.format(legend_T), fontsize=14)
-  plot.ylabel(r'{}'.format(legend_C), fontsize=14)
+  plot.xlabel(r'{}'.format(leg_T), fontsize=14)
+  plot.ylabel(r'{}'.format(leg_C), fontsize=14)
   fig = plot.gcf()
   fig.tight_layout()
   def_size = fig.get_size_inches()
@@ -783,26 +793,28 @@ def plot_arepeat_k_nc_wrelaunch():
   
   def plot_reduction_in_E_T_wrelaunch(k, loc=loc):
     def max_a_lb():
-      return math.log(k+1)/math.log(4)
+      return math.log(k)/math.log(4)
     
     x_l, y_l = [], []
-    for a in numpy.linspace(1.05, 8, 50):
+    for a in numpy.linspace(1.1, 8, 50):
       x_l.append(a)
       
       E_T_wrelaunch_min = float('Inf')
-      for d in numpy.linspace(loc+0.05, 10*loc, 1000):
-        E_T = E_T_pareto_k_n(loc, a, d, k, n=k, w_relaunch=True)
+      # for d in numpy.linspace(loc+0.05, 10*loc, 1000):
+      for d in numpy.linspace(loc+0.01, 5*loc, 100):
+        E_T = E_T_pareto_k_n_wrelaunch(loc, a, d, k, n=k)
         if E_T < E_T_wrelaunch_min:
           E_T_wrelaunch_min = E_T
         else:
           # elif not math.isinf(E_T_wrelaunch_min):
           break
-      E_T_norelaunch = E_T_pareto_k_n(loc, a, d, k, n=k, w_relaunch=False)
+      E_T_norelaunch = E_T_pareto_k_n(loc, a, d, k, n=k)
       y_l.append(max((E_T_norelaunch - E_T_wrelaunch_min)/E_T_norelaunch, 0) )
     c = next(dark_color)
     label = r'$k={}$'.format(k) # r'$\lambda={}$, $k={}$'.format(loc, k)
     plot.plot(x_l, y_l, label=label, color=c, marker=next(marker), linestyle=':', mew=2)
-    plot.axvline(x=max_a_lb(), label=r'$\alpha_u$, {}'.format(label), color=c, linestyle='--')
+    # plot.axvline(x=max_a_lb(), label=r'$\alpha_u$, {}'.format(label), color=c, linestyle='--')
+    plot.axvline(x=max_a_lb(), color=c, linestyle='--')
   
   E_T = True # False # True
   w_cancel = True # False
@@ -818,13 +830,13 @@ def plot_arepeat_k_nc_wrelaunch():
       
       if E_T:
         if n is not None:
-          y_wrelaunch_l.append(E_T_pareto_k_n(loc, a, d, k, n, w_relaunch=True) )
+          y_wrelaunch_l.append(E_T_pareto_k_n_wrelaunch(loc, a, d, k, n) )
           # y_wrelaunch_approx_l.append(E_T_pareto_k_n_approx(loc, a, d, k, n, w_relaunch=True) )
-          if n == k: y_norelaunch_l.append(E_T_pareto_k_n(loc, a, d, k, n, w_relaunch=False) )
+          if n == k: y_norelaunch_l.append(E_T_pareto_k_n(loc, a, d, k, n) )
         elif c is not None:
-          y_wrelaunch_l.append(E_T_pareto_k_c_wrelaunch(loc, a, d, k, c, w_relaunch=True) )
+          y_wrelaunch_l.append(E_T_pareto_k_c_wrelaunch(loc, a, d, k, c) )
           # y_wrelaunch_approx_l.append(E_T_pareto_k_c_wrelaunch_approx(loc, a, d, k, c, w_relaunch=True) )
-          if c == 0: y_norelaunch_l.append(E_T_pareto_k_c_wrelaunch(loc, a, d, k, c, w_relaunch=False) )
+          if c == 0: y_norelaunch_l.append(E_T_pareto_k_c(loc, a, d, k, c) )
       else:
         if n is not None:
           y_wrelaunch_l.append(E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=w_cancel) )
@@ -849,7 +861,7 @@ def plot_arepeat_k_nc_wrelaunch():
     if n == k:
       d = Delta_for_min_E_T_pareto_k_wrelaunch(loc, a, k)
       # plot.axvline(x=d, label=r'$\Delta^*$, n={}'.format(n), color=c)
-      y = E_T_pareto_k_n(loc, a, d, k, n, w_relaunch=True)
+      y = E_T_pareto_k_n_wrelaunch(loc, a, d, k, n)
       plot.plot(d, y, color='red', label=r'Approx optimal', marker='*', zorder=1, ms=10, mew=3)
     # print("y_wrelaunch_l= {}".format(y_wrelaunch_l) )
     # label = r'$n={}$'.format(n) if n is not None else r'$c={}$'.format(c)
@@ -863,7 +875,7 @@ def plot_arepeat_k_nc_wrelaunch():
       if n == k: plot.plot(x_l, y_norelaunch_l, label='No relaunch', color=next(dark_color), linestyle='--', mew=2)
   
   sim = False # True
-  
+  # K = 10
   # plot_reduction_in_E_T_wrelaunch(K)
   # plot_reduction_in_E_T_wrelaunch(10*K)
   # plot_reduction_in_E_T_wrelaunch(100*K)
@@ -875,6 +887,8 @@ def plot_arepeat_k_nc_wrelaunch():
   # plot_reduction_in_E_T_wrelaunch(100*loc, 10*K)
   
   plot_(K, n=K)
+  plot_(K, n=K+2)
+  plot_(K, n=K+10)
   # plot_(2*K, n=2*K)
   # plot_(10*K, n=10*K)
   # plot_(20*K, n=20*K)
@@ -891,14 +905,13 @@ def plot_arepeat_k_nc_wrelaunch():
   
   plot.legend()
   # plot.legend(loc='center left', bbox_to_anchor=(0.7, 0.5) )
-  plot.title(r'$X \sim Pareto(\lambda= {}, \alpha= {}), k= {}$'.format(loc, a, K) )
-  # plot.title(r'$X \sim Pareto(\lambda= {}, \alpha)$'.format(loc) )
+  plot.title(r'Tasks$\sim Pareto(\lambda= {}, \alpha= {}), k= {}$'.format(loc, a, K) )
   
-  plot.xlabel(r'Relaunch delay $\Delta$ (s)', fontsize=13)
-  y_label = r'Expected latency $E[T]$' if E_T else r'Expected cost $E[C]$'
-  plot.ylabel(r'{} (s)'.format(y_label), fontsize=13)
-  # plot.xlabel(r'$\alpha$', fontsize=12)
-  # plot.ylabel('\n'.join(textwrap.wrap(r'Maximum percetange reduction in $E[T]$ by task relaunch', 40) ), fontsize=12)
+  # plot.xlabel(r'$\Delta$', fontsize=13)
+  # y_label = r'$E[T]$' if E_T else r'$E[C]$'
+  # plot.ylabel(r'{}'.format(y_label), fontsize=13)
+  plot.xlabel(r'$\alpha$', fontsize=12)
+  plot.ylabel('\n'.join(textwrap.wrap(r'Maximum percetange reduction in $E[T]$ with relaunch', 40) ), fontsize=12)
   fig = plot.gcf()
   fig.tight_layout()
   def_size = fig.get_size_inches()
@@ -907,14 +920,39 @@ def plot_arepeat_k_nc_wrelaunch():
   plot.gcf().clear()
   log(WARNING, "done; k= {}".format(K) )
 
-def plot_arepeat_k_nc_wrelaunch_E_C_vs_E_T():
-  K = 15 # 1050 # 100
-  loc, a = 3, 2
+def plot_arepeat_k_nc_wrelaunch_EC_vs_ET():
+  K = 100 # 15 # 1050 # 100
+  loc, a = 3, 1.2
   w_cancel = True
   
   task_t = "Pareto" # "Google"
-  if task_t == "Pareto": task_t_in_latex = r'X \sim Pareto(\lambda={}, \alpha={})'.format(loc, a)
-  elif task_t == "Google": task_t_in_latex = r'X \sim Google'
+  if task_t == "Pareto": task_t_in_latex = r'\sim Pareto(\lambda={}, \alpha={})'.format(loc, a)
+  elif task_t == "Google": task_t_in_latex = r'\sim Google'
+  
+  def plot_wrelaunch_vs_worelaunch(k, n=None, c=None):
+    task_dist_m = {'loc': loc, 'a': a}
+    E_T_l, E_C_l = [], []
+    E_T_wrelaunch_l, E_C_wrelaunch_l = [], []
+    
+    d = Delta_for_min_E_T_pareto_k_wrelaunch(loc, a, k)
+    if n is not None:
+      for n_ in range(k, n+1):
+        E_T_l.append(E_T_k_l_n(task_t, task_dist_m, 0, k, k, n_) )
+        E_C_l.append(E_C_k_l_n(task_t, task_dist_m, 0, k, k, n_, w_cancel) )
+        
+        E_T_wrelaunch_l.append(E_T_pareto_k_n_wrelaunch(loc, a, d, k, n_) )
+        E_C_wrelaunch_l.append(E_C_pareto_k_n_wrelaunch(loc, a, d, k, n_, w_cancel) )
+    elif c is not None:
+      for c_ in range(0, c+1):
+        E_T_l.append(E_T_k_c(task_t, task_dist_m, 0, k, c_) )
+        E_C_l.append(E_C_k_c(task_t, task_dist_m, 0, k, c_, w_cancel) )
+        
+        E_T_wrelaunch_l.append(E_T_pareto_k_c_wrelaunch(loc, a, d, k, c_) )
+        E_C_wrelaunch_l.append(E_C_pareto_k_c_wrelaunch(loc, a, d, k, c_, w_cancel) )
+    # plot.plot(E_T_l, E_C_l, label=r'w/o relaunch', color=next(dark_color), marker=next(marker), zorder=0, linestyle=':', mew=mew)
+    # print("E_T_wrelaunch_l= {}".format(pprint.pformat(E_T_wrelaunch_l) ) )
+    # print("E_C_wrelaunch_l= {}".format(pprint.pformat(E_C_wrelaunch_l) ) )
+    plot.plot(E_T_wrelaunch_l, E_C_wrelaunch_l, label=r'w/ relaunch', color=next(dark_color), marker=next(marker), zorder=0, linestyle=':', mew=mew)
   
   def plot_(k, n=None, c=None, sim=False):
     num_f = 5
@@ -950,10 +988,10 @@ def plot_arepeat_k_nc_wrelaunch_E_C_vs_E_T():
       if task_t != "Google":
         if n is not None:
           E_T_l.append(E_T_pareto_k_n_wrelaunch(loc, a, d, k, n) )
-          E_C_l.append(E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=w_cancel) )
+          E_C_l.append(E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel) )
         elif c is not None:
           E_T_l.append(E_T_pareto_k_c_wrelaunch(loc, a, d, k, c) )
-          E_C_l.append(E_C_pareto_k_c_wrelaunch(loc, a, d, k, c, w_cancel=w_cancel) )
+          E_C_l.append(E_C_pareto_k_c_wrelaunch(loc, a, d, k, c, w_cancel) )
     color = next(dark_color)
     if n != k:
       label = r'$n={}$'.format(n) if n is not None else r'$c={}$'.format(c)
@@ -1030,20 +1068,116 @@ def plot_arepeat_k_nc_wrelaunch_E_C_vs_E_T():
   y = E_C_pareto_k_c_wrelaunch(loc, a, 10**2, k, c, w_cancel=w_cancel, w_relaunch=True)
   plot.annotate(r'$\Delta \rightarrow \infty$', xy=(x, y), xytext=(x+0.5, y), fontsize=13)
   """
-  plot_(K, n=K, sim=False)
+  # plot_(K, n=K, sim=False)
+  
+  plot_wrelaunch_vs_worelaunch(K, n=2*K)
+  # plot_wrelaunch_vs_worelaunch(K, c=50)
   
   plot.legend()
   # plot.legend(loc='center left', bbox_to_anchor=(0.9, 0.5) )
-  plot.title(r'${}, k= {}$'.format(task_t_in_latex, K) )
-  unit = '(s)' if task_t != "Google" else '(hours)'
-  plot.xlabel(r'Expected Latency $E[T]$ {}'.format(unit), fontsize=13)
-  y = r'$E[C^c]$' if w_cancel else r'$E[C]$'
-  plot.ylabel('Expected Cost {} {}'.format(y, unit), fontsize=13)
+  plot.xscale('log')
+  plot.yscale('log')
+  plot.title(r'Tasks ${}, k= {}$'.format(task_t_in_latex, K) )
+  unit = '' # '(s)' if task_t != "Google" else '(hours)'
+  plot.xlabel(r'$E[T]$ {}'.format(unit), fontsize=13)
+  y = r'$E[C]$' # r'$E[C^c]$' if w_cancel else r'$E[C]$'
+  plot.ylabel('{} {}'.format(y, unit), fontsize=13)
   fig = plot.gcf()
   fig.tight_layout()
   def_size = fig.get_size_inches()
   fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
-  plot.savefig("plot_arepeat_k_nc_wrelaunch_E_C_vs_E_T_{}_k_{}.pdf".format(task_t, K), bbox_inches='tight')
+  plot.savefig("plot_arepeat_k_nc_wrelaunch_EC_vs_ET_{}_k_{}.pdf".format(task_t, K), bbox_inches='tight')
+  plot.gcf().clear()
+  log(WARNING, "done; k= {}".format(K) )
+
+# **********************************  (k, n, 0) with Relaunch at d  ****************************** #
+def plot_arepeat_k_ncd0_wrelaunch():
+  K = 100
+  loc, a = 3, 2 # 100 # 1.2 # 2
+  task_t = "Pareto"
+  
+  E_T = True
+  w_cancel = True
+  def plot_(k, n=None, c=None, sim=False):
+    x_l = []
+    y_wrelaunch_l, y_wrelaunch_approx_l, y_sim_wrelaunch_l = [], [], []
+    y_norelaunch_l = []
+    for d in numpy.linspace(0, 20*loc, 50):
+      x_l.append(d)
+      
+      if E_T:
+        if n is not None:
+          y_wrelaunch_l.append(E_T_pareto_k_nd0_wrelaunch(loc, a, d, k, n) )
+          # y_wrelaunch_approx_l.append(E_T_pareto_k_n_approx(loc, a, d, k, n, w_relaunch=True) )
+          if n == k: y_norelaunch_l.append(E_T_pareto_k_n(loc, a, d, k, n) )
+        elif c is not None:
+          y_wrelaunch_l.append(E_T_pareto_k_cd0_wrelaunch(loc, a, d, k, c) )
+          # y_wrelaunch_approx_l.append(E_T_pareto_k_c_wrelaunch_approx(loc, a, d, k, c, w_relaunch=True) )
+          if c == 0: y_norelaunch_l.append(E_T_pareto_k_c(loc, a, d, k, c) )
+      else:
+        if n is not None:
+          y_wrelaunch_l.append(E_C_pareto_k_nd0_wrelaunch(loc, a, d, k, n, w_cancel=w_cancel) )
+          # y_wrelaunch_approx_l.append(E_C_pareto_k_n_approx(loc, a, d, k, n, w_cancel=w_cancel, w_relaunch=True) )
+        elif c is not None:
+          y_wrelaunch_l.append(E_C_pareto_k_cd0_wrelaunch(loc, a, d, k, n, w_cancel=w_cancel) )
+          # y_wrelaunch_approx_l.append(E_C_pareto_k_c_approx(loc, a, d, k, n, w_cancel=w_cancel, w_relaunch=True) )
+      # if sim:
+      #   l = k
+      #   task_t_rv = Pareto(loc, a)
+      #   if n is not None:
+      #     stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=10000, w_relaunch=True)
+      #   elif c is not None:
+      #     stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c, num_run=10000, w_relaunch=True)
+      #   if E_T:
+      #     y_sim_wrelaunch_l.append(sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] ) )
+      #   else:
+      #     if w_cancel:
+      #       y_sim_wrelaunch_l.append(sum(stat_id__trial_sampleavg_l_m['C_wc'] )/len(stat_id__trial_sampleavg_l_m['C_wc'] ) )
+      #     else:
+      #       y_sim_wrelaunch_l.append(sum(stat_id__trial_sampleavg_l_m['C_wc'] )/len(stat_id__trial_sampleavg_l_m['C_wc'] ) )
+    c = next(dark_color)
+    d = Delta_for_min_E_T_pareto_k_n0_wrelaunch(loc, a, k)
+    y = E_T_pareto_k_nd0_wrelaunch(loc, a, d, k, n)
+    plot.plot(d, y, color='red', label=r'Approx optimal', marker='*', zorder=1, ms=10, mew=3)
+    label = r'$n={}$'.format(n) if n is not None else r'$c={}$'.format(c)
+    # label = 'With relaunch'
+    plot.plot(x_l, y_wrelaunch_l, label=label, color=c, marker=next(marker), linestyle='--', zorder=0, mew=2)
+    # plot.plot(x_l, y_wrelaunch_approx_l, label='approx, {}'.format(label), color=next(dark_color), marker=next(marker), linestyle='', mew=2)
+    
+    if sim:
+      plot.plot(x_l, y_sim_wrelaunch_l, label=r'sim, {}'.format(label), color=next(light_color), marker=next(marker), linestyle='', mew=2)
+    if E_T:
+      if n == k: plot.plot(x_l, y_norelaunch_l, label='No relaunch', color=next(dark_color), linestyle='--', mew=2)
+  
+  sim = False # True
+  plot_(K, n=K)
+  # plot_(K, n=K+2)
+  # plot_(K, n=K+10)
+  
+  # plot_(K, n=K)
+  # plot_(K, n=K+1, sim=sim)
+  # plot_(K, n=K+2, sim=sim)
+  # plot_(K, n=K+3, sim=sim)
+  
+  # plot_(K, c=0, sim=sim)
+  # plot_(K, c=1, sim=sim)
+  # plot_(K, c=2, sim=sim)
+  # plot_(K, c=3, sim=sim)
+  
+  plot.legend()
+  # plot.legend(loc='center left', bbox_to_anchor=(0.7, 0.5) )
+  plot.title(r'Tasks$\sim Pareto(\lambda= {}, \alpha= {}), k= {}$'.format(loc, a, K) )
+  
+  plot.xlabel(r'$\Delta$', fontsize=13)
+  y_label = r'$E[T]$' if E_T else r'$E[C]$'
+  plot.ylabel(r'{}'.format(y_label), fontsize=13)
+  # plot.xlabel(r'$\alpha$', fontsize=12)
+  # plot.ylabel('\n'.join(textwrap.wrap(r'Maximum percetange reduction in $E[T]$ with relaunch', 40) ), fontsize=12)
+  fig = plot.gcf()
+  fig.tight_layout()
+  def_size = fig.get_size_inches()
+  fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
+  plot.savefig("plot_arepeat_k_ncd0_wrelaunch_{}_k_{}.pdf".format(task_t, K), bbox_inches='tight')
   plot.gcf().clear()
   log(WARNING, "done; k= {}".format(K) )
 
@@ -1188,14 +1322,16 @@ if __name__ == "__main__":
   # plot_arepeat_shiftedexp_k_n()
   
   # plot_EC_vs_ET_wdelay(w_cancel=True)
-  plot_zerodelay_reped_vs_coded(loc=3, a=2)
+  # plot_zerodelay_reped_vs_coded(loc=3, a=2)
   # plot_zerodelay_reped_vs_coded(loc=3, a=1.2)
   # plot_zerodelay_reped_vs_coded(loc=3, a=1.5)
   
   # plot_arepeat_k_nc()
+  plot_arepeat_k_ncd0_wrelaunch()
+  
   # plot_arepeat_k_nc_E_C_vs_E_T()
   # plot_arepeat_k_nc_wrelaunch()
-  # plot_arepeat_k_nc_wrelaunch_E_C_vs_E_T()
+  # plot_arepeat_k_nc_wrelaunch_EC_vs_ET()
   # plot_arepeat_Pr_T_g_t_pareto_k_wrelaunch()
   
   # plot_reduct_in_E_T_atnocost_w_zerodelay_red()
