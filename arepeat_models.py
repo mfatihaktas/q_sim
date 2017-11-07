@@ -773,6 +773,10 @@ def E_C_pareto_k_c_wrelaunch(loc, a, d, k, c, w_cancel=True):
              + k*loc*(c+1)*(1-q)*(c+1)*a/((c+1)*a-1)
 
 # ****************  Launch n at the beginning relaunch all remaining at \Delta  ****************** #
+def Delta_for_min_E_T_pareto_k_n0_wrelaunch(loc, a, k, n):
+  # return loc*math.sqrt(G(k+1)*G(1-1/a)/G(k+1-1/a) )
+  return math.sqrt(loc*E_T_pareto_k_n(loc, a, 0, k, n) )
+
 def E_T_pareto_k_nd0_wrelaunch(loc, a, d, k, n):
   if d == 0:
     return E_X_n_k_pareto(loc, a, n, k)
@@ -791,11 +795,11 @@ def E_T_pareto_k_nd0_wrelaunch(loc, a, d, k, n):
     if d <= loc:
       return d + E_T_pareto_k_n(loc, a, 0, k, n)
     else:
-      # sum_ = 0
+      # s = 0
       # for r in range(k):
-      #   sum_ += (E_X_n_k(n-r, k-r) - E_X_n_k(k-r, k-r) ) * binomial(k,r) * q**r * (1-q)**(k-r)
-      # return sum_ + E_T_pareto_k_n_wrelaunch(loc, a, d, k, n=k)
-      return d*(1-q**k) + ((1 - loc/d)*I(1-q, n-k+1-1/a, k) + 1)*E_T_pareto_k_n(loc, a, 0, k, n)
+      #   s += (d + E_X_n_k_pareto(loc, a, n-r, k-r) - E_X_n_k_pareto(d, a, n-r, k-r) ) * binomial(n,r) * q**r * (1-q)**(n-r)
+      # return s + E_X_n_k_pareto(loc, a, n, k)
+      return d*I(1-q, n-k+1, k) + ((loc/d - 1)*I(1-q, n-k+1-1/a, k) + 1)*E_T_pareto_k_n(loc, a, 0, k, n)
 
 def E_C_pareto_k_nd0_wrelaunch(loc, a, d, k, n, w_cancel=True):
   if d == 0 and w_cancel:
