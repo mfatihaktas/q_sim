@@ -23,13 +23,14 @@ if [ $1 = 'e' ]; then
   # $PYTHON exp.py < /dev/null 2>&1 | tee $LOG_F
   # rm *.png; $PYTHON exp.py
   $PYTHON simplex_exp.py
+elif [ $1 = 'a' ]; then
+  $PYTHON anonimity.py
 elif [ $1 = 'x' ]; then
-  # $PYTHON mixed_exp.py
+  $PYTHON mixed_exp.py
+elif [ $1 = 'xm' ]; then
   $PYTHON mixed_models.py
 elif [ $1 = 'm' ]; then
-  # $MATLAB -r "run exp.m; quit"
-  # rm *.png; $PYTHON mds_exp.py # > mds_exp.log
-  $PYTHON multiq_sching.py
+  $PYTHON multiq_exp.py
 elif [ $1 = 'mm' ]; then
   $PYTHON mds_models.py
 elif [ $1 = 'p' ]; then

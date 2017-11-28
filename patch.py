@@ -1,10 +1,11 @@
 import inspect, math, mpmath, scipy, itertools
 from scipy import special
 
-dark_color = itertools.cycle(('green', 'red', 'blue', 'turquoise', 'goldenrod', 'purple', 'gray', 'brown', 'magenta', 'gold', 'olive', 'orangered', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'darkgray'))
+# dark_color = itertools.cycle(('green', 'red', 'blue', 'turquoise', 'goldenrod', 'purple', 'gray', 'brown', 'magenta', 'gold', 'olive', 'orangered', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'darkgray'))
+dark_color = itertools.cycle(('green', 'red', 'blue', 'goldenrod', 'magenta', 'purple', 'gray', 'brown', 'turquoise', 'gold', 'olive', 'orangered', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'darkgray'))
 light_color = itertools.cycle(('silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise'))
 linestyle = itertools.cycle(('-', '--', '-.', ':') )
-marker = itertools.cycle(('^', 'p', 'x', 'd', '+', 'v', '<', '>', '1' , '2', '3', '4') )
+marker = itertools.cycle(('^', 'p', 'd', '+', 'v', '<', '>', '1' , '2', '3', '4', 'x') )
 skinny_marker_l = ['x', '+', '1', '2', '3', '4']
 
 mew, ms = 3, 5
@@ -94,12 +95,15 @@ def binomial(n, k):
 #   return binom
 
 def I(u_l, m, n):
-  return B(m, n, u_l=u_l)/B(m, n)
+  den = B(m, n)
+  if den == 0:
+    return None
+  return B(m, n, u_l=u_l)/den
   # return scipy.special.betainc(m, n, u_l)
 
 def B(m, n, u_l=1):
-  if u_l == 1:
-    return scipy.special.beta(m, n)
+  # if u_l == 1:
+  #   return scipy.special.beta(m, n)
   return mpmath.quad(lambda x: x**(m-1) * (1-x)**(n-1), [0, u_l] )
   # else:
   #   return I(u_l, m, n)*B(m, n)
@@ -145,7 +149,7 @@ def fit_pareto(s_l):
     for s in s_l:
       D += math.log(s) - math.log(l_)
     a = i/D
-  log(WARNING, "done; l= {}, a= {}".format(l, a) )
+  # log(WARNING, "done; l= {}, a= {}".format(l, a) )
   return l, a
 
 def fit_tpareto(s_l):
