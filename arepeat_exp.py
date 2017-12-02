@@ -145,7 +145,7 @@ def plot_EC_vs_ET_wdelay(w_cancel=True):
   D = 30
   mu = 0.5
   loc, a = 3, 2
-  task_t = "SExp" # "Exp" # "SExp" # "Pareto"
+  task_t = "Pareto" # "Exp" # "SExp" # "Pareto"
   task_t_rv, task_t_in_latex = None, None
   if task_t == "Exp":
     task_t_in_latex = r'X \sim Exp(\mu={})'.format(mu)
@@ -174,7 +174,7 @@ def plot_EC_vs_ET_wdelay(w_cancel=True):
         E_T_l.append(E_T)
         E_C_l.append(E_C)
         if c_ == c:
-          plot.annotate(r'$\Delta=0$', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T, E_C-10), color=ann_color, fontsize=20)
+          plot.annotate(r'$\Delta=0$', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T, E_C-5), color=ann_color, fontsize=18)
       plot.plot(E_T_l, E_C_l, color=ann_color, alpha=0.6, linestyle='--')
     if n:
       E_T_l.clear()
@@ -185,66 +185,59 @@ def plot_EC_vs_ET_wdelay(w_cancel=True):
         E_T_l.append(E_T)
         E_C_l.append(E_C)
         if n_ == n:
-          plot.annotate(r'$\Delta=0$', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T, E_C-5), color=ann_color, fontsize=18)
+          plot.annotate(r'$\Delta=0$', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T+0.1, E_C-5), color=ann_color, fontsize=18)
           # plot.annotate(r'$\Delta=0$', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T+0.75, E_C-8), color=ann_color, fontsize=18)
       plot.plot(E_T_l, E_C_l, color=ann_color, alpha=0.6, linestyle='--')
   
-  def plot_(k=K, n=0, c=0):
+  def plot_(k=K, n=0, c=0, sim=False):
     l = k
     E_T_l, E_T_sim_l, E_C_l, E_C_sim_l = [], [], [], []
-    num_run = 100000
+    num_run = 1000 # 100000
     u_l = 25 + 1
     color = next(dark_color)
     if c:
       for d in numpy.arange(0, u_l, 0.5):
-        # stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c, num_run=num_run)
-        # E_T_sim_l.append(sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] ) )
-        # key = 'C_wc' if w_cancel else 'C_wc'
-        # E_C_sim_l.append(sum(stat_id__trial_sampleavg_l_m[key] )/len(stat_id__trial_sampleavg_l_m[key] ) )
-        
-        E_T = E_T_k_c(task_t, task_dist_m, d, k, c)
-        E_C = E_C_k_c(task_t, task_dist_m, d, k, c, w_cancel=w_cancel)
-        E_T_l.append(E_T)
-        E_C_l.append(E_C)
-        # if d == 0:
-        #   plot.annotate(r'$c={}$'.format(c), ha='center', va='center', xy=(E_T, E_C), xytext=(E_T-0.3, E_C), color=color, fontsize=12)
-      # plot.plot(E_T_l, E_C_l, color=color, marker=next(marker), ms=10, mew=2, zorder=2, lw=2, linestyle='-')
-      plot.plot(E_T_l, E_C_l, label=r'Rep,$c={}$'.format(c), color=next(dark_color), marker=next(marker), ms=8, mew=2, zorder=2, lw=2, linestyle='-')
-      # plot.plot(E_T_sim_l, E_C_sim_l, label=r'Rep,$c={}$'.format(c), color=next(dark_color), marker=next(marker), zorder=2, mew=5, linestyle=':')
+        if sim:
+          stat_id__trial_sampleavg_l_m = sim_arepeat_k_c(task_t_rv, d, k, c, num_run=num_run)
+          E_T_sim_l.append(sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] ) )
+          key = 'C_wc' if w_cancel else 'C_wc'
+          E_C_sim_l.append(sum(stat_id__trial_sampleavg_l_m[key] )/len(stat_id__trial_sampleavg_l_m[key] ) )
+        else:
+          E_T = E_T_k_c(task_t, task_dist_m, d, k, c)
+          E_C = E_C_k_c(task_t, task_dist_m, d, k, c, w_cancel=w_cancel)
+          E_T_l.append(E_T)
+          E_C_l.append(E_C)
+      if sim:
+        plot.plot(E_T_sim_l, E_C_sim_l, label=r'Rep,$c={}$'.format(c), color=next(dark_color), marker=next(marker), ms=8, mew=2, zorder=2, lw=2, linestyle='-')
+      else:
+        plot.plot(E_T_l, E_C_l, label=r'Rep,$c={}$'.format(c), color=next(dark_color), marker=next(marker), ms=8, mew=2, zorder=2, lw=2, linestyle='-')
     elif n:
       for d in numpy.arange(0, u_l, 0.5):
-        # stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, k, n, num_run=num_run)
-        # E_T_sim_l.append(sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] ) )
-        # key = 'C_wc' if w_cancel else 'C_wc'
-        # E_C_sim_l.append(sum(stat_id__trial_sampleavg_l_m[key] )/len(stat_id__trial_sampleavg_l_m[key] ) )
-        E_T = E_T_k_l_n(task_t, task_dist_m, d, k, l, n)
-        E_C = E_C_k_l_n(task_t, task_dist_m, d, k, l, n, w_cancel=w_cancel)
-        E_T_l.append(E_T)
-        E_C_l.append(E_C)
-        # if d == 0:
-        #   # if n == k + 5:
-        #   #   plot.annotate('Less\nredundancy', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T+1, E_C-2.5), color=color, fontsize=12)
-        #   # if n == k + 10:
-        #   #   plot.annotate('More\nredundancy', ha='center', va='center', xy=(E_T, E_C), xytext=(E_T+1, E_C-2.5), color=color, fontsize=12)
-        #   plot.annotate(r'$n={}$'.format(n), ha='center', va='center', xy=(E_T, E_C), xytext=(E_T-0.4, E_C), color=color, fontsize=12)
-      # label=r'Code,$n={}$'.format(n)
-      # plot.plot(E_T_l, E_C_l, color=color, marker=next(marker), ms=7, mew=2, zorder=1, lw=2, linestyle=':')
-      plot.plot(E_T_l, E_C_l, label=r'Code,$n={}$'.format(n), color=next(dark_color), marker=next(marker), ms=8, zorder=1, mew=2, linestyle=':')
-      # plot.plot(E_T_sim_l, E_C_sim_l, label=r'Code,$n={}$'.format(n), color=next(dark_color), marker=next(marker), ms=8, zorder=1, mew=2, linestyle=':')
-  plot_(c=1)
-  plot_(c=2)
-  plot_(c=3)
-  # plot_d_extremes(c=3)
+        if sim:
+          stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(task_t_rv, d, k, k, n, num_run=num_run)
+          E_T_sim_l.append(sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] ) )
+          key = 'C_wc' if w_cancel else 'C_wc'
+          E_C_sim_l.append(sum(stat_id__trial_sampleavg_l_m[key] )/len(stat_id__trial_sampleavg_l_m[key] ) )
+        else:
+          E_T = E_T_k_l_n(task_t, task_dist_m, d, k, l, n)
+          E_C = E_C_k_l_n(task_t, task_dist_m, d, k, l, n, w_cancel=w_cancel)
+          E_T_l.append(E_T)
+          E_C_l.append(E_C)
+      if sim:
+        plot.plot(E_T_sim_l, E_C_sim_l, label=r'Code,$n={}$'.format(n), color=next(dark_color), marker=next(marker), ms=8, zorder=1, mew=2, linestyle=':')
+      else:
+        plot.plot(E_T_l, E_C_l, label=r'Code,$n={}$'.format(n), color=next(dark_color), marker=next(marker), ms=8, zorder=1, mew=2, linestyle=':')
+  sim = True # False
+  plot_(c=1, sim=sim)
+  plot_(c=2, sim=sim)
+  # plot_d_extremes(c=2)
   
-  plot_(n=K+1)
-  plot_(n=K+2)
-  for n in range(K+5, 4*K+1, 5):
-    plot_(n=n)
-  plot_d_extremes(n=4*K)
+  plot_(n=K+1, sim=sim)
+  plot_(n=K+2, sim=sim)
+  for n in range(K+5, 3*K+1, 5):
+    plot_(n=n, sim=sim)
+  # plot_d_extremes(n=4*K, sim)
   
-  # plot_(n=K+5)
-  # plot_(n=K+10)
-  # plot_d_extremes(n=K+10)
   #
   if task_t == "SExp":
     x_nored = E_T_k_c(task_t, task_dist_m, d=0, k=K, c=0)
@@ -256,11 +249,11 @@ def plot_EC_vs_ET_wdelay(w_cancel=True):
     # axes.set_xlim([3.9, 9.2] ) # for only rep
     # axes.set_ylim([47, 115] )
   legend = plot.legend()
-  legend = plot.legend(loc='center left', bbox_to_anchor=(0.85, 0.7), fontsize=10)
+  legend = plot.legend(loc='center left', bbox_to_anchor=(0.85, 0.75), fontsize=10)
   # frame = legend.get_frame()
   # frame.frameon=True
   # frame.set_edgecolor('black')
-  # plot.title(r'${}$'.format(task_t_in_latex), fontsize=12)
+  plot.title(r'${}$'.format(task_t_in_latex), fontsize=12)
   plot.xlabel('Latency', fontsize=13)
   plot.ylabel('Cost', fontsize=13)
   fig = plot.gcf()

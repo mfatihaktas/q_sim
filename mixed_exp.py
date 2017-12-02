@@ -58,8 +58,7 @@ def plot_mixednet():
         ET_sim_l.append(ET_sim)
         # ET_approx = ET_n_2(n, ar)
         # ET2_approx = ET2_n_2(n, ar)
-        pe = pempty_iteratively(n, k, dist_m)
-        ET_approx = ET_mg1_approx(n, k, pe, dist_m)
+        ET_approx = ET_mg1_approx(n, k, dist_m)
         print("ET_approx= {}".format(ET_approx) )
         ET_approx_l.append(ET_approx)
       elif pET2:
@@ -124,19 +123,15 @@ def plot_mixednet():
       if pET:
         print("ET_sim= {}".format(ET_sim) )
         ET_sim_l.append(ET_sim)
-        pe = pempty_iteratively(n, k, dist_m)
-        # pe = approx_pempty_iteratively(n, k, ar)
-        ET_approx = ET_mg1_approx(n, k, pe, dist_m)
-        print("pe= {}, ET_approx= {}".format(pe, ET_approx) )
+        ET_approx = ET_mg1_approx(n, k, dist_m)
+        print("ET_approx= {}".format(ET_approx) )
         ET_approx_l.append(ET_approx)
         plot.xlabel(r'$E[D]$', fontsize=13)
       elif pET2:
         print("ET2_sim= {}".format(ET2_sim) )
         ET2_sim_l.append(ET2_sim)
-        pe = 0 # pempty_iteratively(n, k, dist_m)
-        # pe = approx_pempty_iteratively(n, k, dist_m)
-        ET2_approx = 0 # ET_mg1_approx(n, k, pe, dist_m)
-        print("pe= {}, ET2_approx= {}".format(pe, ET2_approx) )
+        ET2_approx = 0 # ET_mg1_approx(n, k, dist_m)
+        print("ET2_approx= {}".format(ET2_approx) )
         ET2_approx_l.append(ET2_approx)
     if pET:
       plot.plot(k_l, ET_sim_l, label=r'Simulation', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
@@ -158,8 +153,8 @@ def plot_mixednet():
   # plot_ET_vs_ar(k=7)
   # plot_ET_vs_ar(k=3)
   
-  # dist_m = {'dist': 'Exp', 'mu': ar}
-  dist_m = {'dist': 'Pareto', 'loc': 1, 'a': 10}
+  dist_m = {'dist': 'Exp', 'mu': ar}
+  # dist_m = {'dist': 'Pareto', 'loc': 1, 'a': 50}
   plot_ET_vs_k(dist_m)
   #
   plot.legend()

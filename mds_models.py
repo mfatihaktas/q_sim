@@ -5,8 +5,11 @@ import matplotlib.cm as cm # cm.rainbow
 import sys, pprint, math, numpy, sympy, simpy, getopt
 from math import factorial
 from numpy import linalg
-from patch import *
 
+from patch import *
+from commonly_used import *
+
+'''
 # -------------------------------------  MDS: Hot-Data Download  ---------------------------------- #
 def E_T_sys__mds_n_2(l, mu, n):
   gamma = mu
@@ -166,10 +169,6 @@ def E_T_mds_n_2(l, mu, n, l_s=None):
     
     # An UB: no task-cancellation after job termination
     return 1/(mu - l - l_s) * (H(n) - H(n-2) )
-    
-    # return E_T_mds_n_2(l, mu-l_s, n) # l/(l+l_s) * E_T_mds_n_2(l, mu, n) + l_s/(l+l_s) * (H(n)-H(n-2) )/(mu-l_s)
-    # return E_T_mds_n_2(l, mu*l/(l+l_s), n)
-    # return E_T_mds_n_2(l, mu, int(n*(1-l_s/mu) ) )
 
 def E_T_mds_n_2_adjustable(l, mu, n):
   # gamma = min(l, mu)
@@ -230,7 +229,141 @@ def E_T_mds_n_k_varki_gauri_lb(l, mu, n, k):
   ro = float(l/mu)
   return 1/mu * (H(n) - H(n-k) ) + \
          1/mu * ro*(gen_H(n, ro) - gen_H(n-k, ro) )
+'''
+# ###################################  (n, 2)  ############################## #
+def mds_innerbound_on_ar(n, k, dist_m):
+  dist = dist_m['dist']
+  if dist == 'Exp':
+    mu = dist_m['mu']
+    if n == k and k == 2:
+      return mu
+    EV_sm = 1/mu * (H(n) - H(n-k) )
+    return 1/EV_sm
+
+def mds_exact_bound_on_arr_rate(n, k, dist_m):
+  dist = dist_m['dist']
+  if dist == 'Exp':
+    mu = dist_m['mu']
+    return n*mu/k
+  else:
+    EV = EXm(1, dist_m)
+    return float(n/k/EV)
+
+def ET_mds_nk_sm(ar, n, k, dist_m):
+  dist = dist_m['dist']
+  if dist == 'Exp':
+    mu = dist_m['mu']
+    EV = (H(n) - H(n-k) )/mu
+    if 1/ar <= EV:
+      return None
+    EV2 = (H_2(n)-H_2(n-k) ) / mu**2 + EV**2
+    return EV + ar*EV2/2/(1 - ar*EV)
+  else:
+    EV = EXm_n_k(1, n, k, dist_m)
+    if 1/ar <= EV:
+      return None
+    EV2 = EXm_n_k(2, n, k, dist_m)
+    return EV + ar*EV2/2/(1 - ar*EV)
+
+def V_tail(pd, n, k, t, dist_m):
+  cdf = 0
+  for d in range(k):
+    cdf += binomial(k-1, d) * pd**d * (1-pd)**(k-1-d) * Pr_X_n_k_leq_x(n-d, k-d, t, dist_m)
+  return 1 - cdf
+
+def V_moment(pd, n, k, m, dist_m):
+  return mpmath.quad(lambda t: m*t**(m-1)*V_tail(pd, n, k, t, dist_m), [0, mpmath.inf] ) # [0, 100000]
+
+def V_moment(n, k, m, dist_m, pi_l):
+  def Vi_moment(i):
+    return mpmath.quad(lambda t: m*t**(m-1)*(1 - Pr_X_n_k_leq_x(n-i, k-i, t, dist_m) ), [0, mpmath.inf] )
+  
+  # return sum([1/k*Vi_moment(i) for i in range(0, k) ] )
+  return sum([pi_l[i]*Vi_moment(i) for i in range(0, k) ] )
+
+def pdeparted(n, k, dist_m):
+  pd = 1 # 0.001 # 1
+  
+  # for i in range(5):
+  #   pd = mpmath.quad(lambda t: V_tail(pd, n, k, t, dist_m) * f(t, dist_m), [0, mpmath.inf] )
+  #   print("i= {}, pd= {}".format(i, pd) )
+  
+  for k_ in range(1, k+1):
+    pd = mpmath.quad(lambda t: V_tail(pd, n, k_, t, dist_m) * f(t, dist_m), [0, mpmath.inf] )
+    print("k_= {}, pd= {}".format(k_, pd) )
+  return pd
+
+def ET_mds_nk_approx(ar, n, k, dist_m, pi_l=[] ):
+  dist = dist_m['dist']
+  if dist == 'Exp':
+    '''
+    mu = dist_m['mu']
+    # pd = pdeparted(n, k, dist_m)
+    # EV = V_moment(pd, n, k, 1, dist_m)
+    # EV2 = V_moment(pd, n, k, 2, dist_m)
+    EV = V_moment(n, k, 1, dist_m, pi_l)
+    EV2 = V_moment(n, k, 2, dist_m, pi_l)
+    ET = EV + ar/2 * EV2/(1 - ar*EV)
+    
+    # EVf = EXm_n_k(1, n, k, dist_m)
+    # EVf2 = EXm_n_k(2, n, k, dist_m)
+    # rof = ar*EVf*(1 - ar*EV)/(1 + ar*EVf - ar*EV)
+    # ro = ar*EVf*ar*EV/(1 + ar*EVf - ar*EV)
+    # ER = EV2/2/EV
+    # ERf = EVf2/2/EVf
+    # ET = (rof+ro)*EV + (1-rof-ro)*EVf + (rof*ERf + ro*ER)/(1 - ar*EV)
+    if ET < 0: return None
+    return ET
+    '''
+    n_ = n+(k-1)
+    # dist_m_ = dict(dist_m)
+    # dist_m_['mu'] *= n/(n-k+1)
+    return ET_mds_nk_sm(ar, n_, k, dist_m)
+
+def ET_mds_n2_approx(ar, n, dist_m):
+  dist = dist_m['dist']
+  if dist == 'Exp':
+    mu = dist_m['mu']
+    if n == 2:
+      # An approximation
+      ro = ar/mu
+      return (12 - ro)/(8*(mu - ar) )
+    else:
+      # High traffic assumption
+      f_c = (n - 2)/(n - 1)
+      f_p = 1 - f_c
+      EV_p = 1/((n - 1)*mu)
+      EV_c = 1/mu * (H(n) - H(n-2) )
+      EV = f_p*EV_p + f_c*EV_c
+      
+      EV2_p = 2 / ((n-1)*mu)**2
+      EV2_c = 1/mu**2 * (H_2(n) - H_2(n-2) ) + EV_c**2
+      EV2 = f_p*EV2_p + f_c*EV2_c
+      # ET = EV/(1 - ar*EV) # w/ M/M/1 assumption
+      ET = EV + ar/2 * EV2/(1 - ar*EV) # w/ M/G/1 assumption
+      return ET
+  else:
+    f_c = (n - 2)/(n - 1)
+    f_p = 1 - f_c
+    EV_p = EXm_n_k(1, n-1, 1, dist_m)
+    EV_c = EXm_n_k(1, n, 2, dist_m)
+    EV = f_p*EV_p + f_c*EV_c
+    
+    EV2_p = EXm_n_k(2, n-1, 1, dist_m)
+    EV2_c = EXm_n_k(2, n, 2, dist_m)
+    EV2 = f_p*EV2_p + f_c*EV2_c
+    # ET = EV/(1 - ar*EV) # w/ M/M/1 assumption
+    ET = EV + ar/2 * EV2/(1 - ar*EV) # w/ M/G/1 assumption
+    return ET
 
 if __name__ == "__main__":
-  plot_moments_for_types()
+  # plot_moments_for_types()
+  
+  dist_m = {'dist': 'Exp', 'mu': 1}
+  n = 5
+  print("n= {}".format(n) )
+  for k in range(1, 2):
+    pd = pdeparted(n, k, dist_m)
+    print("k= {}, pd= {}".format(k, pd) )
+    
   

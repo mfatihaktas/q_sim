@@ -11,6 +11,7 @@ from scipy.optimize import fsolve
 
 from patch import *
 from rvs import *
+from commonly_used import *
 
 def ET_mixednet_ub(n, k, l, qlambda_l=[] ):
   if len(qlambda_l):
@@ -107,27 +108,6 @@ def Pr_busy_mixednet_approx(n=100, k=None):
 #   return k/n * (1/(n-k+1) )**(1/k)
 
 # *****************************  M/G/1 Approx  ***************************** #
-def f(x, dist_m):
-  dist = dist_m['dist']
-  if dist == 'Exp':
-    mu = dist_m['mu']
-    return mu*math.exp(-mu*x)
-  elif dist == 'Pareto':
-    loc, a = dist_m['loc'], dist_m['a']
-    return (x >= loc)*(a*loc**a/x**(a+1) )
-
-def F(x, dist_m):
-  dist = dist_m['dist']
-  if dist == 'Exp':
-    return 1 - math.exp(-dist_m['mu']*x)
-  elif dist == 'Pareto':
-    loc, a = dist_m['loc'], dist_m['a']
-    return (x >= loc)*(1 - (loc/x)**a)
-
-def Pr_X_n_k_leq_x(n, k, x, dist_m): # n:kth order stat
-  p = F(x, dist_m)
-  return sum([binomial(n,i)*p**i*(1-p)**(n-i) for i in range(k, n+1) ] )
-
 def serv_tail_approx(pe, n, k, t, dist_m):
   cdf = 0
   for e in range(k):
@@ -139,7 +119,7 @@ def approx_serv_tail_approx(pe, n, k, t, dist_m):
   return 1 - I(F(t, dist_m), (k-1)*pe, n-k+2)
 
 def plot_serv_tail_approx(n, k, dist_m):
-  pe = pempty_iteratively(n, k, l)
+  pe = pempty(n, k, l)
   x_l, y_l = [], []
   for t in numpy.linspace(0, 10, 100):
     x_l.append(t)
@@ -156,10 +136,12 @@ def plot_serv_tail_approx(n, k, dist_m):
 def serv_moment_approx(pe, n, k, m, dist_m):
   return mpmath.quad(lambda t: m*t**(m-1)*serv_tail_approx(pe, n, k, t, dist_m), [0, 100000] ) # [0, mpmath.inf]
 
-def ET_mg1_approx(n, k, pe, dist_m):
+def ET_mg1_approx(n, k, dist_m):
+  pe = pempty_approx(n, k)
+  # pe = pempty(n, k, dist_m)
   ES = serv_moment_approx(pe, n, k, 1, dist_m)
   ES2 = serv_moment_approx(pe, n, k, 2, dist_m)
-  # print("n= {}, k= {}, ES= {}, ES2= {}".format(n, k, ES, ES2) )
+  print("n= {}, k= {}, pe= {}, ES= {}, ES2= {}".format(n, k, pe, ES, ES2) )
   dist = dist_m['dist']
   if dist == 'Exp':
     ar = dist_m['mu']
@@ -176,7 +158,7 @@ def ET_mg1_approx(n, k, pe, dist_m):
   if ET < 0: return None
   return ET
 
-def pempty_iteratively(n, k, dist_m):
+def pempty(n, k, dist_m):
   pe = 1
   # for i in range(20):
   #   pe = mpmath.quad(lambda t: (1 - serv_tail_approx(pe, n, k, l, t) ) * l*math.exp(-l*t), [0, mpmath.inf] )
@@ -188,7 +170,7 @@ def pempty_iteratively(n, k, dist_m):
   return pe
   # return 1 - (k-1)/n
 
-def approx_pempty_iteratively(n, k):
+def pempty_approx(n, k):
   pe = 1
   
   # for k_ in range(1, k+1):
@@ -217,29 +199,30 @@ def approx_pempty_iteratively(n, k):
   # return scipy.optimize.brentq(h, 0, 1)
 
 def plot_pempty():
-  ar = 1
+  # dist_m = {'dist': 'Exp', 'mu': ar}
+  dist_m = {'dist': 'Pareto', 'loc': 1, 'a': 50}
   n = 10
-  print("n= {}, ar= {}".format(n, ar) )
+  print("n= {}, dist_m= {}".format(n, dist_m) )
   k_l, pe_l, pe_approx_l = [], [], []
   for k in range(2, n):
     k_l.append(k)
     
-    pe = pempty_iteratively(n, k)
+    pe = pempty(n, k, dist_m)
     print("k= {}, pe= {}".format(k, pe) )
     pe_l.append(pe)
     
-    pe_approx = approx_pempty_iteratively(n, k)
+    pe_approx = pempty_approx(n, k)
     print("k= {}, pe_approx= {}".format(k, pe_approx) )
     pe_approx_l.append(pe_approx)
   plot.plot(k_l, pe_l, color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
   plot.plot(k_l, pe_approx_l, label='Approx', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
   
   plot.legend()
-  plot.title(r'$n= {}$, $\lambda= {}$'.format(n, ar) )
+  plot.title(r'$n= {}$, $X \sim {}$'.format(n, dist_m) )
   plot.xlabel(r'$k$', fontsize=13)
   plot.ylabel(r'$p_0$', fontsize=13)
   plot.savefig("plot_pempty_n_{}.png".format(n) )
-  log(WARNING, "done; n= {}, ar= {}".format(n, ar) )
+  log(WARNING, "done; n= {}".format(n) )
 
 def EL_n_2(n):
   return 1/2/(n-2)

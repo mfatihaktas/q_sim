@@ -60,7 +60,7 @@ def plot_MG1_tail():
 def plot_ratios_of_Gammas():
   a = 1 # 10 # 1.05 # 3
   k = 10
-  """
+  # """
   def func(c):
     return G((c+1)*k+1)/G(c*k+1) * G(c*k+1-1/a)/G((c+1)*k+1-1/a) * G(k+1-1/a/(c+1) )/G(k+1)/G(1-1/a/(c+1) )
     # return ((c+1)*k + 1)**(1/a) / (c*k)**(1/a) / k**(1/a/(c+1) ) # / G(1-1/a/(c+1) )
@@ -98,13 +98,13 @@ def plot_ratios_of_Gammas():
     f_l.append(func(2*k, i) )
   plot.plot(i_l, f_l, color=next(dark_color), marker=next(marker), linestyle=':')
   plot.xlabel(r'$i$', fontsize=12)
-  
+  """
   # plot.ylabel(r'', fontsize=12)
   plot.savefig("plot_ratios_of_Gammas.png", bbox_inches='tight')
   plot.gcf().clear()
   log(WARNING, "done.")
 
 if __name__ == "__main__":
-  # plot_ratios_of_Gammas()
-  plot_MG1_tail()
+  plot_ratios_of_Gammas()
+  # plot_MG1_tail()
   

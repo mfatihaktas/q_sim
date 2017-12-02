@@ -70,7 +70,7 @@ class PG(object): # Packet Generator
     self.flow_id = flow_id
     
     if psize == "Pareto":
-      self.psize_dist = Pareto(psize_dist_m['loc'], psize_dist_m['a'] )
+      self.psize_dist = Pareto(psize_dist_m['l'], psize_dist_m['a'] )
     else:
       self.psize_dist = None
     
@@ -192,17 +192,19 @@ class Q(object):
     self.env = env
 
 class FCFS(Q): # First Come First Serve
-  def __init__(self, _id, env, serv="Exp", serv_dist_m=None, out=None):
+  def __init__(self, _id, env, serv="Exp", sdist_m=None, out=None):
     super().__init__(_id, env)
     self.serv = serv
     if serv == "Exp":
-      self.serv_time = Exp(serv_dist_m['mu'] )
+      self.serv_time = Exp(sdist_m['mu'] )
+    elif serv == "SExp":
+      self.serv_time = Exp(sdist_m['mu'], sdist_m['D'] )
     elif serv == "Pareto":
-      self.serv_time = Pareto(serv_dist_m['loc'], serv_dist_m['a'] )
+      self.serv_time = Pareto(sdist_m['l'], sdist_m['a'] )
     elif serv == "TPareto":
-      self.serv_time = TPareto(serv_dist_m['l'], serv_dist_m['u'], serv_dist_m['a'] )
+      self.serv_time = TPareto(sdist_m['l'], sdist_m['u'], sdist_m['a'] )
     elif serv == "Bern":
-      self.serv_time = Bern(serv_dist_m['U'], serv_dist_m['L'], serv_dist_m['p'] )
+      self.serv_time = Bern(sdist_m['U'], sdist_m['L'], sdist_m['p'] )
     elif serv == "Dolly":
       self.serv_time = Dolly()
     else:
