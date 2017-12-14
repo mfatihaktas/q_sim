@@ -325,7 +325,7 @@ def pplot_task_lifetime_hist(k):
   
   plot.xscale('log')
   plot.yscale('log')
-  plot.xlabel(r'Task lifetime (s)', fontsize=13)
+  plot.xlabel(r'Task lifetime', fontsize=13)
   plot.ylabel(r'Tail distribution', fontsize=13)
   # plot.ylabel(r'Fraction of tasks completed in x')
   # plot.title(r'Jobs with {} tasks'.format(k), fontsize=13)
@@ -385,10 +385,10 @@ if __name__ == "__main__":
   # plot_task_lifetime_hist(k=1000)
   # plot_task_lifetime_hist(k=1050)
   
-  # pplot_task_lifetime_hist(k=15)
-  pplot_task_lifetime_hist(k=400)
-  pplot_task_lifetime_hist(k=1000)
-  pplot_task_lifetime_hist(k=1050)
+  pplot_task_lifetime_hist(k=15)
+  # pplot_task_lifetime_hist(k=400)
+  # pplot_task_lifetime_hist(k=1000)
+  # pplot_task_lifetime_hist(k=1050)
   
   # plot_qq_task_lifetimes(k=400)
   
