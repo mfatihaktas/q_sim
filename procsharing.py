@@ -5,8 +5,11 @@ matplotlib.rcParams['ps.fonttype'] = 42
 matplotlib.use('Agg')
 import matplotlib.pyplot as plot
 
+import sys, pprint, math, numpy, scipy, simpy, sympy, getopt, itertools
+
 from sim import *
-import sys, pprint, math, numpy, simpy, sympy, getopt, itertools
+from arepeat_models import *
+from arepeat_sim import *
 
 class Proc(object):
   def __init__(self, _id, size, remaining):
@@ -24,7 +27,6 @@ class Proc(object):
     p.entrance_time = self.entrance_time
     return p
 
-# *******************************  PacketGenerator  ****************************** #
 class PG(object): # Packet Generator
   def __init__(self, env, ar, psize_dist):
     self.env = env
@@ -55,8 +57,8 @@ class PSQ(object): # Process Sharing Queue
     self.sinterrupt = None
     self.got_busy = None
     
-    self.qt_l = []
-    self.slowdown_l = []
+    self.lt_l = []
+    self.sl_l = []
     
     self.store = simpy.Store(env)
     self.action = env.process(self.serv_run() )
@@ -64,6 +66,9 @@ class PSQ(object): # Process Sharing Queue
   
   def __repr__(self):
     return "PSQ[h= {}]".format(self.h)
+  
+  def busy(self):
+    return len(self.p_l) != 0
   
   def serv_run(self):
     while True:
@@ -98,9 +103,9 @@ class PSQ(object): # Process Sharing Queue
         p = self.p_l.pop(i_min)
         sim_log(DEBUG, self.env, self, "serv done", p)
         
-        lifetime = self.env.now - p.entrance_time
-        # self.qt_l.append(lifetime)
-        self.slowdown_l.append(lifetime/p.size)
+        lt = self.env.now - p.entrance_time
+        self.lt_l.append(lt)
+        self.sl_l.append(lt/p.size)
   
   def put_run(self):
     while True:
@@ -119,6 +124,60 @@ class PSQ(object): # Process Sharing Queue
     
     return self.store.put(p.deep_copy() )
 
+class DollyQ(object):
+  def __init__(self, env):
+    self.env = env
+    
+    self.serv_time = Dolly()
+    self.store = simpy.Store(env)
+    self.action = env.process(self.run() )
+    
+    self.num_t = 0
+    self.lt_l = []
+    self.sl_l = []
+  
+  def __repr__(self):
+    return "DollyQ"
+  
+  def busy(self):
+    return self.num_t != 0
+  
+  def run(self):
+    while True:
+      p = (yield self.store.get() )
+      yield (self.env.timeout(p.size * self.serv_time.gen_sample() ) )
+      
+      lt = self.env.now - p.entrance_time
+      self.lt_l.append(lt)
+      self.sl_l.append(lt/p.size)
+      self.num_t -= 1
+  
+  def put(self, p, preempt=False):
+    p.entrance_time = self.env.now
+    sim_log(DEBUG, self.env, self, "recved", p)
+    
+    self.num_t += 1
+    return self.store.put(p.deep_copy() )
+
+class QMonitor(object):
+  def __init__(self, env, q, poll_interval):
+    self.q = q
+    self.env = env
+    self.poll_interval = poll_interval
+    
+    # self.pollt_l = []
+    # self.qlength_l = []
+    self.qbusy_l = []
+    self.action = env.process(self.run() )
+  
+  def run(self):
+    while True:
+      yield self.env.timeout(self.poll_interval)
+      
+      self.qbusy_l.append(self.q.busy() )
+      # self.pollt_l.append(self.env.now)
+      # self.qlength_l.append(self.q.length() )
+
 # *********************************  Sim  *********************************** #
 def sim_psq(num_f_run, ar, h, psize_dist):
   sum_ = 0
@@ -132,7 +191,7 @@ def sim_psq(num_f_run, ar, h, psize_dist):
     pg.init()
     env.run(until=50000)
     
-    l = psq.slowdown_l
+    l = psq.sl_l
     if len(l): sum_ += float(sum(l) )/len(l)
   E_sl = sum_/num_f_run
   print(">> E_sl= {}".format(E_sl) )
@@ -181,43 +240,6 @@ def plot_psq():
   log(WARNING, "done; psize_dist= {}".format(psize_dist) )
 
 # ****************************************  Fitting the tail  ************************************ #
-def fit_tpareto(sample_l):
-  # sample_l = numpy.sort(sample_l)[::-1]
-  n = len(sample_l)
-  print("n= {}".format(n) )
-  l = sample_l[-1]
-  u = sample_l[0]
-  
-  # a = sympy.Symbol('a')
-  # a_ = sympy.solve(n/a + n*r**a*math.log(r)/(1-r**a) - sum([math.log(x/l) for x in sample_l] ) )
-  def eq(a):
-    # Fitting whole tail
-    r = l/u
-    return n/a + n*r**a*math.log(r)/(1-r**a) - sum([math.log(x/l) for x in sample_l] )
-    
-    # # Fitting upper tail
-    # i = int(n*0.8)
-    # X_ip1 = sample_l[i+1]
-    # def l(a):
-    #   return i**(1/a) * X_ip1*(n - (n-i)*(X_ip1/u)**a)**(-1/a)
-    # r = X_ip1/u
-    # return i/a + i*r**a*math.log(r)/(1-r**a) - sum([math.log(x/X_ip1) for x in sample_l[:i+1] ] )
-  
-  a_ = None
-  a_l, eq_l = [], []
-  for a in numpy.linspace(0.05, 100, 1000):
-    # a_l.append(a)
-    # eq_l.append(eq(a) )
-    if eq(a) <= 0:
-      a_ = a
-      break
-  # plot.plot(a_l, eq_l, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-  # plot.xlabel(r'$a$', fontsize=12)
-  # plot.ylabel(r'$eq$', fontsize=12)
-  # plot.savefig("fit_tpareto.png")
-  log(WARNING, "done; l= {}, u= {}, a= {}".format(l, u, a_) )
-  return l, u, a_
-
 def plot_psq_tail():
   # D, mu = 1, 0.5
   # psize_dist = Exp(mu, D=D)
@@ -227,7 +249,7 @@ def plot_psq_tail():
   # psize_dist = Pareto(l, a)
   # proc_in_latex = r'Pareto(\lambda={}, \alpha={})'.format(l, a)
   
-  l, u, a = 1, 100, 1.5
+  l, u, a = 1, 10**10, 1.1
   psize_dist = TPareto(l, u, a)
   proc_in_latex = r'TPareto(l={}, u={}, \alpha={})'.format(l, u, a)
   
@@ -243,112 +265,310 @@ def plot_psq_tail():
   ar_ub = 1/psize_dist.mean()
   
   ar_l, ro_l = [], []
-  fitted_l_l, fitted_u_l, fitted_a_l = [], [], []
-  def plot_(ar, h):
+  tpar_l_l, tpar_u_l, tpar_a_l = [], [], []
+  par_l_l, par_a_l = [], []
+  def plot_(num_frun, ar, h):
     log(WARNING, "ar= {}, h= {}".format(ar, h) )
     
-    env = simpy.Environment()
-    pg = PG(env, ar, psize_dist)
-    psq = PSQ(env, h)
-    pg.out = psq
-    pg.init()
-    env.run(until=5000) # 50000 *20
-    
-    sl_l = numpy.sort(psq.slowdown_l)
-    if float(sum(sl_l) )/len(sl_l) > 1000:
-      log(WARNING, "unstable; ar= {}".format(ar) )
-      return None
-    x_l = sl_l[::-1]
-    # y_sim_l = numpy.arange(sl_l.size)/sl_l.size
-    # plot.plot(x_l, y_sim_l, label="ar= {}".format(ar), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-    i_ = None
-    for i in range(len(x_l)-1, 0, -1):
-      if x_l[i] > 1.01:
-        i_ = i
-        break
-    x_l = x_l[:i_]
-    y_sim_l = numpy.arange(x_l.size)/x_l.size
-    plot.plot(x_l, y_sim_l, label="ar= {}".format(ar), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-    
-    l, u, a = fit_tpareto(x_l)
+    ro_sum = 0
+    tpar_l_sum, tpar_u_sum, tpar_a_sum = 0, 0, 0
+    par_l_sum, par_a_sum = 0, 0
+    for f in range(num_frun):
+      env = simpy.Environment()
+      pg = PG(env, ar, psize_dist)
+      # q = PSQ(env, h)
+      q = DollyQ(env)
+      pg.out = q
+      pg.init()
+      qm = QMonitor(env, q, poll_interval=0.1)
+      env.run(until=50000*20)
+      
+      sl_l = numpy.sort(q.sl_l)
+      E_Sl = float(sum(sl_l) )/len(sl_l)
+      print(">>> E_Sl= {}".format(E_Sl) )
+      if E_Sl > 1000*10:
+        return None
+      x_l = sl_l[::-1]
+      # y_sim_l = numpy.arange(sl_l.size)/sl_l.size
+      # plot.plot(x_l, y_sim_l, label="ar= {}".format(ar), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+      i_ = None
+      for i in range(len(x_l)-1, 0, -1):
+        if x_l[i] > 1.01: i_ = i; break
+      x_l = x_l[:i_]
+      y_l = numpy.arange(x_l.size)/x_l.size
+      plot.plot(x_l, y_l, label="ar= {}".format(ar), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+      
+      ro_sum += sum(qm.qbusy_l)/len(qm.qbusy_l)
+      l, u, a = fit_tpareto(x_l)
+      tpar_l_sum += l
+      tpar_u_sum += u
+      tpar_a_sum += a
+      l, a = fit_pareto(x_l)
+      par_l_sum += l
+      par_a_sum += a
     ar_l.append(ar)
-    ro_l.append(ar*psize_dist.mean() )
-    fitted_l_l.append(l)
-    fitted_u_l.append(u)
-    fitted_a_l.append(a)
+    ro_l.append(ro_sum/num_frun)
+    
+    l, u, a = tpar_l_sum/num_frun, tpar_u_sum/num_frun, tpar_a_sum/num_frun
+    print("l= {}, u= {}, a= {}".format(l, u, a) )
+    tpar_l_l.append(l)
+    tpar_u_l.append(u)
+    tpar_a_l.append(a)
     rv = TPareto(l, u, a)
     y_l = []
-    for x in x_l:
-      y_l.append(rv.tail(x) )
-    plot.plot(x_l, y_l, label="fitted, ar= {}".format(ar), color=next(dark_color), linestyle='-')
+    for x in x_l: y_l.append(rv.tail(x) )
+    plot.plot(x_l, y_l, label=r'$TPareto(l= %.2f, u= %.2f, \alpha= %.2f), \lambda= %.2f$' % (l, u, a, ar), color=next(dark_color), linestyle='-')
+    
+    l, a = tpar_l_sum/num_frun, tpar_a_sum/num_frun
+    par_l_l.append(l)
+    par_a_l.append(a)
+    rv = Pareto(l, a)
+    y_l = []
+    for x in x_l: y_l.append(rv.tail(x) )
+    plot.plot(x_l, y_l, label=r'$Pareto(l= %.2f, \alpha= %.2f), \lambda= %.2f$' % (l, a, ar), color=next(dark_color), linestyle='-')
     
     plot.legend()
     plot.xscale('log')
     plot.yscale('log')
     plot.xlabel(r'Slowdown', fontsize=13)
     plot.ylabel(r'Tail distribution', fontsize=13)
-    plot.title(r'$P \sim {}$, $\lambda$= {}'.format(proc_in_latex, ar) )
+    plot.title(r'$P \sim {}$, $h= {}$, $\lambda= {}$'.format(proc_in_latex, h, ar) )
     plot.savefig("plot_psq_h_{}_ar_{}.png".format(h, ar) )
     plot.gcf().clear()
     return 0
-  
-  h = 1
-  # for ar in numpy.arange(0.05, 5*ar_ub, 0.05):
-  for ar in numpy.arange(0.05, 5*0.05, 0.05):
-    if plot_(ar, h) is None:
+  num_frun = 1 # 5
+  h = 8
+  for ar in numpy.arange(0.01, 5*ar_ub, 0.01):
+    if plot_(num_frun, ar, h) is None:
       break
   
-  plot.title(r'$P \sim {}$'.format(proc_in_latex) )
-  fig, axes = plot.subplots(3, 1, sharex=True)
-  axes[0].plot(ro_l, fitted_l_l, label="h= {}".format(h), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-  axes[0].set_ylabel(r'$l$', fontsize=13)
-  axes[1].plot(ro_l, fitted_u_l, label="h= {}".format(h), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  plot.title(r'$P \sim {}, h= {}$'.format(proc_in_latex, h) )
+  fig, axes = plot.subplots(2, 1, sharex=True)
+  axes[0].plot(ro_l, tpar_a_l, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  axes[0].set_ylabel(r'$\alpha$', fontsize=13)
+  axes[1].set_yscale('log')
+  axes[1].plot(ro_l, tpar_u_l, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   axes[1].set_ylabel(r'$u$', fontsize=13)
-  axes[2].plot(ro_l, fitted_a_l, label="h= {}".format(h), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-  axes[2].set_ylabel(r'$\alpha$', fontsize=13)
-  axes[2].set_xlabel(r'$\rho$', fontsize=13)
+  axes[1].set_xlabel(r'$\rho$', fontsize=13)
+  plot.savefig("plot_fitted_tpar_h_{}.png".format(h) )
+  plot.gcf().clear()
   
-  plot.savefig("plot_fitted_lua_h_{}.png".format(h) )
+  # plot.title(r'$P \sim {}, h= {}$'.format(proc_in_latex, h) )
+  fig, axes = plot.subplots(2, 1, sharex=True)
+  axes[0].plot(ro_l, par_l_l, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms+1)
+  axes[0].set_ylabel(r'$\lambda$', fontsize=13)
+  axes[1].plot(ro_l, par_a_l, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms+1)
+  axes[1].set_ylabel(r'$\alpha$', fontsize=13)
+  # plot.plot(ro_l, par_a_l, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms+1)
+  plot.xlabel(r'$\rho$', fontsize=13)
+  plot.savefig("plot_fitted_par_h_{}.png".format(h) )
   plot.gcf().clear()
   log(WARNING, "done.")
 
 def MG1_T():
-  l, u, a = 1, 100, 2
-  def Lt_S(s): # Laplace transform of service time
+  l, u, a = 1, 100, 1.5
+  B = TPareto(l, u, a)
+  print("B.mean= {}".format(B.mean() ) )
+  
+  def Lt_B(s):
     # Pareto(l, a)
     # return a*(l*s)**a * math.exp(l*s) * G(-a)*scipy.special.gammaincc(-a, l*s)
     
     K = a*l**a/(1 - (l/u)**a)
     # return K*(l**(-a)*scipy.special.expn(a+1, s*l) - u**(-a)*scipy.special.expn(a+1, s*u) )
     # return 1/(s+1)
+    
+    # def complex_quad(func, a, b, **kwargs):
+    #   func_real = lambda x: scipy.real(func(x))
+    #   real_integral = scipy.integrate.quad(func_real, a, b, **kwargs)
+    #   imag_integral = scipy.integrate.quad(lambda x: scipy.imag(func(x)), a, b, **kwargs)
+    #   # return (real_integral[0] + 1j*imag_integral[0], real_integral[1:], imag_integral[1:])
+    #   return real_integral[0] + 1j*imag_integral[0]
+    # return K*complex_quad(lambda x: x**(-a-1)*scipy.exp(-s*x), l, u)
+    
     return K*mpmath.quad(lambda x: x**(-a-1)*math.exp(-s*x), [l, u] )
-    # return mpmath.quad(lambda x: math.exp(-s*x), [0, mpmath.inf] )
+    # print("s= {}".format(s) )
+    # return K*scipy.integrate.quad(lambda x: x**(-a-1)*scipy.exp(-s*x), l, u)
   
-  def Lt_T(ar, ro, s): # Laplace transform of response time
-    return (1-ro)*Lt_S(s)*s/(ar*Lt_S(s) + s - ar)
-  # for t in numpy.linspace(l, 10*l, 10):
-  #   f_ = mpmath.invertlaplace(Lt_S, t, method='talbot')
-  #   print("f_= {}".format(f_) )
+  def Lt_T(ar, s):
+    ro = ar/B.mean()
+    if (ar*Lt_B(s) + s - ar) == 0:
+      return None
+    return (1-ro)*Lt_B(s)*s/(ar*Lt_B(s) + s - ar)
   
-  ar, ro = 1, 0.5
-  s_l, Lt_S_l, Lt_T_l = [], [], []
-  # for s in numpy.linspace(0, 2, 100):
-  for s in numpy.linspace(0, 0.25, 10):
-    s_l.append(s)
-    Lt_S_l.append(Lt_S(s) )
-    Lt_T_l.append(Lt_T(ar, ro, s) )
-  plot.plot(s_l, Lt_S_l, label=r'$S$', marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-  plot.plot(s_l, Lt_T_l, label=r'$T$, $\rho$= {}'.format(ro), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  def chernoff_bound(ar, s, t):
+    return Lt_T(ar, -s)*math.exp(-s*t)
+  # s_min = scipy.optimize.minimize_scalar(lambda s: chernoff_bound(ar, s, t=100), bounds=(0, 0.6), method='bounded')
+  # print("s_min=\n{}".format(s_min) )
+  # s_min = float(s_min['x'] )
+  # print("s_min= {}".format(s_min) )
   
+  def s_for_minchernoff(ar, t):
+    _s = 0.001
+    _c = chernoff_bound(ar, _s, t)
+    while True:
+      s = _s + 0.001
+      c = chernoff_bound(ar, s, t)
+      if c > _c:
+        return _s
+      _s, _c = s, c
+  
+  ar = 0.2
+  t_l, chernoff_l = [], []
+  # for t in numpy.linspace(l, 10000*l, 100):
+  for t in numpy.logspace(1, 4, 100):
+    # Does not work, don't try again!
+    # f_ = mpmath.invertlaplace(Lt_B, t, method='talbot')
+    
+    s_min = s_for_minchernoff(ar, t)
+    print("s_min= {}".format(s_min) )
+    cb = chernoff_bound(ar, s_min, t)
+    if cb < 0: break
+    t_l.append(t)
+    print("cb= {}".format(cb) )
+    chernoff_l.append(cb)
+  plot.plot(t_l, chernoff_l, label=r'Chernoff bound, ar= {}'.format(ar), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   plot.legend()
-  plot.xlabel(r'$s$', fontsize=12)
-  plot.ylabel(r'$L(s)$', fontsize=12)
-  # plot.title(r'$P \sim {}$'.format(proc_in_latex) )
+  plot.xlabel(r'$t$', fontsize=12)
+  plot.xscale('log')
+  plot.yscale('log')
+  
+  # s_l, Lt_B_l, Lt_T_l, cb_l = [], [], [], []
+  # for s in numpy.linspace(0, 1, 20):
+  #   s_l.append(s)
+  #   # Lt_B_l.append(Lt_B(-s) )
+  #   Lt_T_l.append(Lt_T(ar, -s) )
+  #   # cb_l.append(chernoff_bound(ar, s, t=100) )
+  # # plot.plot(s_l, Lt_B_l, label=r'$B(s)$', marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  # plot.plot(s_l, Lt_T_l, label=r'$T(s)$, $\lambda$= {}'.format(ar), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  # # plot.plot(s_l, cb_l, label=r'$Chernoff$, $\lambda$= {}'.format(ar), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  # plot.legend()
+  # plot.xlabel(r'$s$', fontsize=12)
+  
+  plot.title(r'$B \sim {}$'.format(B) )
   plot.savefig("MG1_T.png")
   plot.gcf().clear()
   log(WARNING, "done.")
 
+def plot_EC_vs_ET_wsim():
+  l, u, a = 1, 10**10, 1.1 # 1, 10**5, 1.1 # 1, 100, 1.5
+  psize_dist = TPareto(l, u, a)
+  proc_in_latex = r'TPareto(l={}, u={}, \alpha={})'.format(l, u, a)
+  log(WARNING, "psize_dist= {}".format(psize_dist) )
+  
+  ar_ub = 1/psize_dist.mean()
+  def sim(ar, h):
+    env = simpy.Environment()
+    pg = PG(env, ar, psize_dist)
+    q = PSQ(env, h)
+    # q = DollyQ(env)
+    pg.out = q
+    pg.init()
+    qm = QMonitor(env, q, poll_interval=0.1)
+    env.run(until=50000*20)
+    
+    ro = sum(qm.qbusy_l)/len(qm.qbusy_l)
+    E_Sl = float(sum(q.sl_l) )/len(q.sl_l)
+    print(">>> ro= {}, E_Sl= {}".format(ro, E_Sl) )
+    # if ro > 0.95: return None # 200 1000*1
+    if E_Sl > 1000*6: return None # 200 1000*1
+    return q.lt_l # q.sl_l
+  
+  def plot_EC_vs_ET(num_frun, h, ar, k):
+    x_sim_l, y_sim_l, x_tpar_l, y_tpar_l, x_par_l, y_par_l = [], [], [], [], [], []
+    n_k = 0
+    done = False
+    while not done:
+      n = k + n_k
+      ar = n/k * ar
+      # ar = (1 + n_k/k/2) * ar
+      E_T_sim, E_C_sim, E_T_tpar, E_C_tpar, E_T_par, E_C_par = 0, 0, 0, 0, 0, 0
+      for f in range(num_frun):
+        s_l = sim(ar, h)
+        if s_l is None: done = True; break
+        
+        taskt_rv = SimRV(s_l)
+        stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(taskt_rv, 0, k, k, n, num_run=10000*10)
+        E_T = sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] )
+        E_C = sum(stat_id__trial_sampleavg_l_m['C_wc'] )/len(stat_id__trial_sampleavg_l_m['C_wc'] )
+        print("Sim: E_T= {}, E_C= {}".format(E_T, E_C) )
+        E_T_sim += E_T
+        E_C_sim += E_C
+        
+        s_l = numpy.sort(s_l)[::-1]
+        l, u, a = fit_tpareto(s_l)
+        task_t = "TPareto"
+        task_dist_m = {'l': l, 'u': u, 'a': a}
+        E_T = E_T_k_l_n(task_t, task_dist_m, 0, k, k, n)
+        E_C = E_C_k_l_n(task_t, task_dist_m, 0, k, k, n, w_cancel=True)
+        print("Fitted TPareto: E_T= {}, E_C= {}".format(E_T, E_C) )
+        E_T_tpar += E_T
+        E_C_tpar += E_C
+        
+        l, a = fit_pareto(s_l)
+        task_t = "Pareto"
+        task_dist_m = {'loc': l, 'a': a}
+        E_T = E_T_k_l_n(task_t, task_dist_m, 0, k, k, n)
+        E_C = E_C_k_l_n(task_t, task_dist_m, 0, k, k, n, w_cancel=True)
+        print("Fitted Pareto: E_T= {}, E_C= {}".format(E_T, E_C) )
+        E_T_par += E_T
+        E_C_par += E_C
+      if not done:
+        x_sim_l.append(E_T_sim/num_frun)
+        y_sim_l.append(E_C_sim/num_frun)
+        x_tpar_l.append(E_T_tpar/num_frun)
+        y_tpar_l.append(E_C_tpar/num_frun)
+        x_par_l.append(E_T_par/num_frun)
+        y_par_l.append(E_C_par/num_frun)
+      n_k += 1
+    plot.plot(x_sim_l[0], y_sim_l[0], label=r'No redundancy', zorder=2, marker='x', color='blue', mew=3, ms=9)
+    plot.plot(x_sim_l, y_sim_l, label=r'Simulation', zorder=1, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+    # plot.legend()
+    # plot.xscale('log')
+    # plot.yscale('log')
+    # plot.xlabel(r'$E[T]$', fontsize=13)
+    # plot.ylabel(r'$E[C]$', fontsize=13)
+    # plot.title(r'$T \sim {}$, $k= {}$'.format(proc_in_latex, k) )
+    # plot.savefig("plot_EC_vs_ET_sim.png" )
+    # plot.gcf().clear()
+    
+    # plot.plot(x_tpar_l[0], y_tpar_l[0], zorder=2, marker='x', color='blue', mew=3, ms=9)
+    plot.plot(x_tpar_l, y_tpar_l, zorder=0, label=r'Using fitted Truncated-Pareto', color=next(dark_color), linestyle='-.', lw=2)
+    # plot.plot(x_par_l[0], y_par_l[0], zorder=2, marker='x', color='blue', mew=3, ms=9)
+    plot.plot(x_par_l, y_par_l, zorder=0, label=r'Using fitted Pareto', color=next(dark_color), linestyle='-', lw=2)
+    # plot.legend()
+    # plot.xscale('log')
+    # plot.yscale('log')
+    # plot.xlabel(r'$E[T]$', fontsize=13)
+    # plot.ylabel(r'$E[C]$', fontsize=13)
+    # plot.title(r'$T \sim {}$, $k= {}$'.format(proc_in_latex, k) )
+    # plot.savefig("plot_EC_vs_ET_model.png" )
+    # plot.gcf().clear()
+  
+  num_frun = 3 # 5
+  h = 8
+  k = 100
+  ar = 0.01 # 0.05 # 0.1*ar_ub
+  plot_EC_vs_ET(num_frun, h, ar, k)
+  
+  plot.legend()
+  plot.xscale('log')
+  plot.yscale('log')
+  plot.xlabel(r'$E[T]$', fontsize=13)
+  plot.ylabel(r'$E[C]$', fontsize=13)
+  # plot.title(r'$T \sim {}$, $k= {}$'.format(proc_in_latex, k) )
+  plot.title(r'$k= {}$'.format(k) )
+  fig = plot.gcf()
+  # def_size = fig.get_size_inches()
+  # fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
+  fig.tight_layout()
+  plot.savefig("plot_EC_vs_ET.pdf")
+  plot.gcf().clear()
+  log(WARNING, "done; k= {}".format(k) )
+
 if __name__ == "__main__":
   # plot_psq()
-  plot_psq_tail()
+  # plot_psq_tail()
   # MG1_T()
+  
+  plot_EC_vs_ET_wsim()

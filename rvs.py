@@ -1,3 +1,10 @@
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+
+matplotlib.use('Agg')
+import matplotlib.pyplot as plot
+
 import math, random, numpy, csv
 from scipy.stats import *
 from patch import *
@@ -120,6 +127,35 @@ class TPareto(): # Truncated
     u = random.uniform(0, 1)
     return self.l*(1 - u*(1-(self.l/self.u)**self.a) )**(-1/self.a)
 
+def plot_gensample_check():
+  l, u, a = 1, 10**5, 2
+  rv = TPareto(l, u, a)
+  
+  x_l = []
+  for i in range(10**5):
+    x_l.append(rv.gen_sample() )
+  x_l = numpy.sort(x_l)
+  x_l = x_l[::-1]
+  # i_ = None
+  # for i in range(len(x_l)-1, 0, -1):
+  #   if x_l[i] > 1.01: i_ = i; break
+  # x_l = x_l[:i_]
+  y_l = numpy.arange(x_l.size)/x_l.size
+  plot.plot(x_l, y_l, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  
+  y_l = []
+  for x in x_l:
+    y_l.append(rv.tail(x) )
+  plot.plot(x_l, y_l, label=r'$Pareto(l= %.2f, u= %.2f, \alpha= %.2f)$' % (l, u, a), color=next(dark_color), linestyle='-')
+  plot.legend()
+  plot.xscale('log')
+  plot.yscale('log')
+  plot.xlabel(r'$x$', fontsize=13)
+  plot.ylabel(r'$p(X > x)$', fontsize=13)
+  plot.title(r'$X \sim$ {}'.format(rv) )
+  plot.savefig("plot_gensample_check.png")
+  plot.gcf().clear()
+
 class Google(RV):
   def __init__(self, k):
     RV.__init__(self, l_l=0, u_l=float("inf") )
@@ -136,6 +172,22 @@ class Google(RV):
   
   def __str__(self):
     return "Google(k= ".format(self.k)
+  
+  def mean(self):
+    return sum(self.sample_l)/self.num_sample
+  
+  def gen_sample(self):
+    return self.sample_l[math.floor(self.num_sample*random.random() ) ]
+
+class SimRV(RV):
+  def __init__(self, sample_l):
+    RV.__init__(self, l_l=min(sample_l), u_l=max(sample_l) )
+    
+    self.sample_l = sample_l
+    self.num_sample = len(self.sample_l)
+  
+  def __str__(self):
+    return "SimRV"
   
   def mean(self):
     return sum(self.sample_l)/self.num_sample
@@ -300,3 +352,6 @@ class Gamma():
   
   def gen_sample(self):
     return self.dist.rvs(size=1)
+
+if __name__ == "__main__":
+  plot_gensample_check()

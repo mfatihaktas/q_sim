@@ -24,21 +24,18 @@ if [ $1 = 'e' ]; then
   # rm *.png; $PYTHON exp.py
   $PYTHON simplex_exp.py
 elif [ $1 = 'x' ]; then
-  # $PYTHON mixed_exp.py
+  $PYTHON mixed_exp.py
+elif [ $1 = 'xm' ]; then
   $PYTHON mixed_models.py
 elif [ $1 = 'm' ]; then
-  # $MATLAB -r "run exp.m; quit"
-  # rm *.png; $PYTHON mds_exp.py # > mds_exp.log
-  $PYTHON multiq_sching.py
+  # $PYTHON multiq_exp.py
+  $PYTHON mds_exp.py
 elif [ $1 = 'mm' ]; then
   $PYTHON mds_models.py
 elif [ $1 = 'p' ]; then
   $PYTHON procsharing.py
 elif [ $1 = 's' ]; then
-  # $PYTHON simplex_models.py
-  # $PYTHON sching_pareto.py
-  # $PYTHON straggler_exp.py
-  $PYTHON scheduling.py
+  $PYTHON split_red.py
 elif [ $1 = 'c' ]; then
   $PYTHON codes_stability.py
 elif [ $1 = 'd' ]; then
@@ -50,7 +47,9 @@ elif [ $1 = 'a' ]; then
   # $PYTHON arepeat_sim_components.py
   # $PYTHON arepeat_models.py
   $PYTHON arepeat_exp.py
-  # $PYTHON app.py
+  # $PYTHON anonimity.py
+elif [ $1 = 'r' ]; then
+  $PYTHON rvs.py
 elif [ $1 = 'sl' ]; then
   $PYTHON slowdown.py
 elif [ $1 = 'n' ]; then

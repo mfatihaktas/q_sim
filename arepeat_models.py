@@ -10,29 +10,31 @@ from rvs import *
 from patch import *
 
 def plot_compare_tails():
-  exp_rv = Exp(mu=0.5, D=1)
-  pareto_rv = Pareto(a=1.6, loc=1)
+  exp_rv = Exp(D=1, mu=0.5)
+  pareto_rv = Pareto(loc=1, a=5)
   
   x_l = []
   exp_tail_l, pareto_tail_l = [], []
-  for x in numpy.linspace(1, 20, 100):
+  for x in numpy.logspace(0, 2, 100):
     x_l.append(x)
     exp_tail_l.append(exp_rv.tail(x) )
     pareto_tail_l.append(pareto_rv.tail(x) )
-  plot.plot(x_l, exp_tail_l, label=r'$Exp$', color='red', lw=1, linestyle='-')
-  plot.plot(x_l, pareto_tail_l, label=r'$Pareto$', color='green', lw=1, linestyle='-')
+  plot.plot(x_l, exp_tail_l, label=r'$Exp$', color='red', lw=2, linestyle='-')
+  plot.plot(x_l, pareto_tail_l, label=r'$Pareto$', color='green', lw=2, linestyle='-')
   fig = plot.gcf()
   def_size = fig.get_size_inches()
   fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.4)
   plot.legend(fontsize=14)
   
-  plot.xlim([1, 21] )
-  plot.xlabel(r'$x$', fontsize=14)
-  plot.ylabel(r'$Pr\{X > x\}$', fontsize=14)
+  # plot.xlim([1, 21] )
+  plot.xlabel(r'Task lifetime', fontsize=14)
+  plot.ylabel(r'Tail distribution', fontsize=14)
+  plot.xscale('log')
+  plot.yscale('log')
   fig.tight_layout()
   ax = plot.gca()
-  ax.text(6, 0.6, r'Exp: $e^{-\mu x}$', fontsize=16, color='red')
-  ax.text(6, 0.4, r'Pareto: $(\lambda/x)^{\alpha}$ for $x \geq \lambda$', fontsize=16, color='green')
+  # ax.text(2, 10**-2, r'Exp: $e^{-\mu x}$', fontsize=16, color='red')
+  # ax.text(2, 10**-3, r'Pareto: $(\lambda/x)^{\alpha}$ for $x \geq \lambda$', fontsize=16, color='green')
   plot.savefig("plot_compare_tails.pdf")
   fig.clear()
   log(WARNING, "done.")
@@ -445,7 +447,7 @@ def E_C_pareto_k_c(loc, a, d, k, c, w_cancel=True):
         E_Y = mpmath.quad(proxy, [0, mpmath.inf] )
         return k*(q*E_X__X_leq_d + (1-q)*(2*E_Y + d) )
 
-def E_C_pareto_k_c_approx(loc, a, d, k, w_cancel=True):
+def E_C_pareto_k_c_approx(l, a, d, k, c, w_cancel=True):
   q = 0 if d <= l else 1 - (l/d)**a
   def tail(x):
     if x <= l: return 1
@@ -567,43 +569,37 @@ def E_C_2_pareto_k_n(loc, a, k, n):
   return E_C_2
 
 # ### Wrappers ### #
-def E_T_2_k(task_t, task_dist_m, k, c=None, n=None, added_load=False):
+def E_T_2_k_c(task_t, task_dist_m, k, c, load_m=None):
   if task_t == "SExp":
     D, mu = task_dist_m["D"], task_dist_m["mu"]
-    if c is not None:
-      if added_load: D = D*(c+1)
-      return E_T_2_sexp_k_c(D, mu, k, c)
-    elif n is not None:
-      if added_load: D = D*n/k
-      return E_T_2_sexp_k_n(D, mu, k, n)
+    return E_T_2_sexp_k_c(D, mu, k, c)
   elif task_t == "Pareto":
     loc, a = task_dist_m["loc"], task_dist_m["a"]
-    if c is not None:
-      if added_load: loc = loc*(c+1)
-      return E_T_2_pareto_k_c(loc, a, k, c)
-    elif n is not None:
-      if added_load: loc = loc*n/k
-      return E_T_2_pareto_k_n(loc, a, k, n)
+    return E_T_2_pareto_k_c(loc, a, k, c)
 
-def E_C_2_k(task_t, task_dist_m, k, c=None, n=None, added_load=False):
+def E_T_2_k_n(task_t, task_dist_m, k, n, load_m=None):
   if task_t == "SExp":
-    if added_load:
-      D = D*n/k
     D, mu = task_dist_m["D"], task_dist_m["mu"]
-    if c is not None:
-      if added_load: D = D*(c+1)
-      return E_C_2_sexp_k_c(D, mu, k, c)
-    elif n is not None:
-      if added_load: D = D*n/k
-      return E_C_2_sexp_k_n(D, mu, k, n)
+    return E_T_2_sexp_k_n(D, mu, k, n)
   elif task_t == "Pareto":
     loc, a = task_dist_m["loc"], task_dist_m["a"]
-    if c is not None:
-      if added_load: loc = loc*(c+1)
-      return E_C_2_pareto_k_c(loc, a, k, c)
-    elif n is not None:
-      if added_load: loc = loc*n/k
-      return E_C_2_pareto_k_n(loc, a, k, n)
+    return E_T_2_pareto_k_n(loc, a, k, n)
+
+def E_C_2_k_c(task_t, task_dist_m, k, c, load_m=None):
+  if task_t == "SExp":
+    D, mu = task_dist_m["D"], task_dist_m["mu"]
+    return E_C_2_sexp_k_c(D, mu, k, c)
+  elif task_t == "Pareto":
+    loc, a = task_dist_m["loc"], task_dist_m["a"]
+    return E_C_2_pareto_k_c(loc, a, k, c)
+
+def E_C_2_k_n(task_t, task_dist_m, k, n, load_m=None):
+  if task_t == "SExp":
+    D, mu = task_dist_m["D"], task_dist_m["mu"]
+    return E_C_2_sexp_k_n(D, mu, k, n)
+  elif task_t == "Pareto":
+    loc, a = task_dist_m["loc"], task_dist_m["a"]
+    return E_C_2_pareto_k_n(loc, a, k, n)
 
 # ***************************  X ~ Pareto, (k, n/c, \Delta) with Relaunch  *************************** #
 def Pr_T_g_t_pareto_k_wrelaunch(loc, a, d, k, t):
@@ -666,6 +662,9 @@ def E_T_pareto_k_n(loc, a, d, k, n):
     log(ERROR, "Cannot be expressed analytically!")
     return None
 
+def Delta_for_min_E_T_pareto_k_wrelaunch(loc, a, k):
+  return loc*math.sqrt(G(k+1)*G(1-1/a)/G(k+1-1/a) )
+
 def E_T_pareto_k_n_wrelaunch(loc, a, d, k, n):
   if d == 0:
     return E_X_n_k_pareto(loc, a, n, k)
@@ -700,9 +699,6 @@ def E_T_pareto_k_n_wrelaunch_approx(loc, a, d, k, n):
       return d + E_T_pareto_k_n(loc, a, 0, k, n)
     else:
       return d*(1-q**k) + loc*(B(n-k*q+1, -1/a)/B(n-k+1, -1/a) + k*B(k, 1-1/a, u_l=q) - q**k)
-
-def Delta_for_min_E_T_pareto_k_wrelaunch(loc, a, k):
-  return loc*math.sqrt(G(k+1)*G(1-1/a)/G(k+1-1/a) )
 
 def E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=True):
   if d == 0 and w_cancel:
@@ -745,7 +741,7 @@ def E_C_pareto_k_n_wrelaunch_approx(loc, a, d, k, n, w_cancel=True):
 
 def E_T_pareto_k_c_wrelaunch(loc, a, d, k, c):
   if c == 0:
-    return E_T_pareto_k_n(loc, a, d, k, n=k, w_relaunch=True)
+    return E_T_pareto_k_n_wrelaunch(loc, a, d, k, n=k)
   
   q = (d > loc)*(1 - (loc/d)**a) if d else 0
   a_ = 1/(c+1)/a
@@ -769,6 +765,58 @@ def E_C_pareto_k_c_wrelaunch(loc, a, d, k, c, w_cancel=True):
     else:
       return k*(loc - d*(1-q) )*a/(a-1) + k*d*(1-q) \
              + k*loc*(c+1)*(1-q)*(c+1)*a/((c+1)*a-1)
+
+# ****************  Launch n at the beginning relaunch all remaining at \Delta  ****************** #
+def Delta_for_min_E_T_pareto_k_n0_wrelaunch(loc, a, k, n):
+  # return loc*math.sqrt(G(k+1)*G(1-1/a)/G(k+1-1/a) )
+  return math.sqrt(loc*E_T_pareto_k_n(loc, a, 0, k, n) )
+
+def E_T_pareto_k_nd0_wrelaunch(loc, a, d, k, n):
+  if d == 0:
+    return E_X_n_k_pareto(loc, a, n, k)
+  q = (d > loc)*(1 - (loc/d)**a)
+  
+  if d <= loc:
+    return d + E_X_n_k_pareto(loc, a, n, k)
+  elif n == k:
+    def g(k, a):
+      if k > 170:
+        return loc*(k+1)**(1/a) * G(1-1/a)
+      return loc*G(1-1/a)*G(k+1)/G(k+1-1/a)
+    
+    return d*(1-q**k) + g(k, a)*((loc/d-1)*I(1-q,1-1/a,k) + 1)
+  elif n > k:
+    if d <= loc:
+      return d + E_T_pareto_k_n(loc, a, 0, k, n)
+    else:
+      # s = 0
+      # for r in range(k):
+      #   s += (d + E_X_n_k_pareto(loc, a, n-r, k-r) - E_X_n_k_pareto(d, a, n-r, k-r) ) * binomial(n,r) * q**r * (1-q)**(n-r)
+      # return s + E_X_n_k_pareto(loc, a, n, k)
+      return d*I(1-q, n-k+1, k) + ((loc/d - 1)*I(1-q, n-k+1-1/a, k) + 1)*E_T_pareto_k_n(loc, a, 0, k, n)
+
+def E_C_pareto_k_nd0_wrelaunch(loc, a, d, k, n, w_cancel=True):
+  if d == 0 and w_cancel:
+    if n > 170:
+      return loc/(a-1) * (a*n - (n-k)*((n+1)/(n-k+1))**(1/a) )
+    return loc*n/(a-1) * (a - G(n)/G(n-k)*G(n-k+1-1/a)/G(n+1-1/a) )
+  
+  q = (d > loc)*(1 - (loc/d)**a)
+  if w_cancel:
+    if d <= loc:
+      return n*d + E_C_pareto_k_n_wrelaunch(loc, a, 0, k, n, w_cancel=True)
+    else:
+      def p_R_r(r): return binomial(n, r) * q**r * (1-q)**(n-r)
+      def inner_sum(r):
+        s = 0
+        for i in range(1, k-r+1):
+          s += E_X_n_k_pareto(loc, a, n-r, i) - E_X_n_k_pareto(d, a, n-r, i)
+        return s
+      
+      S = 0
+      for r in range(k):
+        S += ((n-r)*d + inner_sum(r) + (n-k)*(E_X_n_k_pareto(loc, a, n-r, k-r) - E_X_n_k_pareto(d, a, n-r, k-r) ) ) * p_R_r(r)
+      return S + E_C_pareto_k_n_wrelaunch(loc, a, 0, k, n, w_cancel=True)
 
 # **********************  Retain k task at t=\Delta  ********************* #
 def E_T_pareto_k_n_retainl_atd(loc, a, k, n, d):
@@ -844,8 +892,185 @@ def E_C_k_n_TPareto(l, u, a, k, n):
   E_C += (n-k)*E_TPareto_X_n_i(l, u, a, n, k)
   return E_C
 
+# ### When redundancy changes the tail ### #
+def a_wred(ro_0, a_0, ro):
+  # K = ro/(1 - ro)*(1-ro_0)/ro_0
+  # return K*a_0/((K-1)*a_0 + 1)
+  return a_0*(1-ro)/(1-ro_0)
+
+def plot_a_wred():
+  ro_0 = 0.1
+  a_0 = 10
+  
+  ro_l, a_l = [], []
+  for ro in numpy.linspace(ro_0, 0.95, 25):
+    ro_l.append(ro)
+    a_l.append(a_wred(ro_0, a_0, ro) )
+  plot.plot(ro_l, a_l, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  plot.xlabel(r'$\rho$', fontsize=13)
+  plot.ylabel(r'$\alpha$', fontsize=13)
+  fig = plot.gcf()
+  def_size = fig.get_size_inches()
+  # fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
+  fig.tight_layout()
+  plot.savefig("plot_a_wred.png")
+  plot.gcf().clear()
+  log(WARNING, "done.")
+
+def plot_Tnp1_over_Tn():
+  ro_0, a_0 = 0.3, 1.2
+  def Tnp1_over_Tn(k, n):
+    a_n = a_wred(ro_0, a_0, ro_0*n/k)
+    a_np1 = a_wred(ro_0, a_0, ro_0*(n+1)/k)
+    R = (n+1)/(n-k+1) * G(n+2-1/a_np1-k)/G(n+2-1/a_np1) * G(n+1-1/a_n)/G(n+1-1/a_n-k)
+    # return math.log(R) if R > 0 else None
+    return R
+  
+  def approx_Tnp1_over_Tn(k, n):
+    a_n = a_wred(ro_0, a_0, ro_0*n/k)
+    a_np1 = a_wred(ro_0, a_0, ro_0*(n+1)/k)
+    # return (n+1)/(n-k+1) * ((n+1-1/a_n)/(n+2-1/a_np1))**k
+    
+    # b_1 = n-k+1-1/a_n
+    # b_2 = n-k+2-1/a_np1
+    # R = (n+1)/(n-k+1) * k**(b_1 - b_2) * G(b_2)/G(b_1)
+    
+    R = ((n+2)/(n-k+2))**(1/a_np1) * ((n+1)/(n-k+1))**(-1/a_n)
+    # return math.log(R) if R > 0 else None
+    return R
+  
+  def plot_lb_a_n_over_a_np1(k):
+    def lb_a_n_over_a_np1(k, n):
+      return math.log(1 + k/(n-k+1))/math.log(1 + k/(n-k+2))
+    
+    n_l, lb_a_n_over_a_np1_l = [], []
+    for n in numpy.arange(k, 5*k, 1):
+      n_l.append(n)
+      lb_a_n_over_a_np1_l.append(lb_a_n_over_a_np1(k, n) )
+    plot.plot(n_l, lb_a_n_over_a_np1_l, label=r'$k= {}$'.format(k), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+    
+  # plot_lb_a_n_over_a_np1(k=15)
+  # plot_lb_a_n_over_a_np1(k=100)
+  # plot.legend()
+  # plot.xlabel(r'$n$', fontsize=13)
+  # plot.ylabel(r'$\alpha_n/\alpha_{n+1} \geq$', fontsize=13)
+  # fig = plot.gcf()
+  # fig.tight_layout()
+  # plot.savefig("plot_lb_a_n_over_a_np1.png")
+  # plot.gcf().clear()
+  
+  k = 100
+  n_l, r_l, r_approx_l = [], [], []
+  for n in numpy.arange(k, 2*k, 1):
+    n_l.append(n)
+    r_l.append(Tnp1_over_Tn(k, n) )
+    r_approx_l.append(approx_Tnp1_over_Tn(k, n) )
+  plot.plot(n_l, r_l, label='Exact', marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  plot.plot(n_l, r_approx_l, label='Approx', marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  plot.legend()
+  plot.xlabel(r'$n$', fontsize=13)
+  plot.ylabel(r'$E[T_{n+1}]/E[T_n]$', fontsize=13)
+  plot.title(r'$k= {}$'.format(k) )
+  fig = plot.gcf()
+  def_size = fig.get_size_inches()
+  # fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
+  fig.tight_layout()
+  plot.savefig("plot_Tnp1_over_Tn.png")
+  plot.gcf().clear()
+  log(WARNING, "done.")
+
+def plot_Trj_over_Tri():
+  ro_0, a_0 = 0.3, 1.2
+  def Trj_over_Tri(ri, rj):
+    task_t = 'Pareto'
+    ni = math.floor(k*ri)
+    task_dist_m = {'loc': 1, 'a': a_wred(ro_0, a_0, ro_0*ri) }
+    Tri = E_T_k_l_n(task_t, task_dist_m, 0, k, k, ni)
+    
+    nj = math.floor(k*rj)
+    task_dist_m = {'loc': 1, 'a': a_wred(ro_0, a_0, ro_0*rj) }
+    Trj = E_T_k_l_n(task_t, task_dist_m, 0, k, k, nj)
+    return Trj/Tri
+  
+  def suffcond_ai_over_aj_for_ETgain(k, ri, rj):
+    ni = math.floor(k*ri)
+    nj = math.floor(k*rj)
+    if ni == k or nj == k: return None
+    return math.log(ni/(ni-k+1) )/math.log((nj+1)/(nj-k) )
+  # def approx_suffcond_ai_over_aj_for_ETgain(k, ri, rj):
+  #   return math.log(k*ri/(k*(ri-1)+1) )/math.log((k*rj+1)/(k*(rj-1) ) )
+  
+  def suffcond_ai_over_aj_for_ETpain(k, ri, rj):
+    ni = math.floor(k*ri)
+    nj = math.floor(k*rj)
+    if ni == k or nj == k: return None
+    return math.log((ni+1)/(ni-k) )/math.log(nj/(nj-k+1) )
+  
+  def approxcond_an_over_anp1_for_ETpain(k, n):
+    return math.log(1 + k/(n-k+1) )/math.log(1 + k/(n-k+2) )
+  
+  # def looser_suffcond_ai_over_aj_for_ETpain(k, ri, rj):
+  #   return (k*ri+1)*rj/(ri-1)/(k-1)
+  
+  def plot_cond_an_over_anp1(k):
+    n_l, suff_for_ETgain_l, suff_for_ETpain_l = [], [], []
+    approx_for_ETpain_l = []
+    for n in numpy.arange(k, 4*k, 1):
+      n_l.append(n)
+      ri, rj = n/k, (n+1)/k
+      suff_for_ETgain_l.append(suffcond_ai_over_aj_for_ETgain(k, ri, rj) )
+      suff_for_ETpain_l.append(suffcond_ai_over_aj_for_ETpain(k, ri, rj) )
+      approx_for_ETpain_l.append(approxcond_an_over_anp1_for_ETpain(k, n) )
+    plot.plot(n_l, suff_for_ETgain_l, label=r'$k= {}$, Gain if {}'.format(k, r'$\alpha_n/\alpha_{n+1} \leq$'), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+    plot.plot(n_l, suff_for_ETpain_l, label=r'$k= {}$, Pain if {}'.format(k, r'$\alpha_n/\alpha_{n+1} \geq$'), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+    plot.plot(n_l, approx_for_ETpain_l, label=r'$k= {}$, Pain if {}'.format(k, r'$\alpha_n/\alpha_{n+1} \gtrapprox$'), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  # plot_cond_an_over_anp1(k=15)
+  plot_cond_an_over_anp1(k=15)
+  plot.legend()
+  # plot.xscale('log')
+  # plot.yscale('log')
+  plot.xlabel(r'$n$', fontsize=13)
+  plot.ylabel(r'', fontsize=13)
+  fig = plot.gcf()
+  fig.tight_layout()
+  plot.savefig("plot_an_over_anp1.png")
+  plot.gcf().clear()
+  
+  # n_l, r_l, r_approx_l = [], [], []
+  # for n in numpy.arange(k, 2*k, 1):
+  #   n_l.append(n)
+  #   r_l.append(Tnp1_over_Tn(n) )
+  #   r_approx_l.append(approx_Tnp1_over_Tn(n) )
+  # plot.plot(n_l, r_l, label='Exact', marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  # plot.plot(n_l, r_approx_l, label='Approx', marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  # plot.legend()
+  # plot.xlabel(r'$n$', fontsize=13)
+  # plot.ylabel(r'$E[T_{n+1}]/E[T_n]$', fontsize=13)
+  # plot.title(r'$k= {}$'.format(k) )
+  # fig = plot.gcf()
+  # def_size = fig.get_size_inches()
+  # # fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
+  # fig.tight_layout()
+  # plot.savefig("plot_Tnp1_over_Tn.png")
+  # plot.gcf().clear()
+  log(WARNING, "done.")
+
+def n_max_before_ETpain(ro_0, a_0, k):
+  def approxcond_an_over_anp1_for_ETpain(k, n):
+    return math.log(1 + k/(n-k+1) )/math.log(1 + k/(n-k+2) )
+  n = k
+  a_n = a_wred(ro_0, a_0, ro=1)
+  while True:
+    # if ro >= 0.9: return None
+    a_np1 = a_wred(ro_0, a_0, ro=ro_0*(n+1)/k)
+    if a_n/a_np1 >= approxcond_an_over_anp1_for_ETpain(k, n):
+      break
+    a_n = a_np1
+    n += 1
+  return n
+
 # ******************************  Wrappers  ****************************** #
-def E_T_k_l_n(task_t, task_dist_m, d, k, l, n, added_load=False):
+def E_T_k_l_n(task_t, task_dist_m, d, k, l, n, load_m=None):
   if task_t == "Exp":
     mu = task_dist_m["mu"]
     if l == k: return E_T_exp_k_n(mu, d, k, n)
@@ -856,15 +1081,17 @@ def E_T_k_l_n(task_t, task_dist_m, d, k, l, n, added_load=False):
     else: return E_T_shiftedexp_k_l_n(D, mu, d, k, l, n)
   elif task_t == "Pareto":
     loc, a = task_dist_m["loc"], task_dist_m["a"]
-    if added_load:
-      # loc = loc*n/k
-      a = 1/(1 - k/n*(a-1)/a)
+    if load_m is not None:
+      ro_0, a_0 = load_m['ro_0'], load_m['a_0']
+      ro = ro_0*n/k
+      if ro >= 0.9: return None
+      a = a_wred(ro_0, a_0, ro)
     return E_T_pareto_k_n(loc, a, d, k, n)
   elif task_t == "TPareto":
     l, u, a = task_dist_m["l"], task_dist_m["u"], task_dist_m["a"]
     return E_T_k_n_TPareto(l, u, a, k, n)
 
-def E_C_k_l_n(task_t, task_dist_m, d, k, l, n, w_cancel, added_load=False):
+def E_C_k_l_n(task_t, task_dist_m, d, k, l, n, w_cancel, load_m=None):
   if task_t == "Exp":
     mu = task_dist_m["mu"]
     if l == k: return E_C_exp_k_n(mu, d, k, l, n, w_cancel)
@@ -874,15 +1101,17 @@ def E_C_k_l_n(task_t, task_dist_m, d, k, l, n, w_cancel, added_load=False):
     return E_C_shiftedexp_k_l_n(D, mu, d, k, l, n, w_cancel)
   elif task_t == "Pareto":
     loc, a = task_dist_m["loc"], task_dist_m["a"]
-    if added_load:
-      # loc = loc*n/k
-      a = 1/(1 - k/n*(a-1)/a)
+    if load_m is not None:
+      ro_0, a_0 = load_m['ro_0'], load_m['a_0']
+      ro = ro_0*n/k
+      if ro >= 0.9: return None
+      a = a_wred(ro_0, a_0, ro)
     return E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=w_cancel)
   elif task_t == "TPareto":
     l, u, a = task_dist_m["l"], task_dist_m["u"], task_dist_m["a"]
     return E_C_k_n_TPareto(l, u, a, k, n)
 
-def E_T_k_c(task_t, task_dist_m, d, k, c, added_load=False):
+def E_T_k_c(task_t, task_dist_m, d, k, c, load_m=None):
   if task_t == "Exp":
     mu = task_dist_m["mu"]
     return E_T_exp_k_c(mu, d, k, c)
@@ -891,12 +1120,14 @@ def E_T_k_c(task_t, task_dist_m, d, k, c, added_load=False):
     return E_T_shiftedexp_k_c(D, mu, d, k, c)
   elif task_t == "Pareto":
     loc, a = task_dist_m["loc"], task_dist_m["a"]
-    if added_load:
-      # loc = loc*(c+1)
-      a = 1/(1 - 1/(c+1)*(a-1)/a)
+    if load_m is not None:
+      ro_0, a_0 = load_m['ro_0'], load_m['a_0']
+      ro = ro_0*(c+1)
+      if ro >= 0.9: return None
+      a = a_wred(ro_0, a_0, ro)
     return E_T_pareto_k_c(loc, a, d, k, c)
 
-def E_C_k_c(task_t, task_dist_m, d, k, c, w_cancel, approx=False, added_load=False):
+def E_C_k_c(task_t, task_dist_m, d, k, c, w_cancel, load_m=None, approx=False):
   if task_t == "Exp":
     mu = task_dist_m["mu"]
     return E_C_exp_k_c(mu, d, k, c, w_cancel)
@@ -905,9 +1136,11 @@ def E_C_k_c(task_t, task_dist_m, d, k, c, w_cancel, approx=False, added_load=Fal
     return E_C_shiftedexp_k_c(D, mu, d, k, c, w_cancel)
   elif task_t == "Pareto":
     loc, a = task_dist_m["loc"], task_dist_m["a"]
-    if added_load:
-      # loc = loc*(c+1)
-      a = 1/(1 - 1/(c+1)*(a-1)/a)
+    if load_m is not None:
+      ro_0, a_0 = load_m['ro_0'], load_m['a_0']
+      ro = ro_0*(c+1)
+      if ro >= 0.9: return None
+      a = a_wred(ro_0, a_0, ro)
     if approx:
       return E_C_pareto_k_c_approx(loc, a, d, k, c, w_cancel)
     return E_C_pareto_k_c(loc, a, d, k, c, w_cancel)
@@ -938,9 +1171,23 @@ def plot_deneme():
   plot.savefig("plot_deneme.png")
   log(WARNING, "done.")
 
+def deneme():
+  p = 0.99
+  def prob_fast(k, n):
+    return sum([binomial(n, i) * p**i * (1-p)**(n-i) for i in range(k, n+1) ] )
+  k = 100
+  for n in range(k, 2*k):
+    pf = prob_fast(k, n)
+    print("n= {}, pf= {}".format(n, pf) )
+
 if __name__ == "__main__":
   # plot_Pr_T_g_t_G_1red()
   # plot_pareto_zerodelay_red()
-  plot_deneme()
+  # plot_deneme()
   
+  # plot_compare_tails()
+  deneme()
   
+  # plot_a_wred()
+  # plot_Tnp1_over_Tn()
+  # plot_Trj_over_Tri()

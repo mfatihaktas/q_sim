@@ -3,29 +3,31 @@ import simpy, random, copy, pprint
 from sim import *
 from patch import *
 
-class MDS_PG(PG):
-  def __init__(self, env, _id, inter_arr_dist):
-    super().__init__(env, _id, inter_arr_dist, flow_id=0)
+class MDS_PG():
+  def __init__(self, env, _id, ar):
+    self.env = env
+    self._id = _id
+    self.ar = ar
     
     self.n_sent = 0
     self.out = None
     
-    env.process(self.run() )
+    self.env.process(self.run() )
   
   def __repr__(self):
     return "MDS_PG[n_sent= {}]".format(self.n_sent)
   
   def run(self):
     while 1:
-      yield self.env.timeout(self.inter_arr_dist() )
+      yield self.env.timeout(random.expovariate(self.ar) )
       self.n_sent += 1
-      self.out.put(Packet(time=self.env.now, size=1, _id=self.n_sent, sym=MDS_TRAFF_SYM) )
-  
+      self.out.put(Packet(time=self.env.now, _id=self.n_sent) )
+
 # *******************************************  MDSQ  ********************************************* #
 # Split arrivals to all, wait for any k for download, cancel the outstanding remainings.
 class MDSQ(object):
   # r: split each arrival to randomly any r servers
-  def __init__(self, _id, env, k, qid_l, serv="Exp", serv_dist_m=None, r=None, preempt=False, out=None):
+  def __init__(self, _id, env, k, qid_l, dist_m, r=None, preempt=False, out=None):
     self._id = _id
     self.env = env
     self.k = k
@@ -43,14 +45,14 @@ class MDSQ(object):
     self.id_q_map = {}
     for i in range(self.n):
       qid = qid_l[i]
-      q = FCFS(qid, env, serv, serv_dist_m)
+      q = FCFS(qid, env, dist_m['dist'], dist_m)
       q.out = self.jq
       self.id_q_map[qid] = q
     
     self.store = simpy.Store(env)
-    self.store_c = simpy.Store(env)
+    # self.store_c = simpy.Store(env)
     self.action = env.process(self.run() )
-    self.action = env.process(self.run_c() )
+    # self.action = env.process(self.run_c() )
     
     self.job_id_counter = 0
     self.servtype__num_m = k*[0]
@@ -62,7 +64,6 @@ class MDSQ(object):
     return max([q.length() for i, q in self.id_q_map.items() ] )
   
   def state(self, job_id_to_exclude=[]):
-    # return [q.length() for i, q in self.id_q_map.items() ]
     state = []
     for i, q in self.id_q_map.items():
       state += q.state(job_id_to_exclude)
@@ -77,18 +78,19 @@ class MDSQ(object):
   def run(self):
     while True:
       p = (yield self.store.get() )
-      self.qid_to_split_l = []
-      if p.sym == MDS_TRAFF_SYM:
-        if self.r is None:
-          self.qid_to_split_l = self.qid_l
-        else:
-          while len(self.qid_to_split_l) < self.r:
-            qid = self.qid_l[random.randint(0, self.n-1) ]
-            if qid not in self.qid_to_split_l:
-              self.qid_to_split_l.append(qid)
-      else:
-        self.qid_to_split_l = self.qid_l
-      for qid in self.qid_to_split_l:
+      # self.qid_to_split_l = []
+      # if p.sym == MDS_TRAFF_SYM:
+      #   if self.r is None:
+      #     self.qid_to_split_l = self.qid_l
+      #   else:
+      #     while len(self.qid_to_split_l) < self.r:
+      #       qid = self.qid_l[random.randint(0, self.n-1) ]
+      #       if qid not in self.qid_to_split_l:
+      #         self.qid_to_split_l.append(qid)
+      # else:
+      #   self.qid_to_split_l = self.qid_l
+      # for qid in self.qid_to_split_l:
+      for qid in self.qid_l:
         self.id_q_map[qid].put(p, preempt=self.preempt)
   
   def put(self, p):
@@ -100,34 +102,40 @@ class MDSQ(object):
       p.job_id = self.job_id_counter
     return self.store.put(p)
   
-  def run_c(self):
-    while True:
-      cp = (yield self.store_c.get() )
-      #
-      next_job_id = cp._id + 1
-      type_ = self.n - self.n_servers_in(next_job_id)
-      if type_ == self.n: # next job is not in
-        type_ = 0
-      self.servtype__num_m[type_] += 1
-      #
-      for i, q in self.id_q_map.items():
-        if q._id not in cp.departed_qid_l:
-          q.put_c(cp)
-      if cp.prev_hop_id != self._id: # To avoid inifinite loops forward only when cp comes from a different JQ than self
-        self.jq.put_c(cp)
-  
-  def put_c(self, cp):
-    sim_log(DEBUG, self.env, self, "recved", cp)
-    return self.store_c.put(cp)
+  # def run_c(self):
+  #   while True:
+  #     cp = (yield self.store_c.get() )
+  #     # Keeping start type of jobs
+  #     # next_job_id = cp._id + 1
+  #     # type_ = self.n - self.n_servers_in(next_job_id)
+  #     # if type_ == self.n: # next job is not in
+  #     #   type_ = 0
+  #     # self.servtype__num_m[type_] += 1
+  #     #
+  #     for i, q in self.id_q_map.items():
+  #       if q._id not in cp.departed_qid_l:
+  #         q.put_c(cp)
+  #     if cp.prev_hop_id != self._id: # To avoid inifinite loops forward only when cp comes from a different JQ than self
+  #       self.jq.put_c(cp)
   
   # def put_c(self, cp):
   #   sim_log(DEBUG, self.env, self, "recved", cp)
-  #   # return self.store_c.put(cp)
-  #   for i, q in self.id_q_map.items():
-  #     if q._id not in cp.departed_qid_l:
-  #       q.put_c(cp)
-  #   if cp.prev_hop_id != self._id: # To avoid inifinite loops forward only when cp comes from a different JQ than self
-  #     self.jq.put_c(cp)
+  #   return self.store_c.put(cp)
+  
+  def put_c(self, cp):
+    sim_log(DEBUG, self.env, self, "recved", cp)
+    # 
+    next_job_id = cp._id + 1
+    type_ = self.n - self.n_servers_in(next_job_id)
+    if type_ == self.n: # next job is not in
+      type_ = 0
+    self.servtype__num_m[type_] += 1
+    # 
+    for i, q in self.id_q_map.items():
+      if q._id not in cp.departed_qid_l:
+        q.put_c(cp)
+    if cp.prev_hop_id != self._id: # To avoid inifinite loops forward only when cp comes from a different JQ than self
+      self.jq.put_c(cp)
   
 class MDSQMonitor(object):
   def __init__(self, env, q, poll_dist):

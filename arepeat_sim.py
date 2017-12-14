@@ -43,8 +43,8 @@ def plot_pareto():
   plot.savefig("plot_pareto.png")
   plot.gcf().clear()
 
-# #####################  (k, \Delta)  ################### #
-def sim_arepeat_k_c(task_t_rv, d, k, c=1, num_run=1000, w_relaunch=False):
+# #####################  (k, d)  ################### #
+def sim_arepeat_k_c(task_t_rv, d, k, c, num_run, w_relaunch=False):
   stat_id__trial_stat_l_m = {'T': [], 'C': [], 'C_wc': [], 'T_2': [], 'C_2': [] }
   for i in range(num_run):
     i__t_l_m = {i:[[0, task_t_rv.gen_sample() ] ] for i in range(k) }
@@ -72,8 +72,8 @@ def sim_arepeat_k_c(task_t_rv, d, k, c=1, num_run=1000, w_relaunch=False):
   
   return stat_id__trial_stat_l_m
 
-# ##################  (l, k, n, \Delta)  ################ #
-def sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=1000, w_relaunch=False):
+# ##################  (l, k, n, d)  ################ #
+def sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run, w_relaunch=False):
   if l < k:
     l = k
   log(DEBUG, "k= {}, l= {}, n= {}".format(k, l, n) )
@@ -95,6 +95,28 @@ def sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=1000, w_relaunch=False):
     stat_id__trial_stat_l_m['T_2'].append(E_T**2)
     stat_id__trial_stat_l_m['C'].append(sum([t[1]-t[0] for t in compl_t_l] ) )
     E_C = sum([min(t[1], E_T)-t[0] for t in compl_t_l] )
+    stat_id__trial_stat_l_m['C_wc'].append(E_C)
+    stat_id__trial_stat_l_m['C_2'].append(E_C**2)
+  
+  return stat_id__trial_stat_l_m
+
+# ##################  (l, k, n, d)  ################ #
+def sim_arepeat_k_nd0_wrelaunch(task_t_rv, k, n, d, num_run):
+  log(DEBUG, "k= {}, n= {}, d= {}".format(k, n, d) )
+  stat_id__trial_stat_l_m = {'T': [], 'C': [], 'C_wc': [], 'T_2': [], 'C_2': [] }
+  for i in range(num_run):
+    compl_t_l = [task_t_rv.gen_sample() for i in range(n) ]
+    compl_t_l.sort()
+    if compl_t_l[k-1] > d:
+      for i, t in enumerate(compl_t_l):
+        if t > d: compl_t_l[i] = d + task_t_rv.gen_sample()
+      compl_t_l.sort()
+    
+    E_T = compl_t_l[k-1]
+    stat_id__trial_stat_l_m['T'].append(E_T)
+    stat_id__trial_stat_l_m['T_2'].append(E_T**2)
+    stat_id__trial_stat_l_m['C'].append(sum([t for t in compl_t_l] ) )
+    E_C = sum([min(t, E_T) for t in compl_t_l] )
     stat_id__trial_stat_l_m['C_wc'].append(E_C)
     stat_id__trial_stat_l_m['C_2'].append(E_C**2)
   
