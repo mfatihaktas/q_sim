@@ -78,10 +78,11 @@ class SlaveQ(Q): # Release HoL at command
 # *************************************  Mixed Net  ****************************************** #
 # n servers with Poisson arrivals, once any k servers are busy, Hol is immediately released
 class MixedNet(object): # Network
-  def __init__(self, env, n, k):
+  def __init__(self, env, n, k, deanonymizer=None):
     self.env = env
     self.n = n
     self.k = k
+    self.deanonymizer = deanonymizer
     
     self.id_q_map = []
     for i in range(self.n):
@@ -125,29 +126,67 @@ class MixedNet(object): # Network
     
     self.id_q_map[p.flow_id].put(p)
     
-    n_busy = 0
-    for i,q in enumerate(self.id_q_map):
+    if self.deanonymizer is not None:
+      self.deanonymizer.in_packet(p.flow_id)
+    
+    busy_qid_l = []
+    for i, q in enumerate(self.id_q_map):
       if q.length():
-        n_busy += 1
-    if n_busy >= self.k:
-      for i,q in enumerate(self.id_q_map):
+        busy_qid_l.append(q.length() )
+    
+    if len(busy_qid_l) >= self.k:
+      for i, q in enumerate(self.id_q_map):
         q.release()
-  
-  # def put__deanonymize(self, p):
-  #   sim_log(DEBUG, self.env, self, "recved", p)
+      if self.deanonymizer is not None:
+        self.deanonymizer.out_frame(busy_qid_l)
+
+class Deanonymizer(object):
+  def __init__(self, env, n):
+    self.env = env
+    self.n = n
     
-  #   self.id_q_map[p.flow_id].put(p)
-  
-  #   self.round__qid_l_l = []
-  #   qid_l = []
-  #   for i, q in enumerate(self.id_q_map):
-  #     if q.length():
-  #       qid_l.append(i)
+    self.deanon_startt = None
+    self.i__o_l_m = {i:None for i in range(self.n) }
+    self.in_frame = []
     
-  #   if len(qid_l) >= self.k:
-  #     for i,q in enumerate(self.id_q_map):
-  #       q.release()
-  #     self.round__qid_l_l.append(qid_l)
+    self.deanont_l = []
+    
+    self.deanon_done = None
+    env.process(self.run() )
+  
+  def run(self):
+    while True:
+      yield self.env.timeout(1000*random.random() )
+      self.restart()
+      self.deanon_done = self.env.event()
+      yield (self.deanon_done)
+      self.deanon_startt = None
+  
+  def restart(self):
+    self.deanon_startt = self.env.now
+    for i, o_l in self.i__o_l_m.items():
+      o_l = [j for j in range(self.n) ]
+    self.in_frame.clear()
+  
+  def in_packet(self, i):
+    if self.deanon_startt is not None:
+      self.in_frame.append(i)
+  
+  def out_frame(self, o_l):
+    if self.deanon_startt is None:
+      return
+    
+    for i in self.in_frame:
+      for o in self.i__o_l_m[i]:
+        if o not in o_l:
+          self.i__o_l_m[i].remove(o)
+    self.in_frame.clear()
+    
+    for i, o_l in self.i__o_l_m.items():
+      if len(o_l) > 1:
+        return
+    self.deanont_l.append(self.env.now - self.deanon_startt)
+    self.deanon_done.succeed()
 
 class MNMonitor(object):
   def __init__(self, env, mn, poll_interval):

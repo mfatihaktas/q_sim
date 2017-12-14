@@ -44,7 +44,7 @@ def plot_pareto():
   plot.gcf().clear()
 
 # #####################  (k, d)  ################### #
-def sim_arepeat_k_c(task_t_rv, d, k, c=1, num_run=1000, w_relaunch=False):
+def sim_arepeat_k_c(task_t_rv, d, k, c, num_run, w_relaunch=False):
   stat_id__trial_stat_l_m = {'T': [], 'C': [], 'C_wc': [], 'T_2': [], 'C_2': [] }
   for i in range(num_run):
     i__t_l_m = {i:[[0, task_t_rv.gen_sample() ] ] for i in range(k) }
@@ -73,7 +73,7 @@ def sim_arepeat_k_c(task_t_rv, d, k, c=1, num_run=1000, w_relaunch=False):
   return stat_id__trial_stat_l_m
 
 # ##################  (l, k, n, d)  ################ #
-def sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=1000, w_relaunch=False):
+def sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run, w_relaunch=False):
   if l < k:
     l = k
   log(DEBUG, "k= {}, l= {}, n= {}".format(k, l, n) )
@@ -101,7 +101,7 @@ def sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run=1000, w_relaunch=False):
   return stat_id__trial_stat_l_m
 
 # ##################  (l, k, n, d)  ################ #
-def sim_arepeat_k_nd0_wrelaunch(task_t_rv, k, n, d, num_run=1000):
+def sim_arepeat_k_nd0_wrelaunch(task_t_rv, k, n, d, num_run):
   log(DEBUG, "k= {}, n= {}, d= {}".format(k, n, d) )
   stat_id__trial_stat_l_m = {'T': [], 'C': [], 'C_wc': [], 'T_2': [], 'C_2': [] }
   for i in range(num_run):

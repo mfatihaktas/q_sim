@@ -225,11 +225,14 @@ def E_T_mds_n_k_sm_recur(l, mu, n, k):
     log(ERROR, "Unexpected n= {} <= k= {}".format(n, k) )
     return E_T_mds_n_k_sm(l, mu, n, k)
 
-def E_T_mds_n_k_varki_gauri_lb(l, mu, n, k):
-  ro = float(l/mu)
-  return 1/mu * (H(n) - H(n-k) ) + \
-         1/mu * ro*(gen_H(n, ro) - gen_H(n-k, ro) )
 '''
+def ET_mds_nk_varkigauri_lb(ar, n, k, dist_m):
+  if dist_m['dist'] == 'Exp':
+    mu = dist_m['mu']
+    ro = float(ar/mu)
+    return 1/mu * (H(n) - H(n-k) ) + \
+           1/mu * ro*(gen_H(n, ro) - gen_H(n-k, ro) )
+
 # ###################################  (n, 2)  ############################## #
 def mds_innerbound_on_ar(n, k, dist_m):
   dist = dist_m['dist']

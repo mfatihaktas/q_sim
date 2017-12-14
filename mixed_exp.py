@@ -9,15 +9,17 @@ import sys, pprint, math, numpy, simpy, getopt, itertools
 from mixed_sim import *
 from mixed_models import *
 
-def sim_mixednet(num_f_run, n, k, qarrdist_m_l):
+def sim_mixednet(num_frun, n, k, qarrdist_m_l):
   ET_sum, ET2_sum = 0, 0
   EL_sum, EL2_sum = 0, 0
-  for f in range(num_f_run):
+  E_Deanont_sum = 0
+  for f in range(num_frun):
     log(WARNING, "n= {}, k= {}, qarrdist_m_l=\n {}".format(n, k, pprint.pformat(qarrdist_m_l) ) )
     env = simpy.Environment()
     
     pg = MixedPG(env, "pg", qarrdist_m_l)
-    mn = MixedNet(env, n, k)
+    deanonymizer = Deanonymizer(env, n)
+    mn = MixedNet(env, n, k, deanonymizer)
     # monitor = MNMonitor(env, mn, 0.05)
     pg.out = mn
     env.run(until=50000)
@@ -30,12 +32,17 @@ def sim_mixednet(num_f_run, n, k, qarrdist_m_l):
     EL_sum += EL_EL2[0]
     EL2_sum += EL_EL2[1]
     
-  return ET_sum/num_f_run, ET2_sum/num_f_run, \
-         EL_sum/num_f_run, EL2_sum/num_f_run
+    E_Deanont = sum(deanonymizer.deanont_l)/len(deanonymizer.deanont_l)
+    print("num_deanon= {}, E_Deanont= {}".format(len(deanonymizer.deanont_l), E_Deanont) )
+    E_Deanont_sum += E_Deanont
+    
+  return ET_sum/num_frun, ET2_sum/num_frun, \
+         EL_sum/num_frun, EL2_sum/num_frun, \
+         E_Deanont_sum/num_frun
 
 def plot_mixednet():
   n = 10
-  num_f_run = 1
+  num_frun = 1
   
   def plot_ET_vs_ar(k):
     pET, pET2, pEL, pEL2 = True, False, False, False
@@ -52,7 +59,7 @@ def plot_mixednet():
       
       dist_m = {'dist': 'Exp', 'mu': ar}
       ET_sim, ET2_sim, EL_sim, EL2_sim = \
-        sim_mixednet(num_f_run, n, k, qarrdist_m_l=[dist_m for i in range(n) ] )
+        sim_mixednet(num_frun, n, k, qarrdist_m_l=[dist_m for i in range(n) ] )
       if pET:
         print("ET_sim= {}".format(ET_sim) )
         ET_sim_l.append(ET_sim)
@@ -117,8 +124,8 @@ def plot_mixednet():
       k_l.append(k)
       print(">> k= {}".format(k) )
       
-      ET_sim, ET2_sim, EL_sim, EL2_sim = \
-        sim_mixednet(num_f_run, n, k, qarrdist_m_l=[dist_m for i in range(n) ] )
+      ET_sim, ET2_sim, EL_sim, EL2_sim, EDeanont_sim = \
+        sim_mixednet(num_frun, n, k, qarrdist_m_l=[dist_m for i in range(n) ] )
       
       if pET:
         print("ET_sim= {}".format(ET_sim) )
@@ -141,21 +148,39 @@ def plot_mixednet():
       plot.plot(k_l, ET2_sim_l, label=r'Simulation', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
       plot.plot(k_l, ET2_approx_l, label=r'M/G/1 Approx', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
       plot.ylabel(r'$E[D^2]$', fontsize=13)
-    dist = dist_m['dist']
-    if dist == 'Exp':
-      X_latex = r'Exp(\mu= {})'.format(dist_m['mu'] )
-    elif dist == 'Pareto':
-      X_latex = r'Pareto(l= {}, \alpha= {})'.format(dist_m['loc'], dist_m['a'] )
-    plot.title(r'$n= {}$, $X \sim {}$'.format(n, X_latex) )
+    
+    plot.title(r'$n= {}$, $X \sim {}$'.format(n, dist_to_latex(dist_m) ) )
     plot.xlabel(r'$k$', fontsize=12)
+  
+  def plot_ET_vs_EDeanont(dist_m):
+    k_l = []
+    ET_sim_l, EDeanont_sim_l = [], []
+    
+    for k in range(2, n):
+      k_l.append(k)
+      print(">> k= {}".format(k) )
+      
+      ET_sim, ET2_sim, EL_sim, EL2_sim, EDeanont_sim = \
+        sim_mixednet(num_frun, n, k, qarrdist_m_l=[dist_m for i in range(n) ] )
+      
+      print("ET_sim= {}".format(ET_sim) )
+      ET_sim_l.append(ET_sim)
+      EDeanont_sim_l.append(EDeanont_sim)
+    plot.plot(EDeanont_sim_l, ET_sim_l, label=r'Simulation', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
+    plot.xlabel(r'$E[Deanont]$', fontsize=13)
+    plot.ylabel(r'$E[D]$', fontsize=13)
+    plot.title(r'$n= {}$, $X \sim {}$'.format(n, dist_to_latex(dist_m) ) )
   # 
   # plot_ET_vs_ar(k=9)
   # plot_ET_vs_ar(k=7)
   # plot_ET_vs_ar(k=3)
   
-  dist_m = {'dist': 'Exp', 'mu': ar}
+  dist_m = {'dist': 'Exp', 'mu': 1}
   # dist_m = {'dist': 'Pareto', 'loc': 1, 'a': 50}
-  plot_ET_vs_k(dist_m)
+  # plot_ET_vs_k(dist_m)
+  
+  plot_ET_vs_EDeanont(dist_m)
+  
   #
   plot.legend()
   # plot.ylabel(r'Throughput', fontsize=13)

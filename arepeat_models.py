@@ -569,43 +569,37 @@ def E_C_2_pareto_k_n(loc, a, k, n):
   return E_C_2
 
 # ### Wrappers ### #
-def E_T_2_k(task_t, task_dist_m, k, c=None, n=None, added_load=False):
+def E_T_2_k_c(task_t, task_dist_m, k, c, load_m=None):
   if task_t == "SExp":
     D, mu = task_dist_m["D"], task_dist_m["mu"]
-    if c is not None:
-      if added_load: D = D*(c+1)
-      return E_T_2_sexp_k_c(D, mu, k, c)
-    elif n is not None:
-      if added_load: D = D*n/k
-      return E_T_2_sexp_k_n(D, mu, k, n)
+    return E_T_2_sexp_k_c(D, mu, k, c)
   elif task_t == "Pareto":
     loc, a = task_dist_m["loc"], task_dist_m["a"]
-    if c is not None:
-      if added_load: loc = loc*(c+1)
-      return E_T_2_pareto_k_c(loc, a, k, c)
-    elif n is not None:
-      if added_load: loc = loc*n/k
-      return E_T_2_pareto_k_n(loc, a, k, n)
+    return E_T_2_pareto_k_c(loc, a, k, c)
 
-def E_C_2_k(task_t, task_dist_m, k, c=None, n=None, added_load=False):
+def E_T_2_k_n(task_t, task_dist_m, k, n, load_m=None):
   if task_t == "SExp":
-    if added_load:
-      D = D*n/k
     D, mu = task_dist_m["D"], task_dist_m["mu"]
-    if c is not None:
-      if added_load: D = D*(c+1)
-      return E_C_2_sexp_k_c(D, mu, k, c)
-    elif n is not None:
-      if added_load: D = D*n/k
-      return E_C_2_sexp_k_n(D, mu, k, n)
+    return E_T_2_sexp_k_n(D, mu, k, n)
   elif task_t == "Pareto":
     loc, a = task_dist_m["loc"], task_dist_m["a"]
-    if c is not None:
-      if added_load: loc = loc*(c+1)
-      return E_C_2_pareto_k_c(loc, a, k, c)
-    elif n is not None:
-      if added_load: loc = loc*n/k
-      return E_C_2_pareto_k_n(loc, a, k, n)
+    return E_T_2_pareto_k_n(loc, a, k, n)
+
+def E_C_2_k_c(task_t, task_dist_m, k, c, load_m=None):
+  if task_t == "SExp":
+    D, mu = task_dist_m["D"], task_dist_m["mu"]
+    return E_C_2_sexp_k_c(D, mu, k, c)
+  elif task_t == "Pareto":
+    loc, a = task_dist_m["loc"], task_dist_m["a"]
+    return E_C_2_pareto_k_c(loc, a, k, c)
+
+def E_C_2_k_n(task_t, task_dist_m, k, n, load_m=None):
+  if task_t == "SExp":
+    D, mu = task_dist_m["D"], task_dist_m["mu"]
+    return E_C_2_sexp_k_n(D, mu, k, n)
+  elif task_t == "Pareto":
+    loc, a = task_dist_m["loc"], task_dist_m["a"]
+    return E_C_2_pareto_k_n(loc, a, k, n)
 
 # ***************************  X ~ Pareto, (k, n/c, \Delta) with Relaunch  *************************** #
 def Pr_T_g_t_pareto_k_wrelaunch(loc, a, d, k, t):

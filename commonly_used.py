@@ -49,3 +49,12 @@ def scale_dist(dist_m, k):
     dist_m_['l'] = dist_m['l']/k
     dist_m_['a'] = dist_m['a']
   return dist_m_
+
+def dist_to_latex(dist_m):
+  dist = dist_m['dist']
+  if dist == 'Exp':
+    return r'Exp(\mu= {})'.format(dist_m['mu'] )
+  elif dist == 'SExp':
+    return r'D + Exp(\mu= {}), D= {}'.format(dist_m['mu'], dist_m['D'] )
+  elif dist == 'Pareto':
+    return r'Pareto(s= {}, \alpha= {})'.format(dist_m['l'], dist_m['a'] )
