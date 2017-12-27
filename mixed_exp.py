@@ -9,6 +9,94 @@ import sys, pprint, math, numpy, simpy, getopt, itertools
 from mixed_sim import *
 from mixed_models import *
 
+def plot_delay_dist():
+  n = 10
+  
+  def sim_mu__approx_mu(ar, k):
+    dist_m = {'dist': 'Exp', 'mu': ar}
+    
+    env = simpy.Environment()
+    pg = MixedPG(env, "pg", [dist_m for i in range(n) ] )
+    mn = MixedNet(env, n, k)
+    pg.out = mn
+    env.run(until=50000*2)
+    
+    ET_ET2 = mn.ET_ET2()
+    print("ET= {}, ET2= {}".format(ET_ET2[0], ET_ET2[1] ) )
+    
+    qt_l = mn.qt_l()
+    print("len(mn.qt_l)= {}".format(len(qt_l) ) )
+    s_l = numpy.sort(qt_l)
+    x_l = s_l[::-1]
+    i_ = None
+    for i in range(len(x_l)-1, 0, -1):
+      if x_l[i] > 0.0001: i_ = i; break
+      # if x_l[i] > 1: i_ = i; break
+    x_l = x_l[:i_]
+    
+    y_l = numpy.arange(x_l.size)/x_l.size
+    # plot.plot(x_l, y_l, label="k= {}".format(k), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+    
+    x__l, logy_l = [], []
+    for i, y in enumerate(y_l):
+      if y != 0:
+        x__l.append(x_l[i] )
+        logy_l.append(math.log(y) )
+    [a, b] = numpy.polyfit(x__l, logy_l, 1)
+    print("a= {}, b= {}".format(a, b) )
+    # y_l = []
+    # for x in x_l:
+    #   y_l.append(math.exp(a*x + b) )
+    # plot.plot(x_l, y_l, label="fitted, k= {}".format(k), marker=next(marker), color=next(dark_color), linestyle='-')
+    # plot.xlabel(r'$d$')
+    # plot.ylabel(r'$Pr\{D > d\}$')
+    # plot.yscale('log')
+    mu = tail_exponent(n, k, dist_m)
+    print("mu= {}".format(mu) )
+    return a, mu
+  
+  def plot_mu_vs_k(ar):
+    print(">> ar= {}".format(ar) )
+    k_l, sim_mu_l, mu_l = [], [], []
+    for k in range(2, n):
+      k_l.append(k)
+      sim_mu, mu = sim_mu__approx_mu(ar, k)
+      sim_mu_l.append(sim_mu)
+      mu_l.append(mu)
+    plot.plot(k_l, sim_mu_l, label="Simulation", marker=next(marker), color=next(dark_color), linestyle=':')
+    plot.plot(k_l, mu_l, label="Approximation", marker=next(marker), color=next(dark_color), linestyle=':')
+    plot.xlabel(r'$k$', fontsize=13)
+    plot.ylabel(r'$\mu$', fontsize=14)
+    plot.title(r'$n= {}$, $X \sim Exp(\lambda= {})$'.format(n, ar) )
+  
+  def plot_mu_vs_ar():
+    def plot_(k):
+      print(">> k= {}".format(k) )
+      ar_l, sim_mu_l, mu_l = [], [], []
+      for ar in numpy.linspace(0.2, 2, 10):
+        ar_l.append(ar)
+        sim_mu, mu = sim_mu__approx_mu(ar, k)
+        sim_mu_l.append(sim_mu)
+        mu_l.append(mu)
+      plot.plot(ar_l, sim_mu_l, label=r'$k= {}$, Simulation'.format(k) , marker=next(marker), color=next(dark_color), linestyle=':')
+      plot.plot(ar_l, mu_l, label=r'$k= {}$, Approx'.format(k), marker=next(marker), color=next(dark_color), linestyle=':')
+    plot_(k=3)
+    plot_(k=7)
+    plot_(k=9)
+    
+    plot.xlabel(r'$\lambda$', fontsize=13)
+    plot.ylabel(r'$\mu$', fontsize=14)
+    plot.title(r'$n= {}$, $X \sim Exp(\lambda)$'.format(n) )
+  
+  plot_mu_vs_k(ar=1)
+  # plot_mu_vs_ar()
+  
+  fig = plot.gcf()
+  fig.tight_layout()
+  plot.legend()
+  plot.savefig("plot_delay_dist_n_{}.pdf".format(n) )
+  log(WARNING, "done; n= {}".format(n) )
+
 def sim_mixednet(num_frun, n, k, qarrdist_m_l):
   ET_sum, ET2_sum = 0, 0
   EL_sum, EL2_sum = 0, 0
@@ -18,11 +106,11 @@ def sim_mixednet(num_frun, n, k, qarrdist_m_l):
     env = simpy.Environment()
     
     pg = MixedPG(env, "pg", qarrdist_m_l)
-    attacker = Attacker(env, n, k)
+    attacker = AttackOne(env, n, k) # StateSniffer(env, n, k)
     mn = MixedNet(env, n, k, attacker)
     # monitor = MNMonitor(env, mn, 0.05)
     pg.out = mn
-    env.run(until=50000*10)
+    env.run(until=50000*1)
     
     ET_ET2 = mn.ET_ET2()
     ET_sum += ET_ET2[0]
@@ -32,8 +120,11 @@ def sim_mixednet(num_frun, n, k, qarrdist_m_l):
     EL_sum += EL_EL2[0]
     EL2_sum += EL_EL2[1]
     
-    E_Deanont = sum(mn.attackt_l)/len(attacker.attackt_l)
-    print("num_deanon= {}, E_Deanont= {}".format(len(attacker.attackt_l), E_Deanont) )
+    E_Deanont = sum(mn.attackt_l)/len(mn.attackt_l)
+    print("num_deanon= {}, E_Deanont= {}".format(len(mn.attackt_l), E_Deanont) )
+    # E_EstedDeanont = sum(mn.ested_attackt_l)/len(mn.ested_attackt_l)
+    # print("E_EstedDeanont= {}".format(E_EstedDeanont) )
+    
     E_Deanont_sum += E_Deanont
   
   return ET_sum/num_frun, ET2_sum/num_frun, \
@@ -41,7 +132,7 @@ def sim_mixednet(num_frun, n, k, qarrdist_m_l):
          E_Deanont_sum/num_frun
 
 def plot_mixednet():
-  n = 10
+  n = 40
   num_frun = 1
   
   def plot_ET_vs_ar(k):
@@ -120,7 +211,9 @@ def plot_mixednet():
     EL_sim_l, EL_approx_l = [], []
     EL2_sim_l, EL2_approx_l = [], []
     
-    for k in range(2, n):
+    # for k in range(2, n):
+    for k in numpy.linspace(2, n, 5):
+      k = int(k)
       k_l.append(k)
       print(">> k= {}".format(k) )
       
@@ -155,6 +248,7 @@ def plot_mixednet():
   def plot_ET_vs_EDeanont(dist_m):
     k_l = []
     ET_sim_l, EDeanont_sim_l = [], []
+    ET_over_EDeanont_sim_l = []
     
     for k in range(2, n):
       k_l.append(k)
@@ -166,9 +260,33 @@ def plot_mixednet():
       print("ET_sim= {}".format(ET_sim) )
       ET_sim_l.append(ET_sim)
       EDeanont_sim_l.append(EDeanont_sim)
+      
+      ET_over_EDeanont_sim_l.append(ET_sim/EDeanont_sim)
     plot.plot(EDeanont_sim_l, ET_sim_l, label=r'Simulation', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
     plot.xlabel(r'$E[Deanont]$', fontsize=13)
     plot.ylabel(r'$E[D]$', fontsize=13)
+    
+    # plot.plot(k_l, ET_over_EDeanont_sim_l, label=r'Simulation', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
+    # plot.xlabel(r'$k$', fontsize=13)
+    # plot.ylabel(r'$E[D]/E[Deanont]$', fontsize=13)
+    # plot.title(r'$n= {}$, $X \sim {}$'.format(n, dist_to_latex(dist_m) ) )
+  
+  def plot_EDeanont_vs_k(dist_m):
+    k_l = []
+    EDeanont_sim_l = []
+    
+    for k in range(2, n):
+      k_l.append(k)
+      print(">> k= {}".format(k) )
+      
+      ET_sim, ET2_sim, EL_sim, EL2_sim, EDeanont_sim = \
+        sim_mixednet(num_frun, n, k, qarrdist_m_l=[dist_m for i in range(n) ] )
+      
+      print("EDeanont_sim= {}".format(EDeanont_sim) )
+      EDeanont_sim_l.append(EDeanont_sim)
+    plot.plot(k_l, EDeanont_sim_l, label=r'Simulation', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
+    plot.xlabel(r'$k$', fontsize=13)
+    plot.ylabel(r'$E[Deanont]$', fontsize=13)
     plot.title(r'$n= {}$, $X \sim {}$'.format(n, dist_to_latex(dist_m) ) )
   # 
   # plot_ET_vs_ar(k=9)
@@ -177,10 +295,10 @@ def plot_mixednet():
   
   dist_m = {'dist': 'Exp', 'mu': 1}
   # dist_m = {'dist': 'Pareto', 'loc': 1, 'a': 50}
-  # plot_ET_vs_k(dist_m)
+  plot_ET_vs_k(dist_m)
   
-  plot_ET_vs_EDeanont(dist_m)
-  
+  # plot_ET_vs_EDeanont(dist_m)
+  # plot_EDeanont_vs_k(dist_m)
   #
   plot.legend()
   # plot.ylabel(r'Throughput', fontsize=13)
@@ -243,6 +361,8 @@ def plot_mixednet_steadystate():
 
 if __name__ == "__main__":
   plot_mixednet()
+  # plot_delay_dist()
+  
   # plot_mixednet_steadystate()
   # Pr_busy_mixednet_approx()
   

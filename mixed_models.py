@@ -198,31 +198,51 @@ def pempty_approx(n, k):
   #   return 1 + H(n-k+1) - E - pe
   # return scipy.optimize.brentq(h, 0, 1)
 
-def plot_pempty():
-  # dist_m = {'dist': 'Exp', 'mu': ar}
-  dist_m = {'dist': 'Pareto', 'loc': 1, 'a': 50}
-  n = 10
+def plot_qoi():
+  dist_m = {'dist': 'Exp', 'mu': 1}
+  # dist_m = {'dist': 'Pareto', 'loc': 1, 'a': 50}
+  n = 100
   print("n= {}, dist_m= {}".format(n, dist_m) )
-  k_l, pe_l, pe_approx_l = [], [], []
-  for k in range(2, n):
-    k_l.append(k)
-    
-    pe = pempty(n, k, dist_m)
-    print("k= {}, pe= {}".format(k, pe) )
-    pe_l.append(pe)
-    
-    pe_approx = pempty_approx(n, k)
-    print("k= {}, pe_approx= {}".format(k, pe_approx) )
-    pe_approx_l.append(pe_approx)
-  plot.plot(k_l, pe_l, color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
-  plot.plot(k_l, pe_approx_l, label='Approx', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
+  
+  x_l, y_l, y_approx_l = [], [], []
+  def plot_avgdelay():
+    for k in range(2, n):
+      x_l.append(k)
+      y_l.append(ET_mg1_approx(n, k, dist_m) )
+    plot.plot(x_l, y_l, color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
+    plot.xlabel(r'$k$', fontsize=13)
+    plot.ylabel(r'$E[D]$', fontsize=14)
+  
+  def plot_pe():
+    for k in range(2, n):
+      x_l.append(k)
+      y_l.append(pempty(n, k, dist_m) )
+      y_approx_l.append(pempty_approx(n, k) )
+    plot.plot(x_l, y_l, label='Iterative', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
+    plot.plot(x_l, y_approx_l, label='Approx', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
+    plot.xlabel(r'$k$', fontsize=13)
+    plot.ylabel(r'$p_0$', fontsize=14)
+  
+  def plot_avg_numbusy():
+    for k in range(2, n):
+      x_l.append(k)
+      
+      pe = pempty(n, k, dist_m)
+      y_l.append((k - 1)*pe)
+      pe = pempty_approx(n, k)
+      y_approx_l.append((k - 1)*pe)
+    plot.plot(x_l, y_l, label='Iterative', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
+    plot.plot(x_l, y_approx_l, label='Approx', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
+    plot.xlabel(r'$k$', fontsize=13)
+    plot.ylabel(r'$E[N_e]$', fontsize=14)
+  
+  plot_avgdelay()
+  # plot_avg_numbusy()
   
   plot.legend()
   plot.title(r'$n= {}$, $X \sim {}$'.format(n, dist_m) )
-  plot.xlabel(r'$k$', fontsize=13)
-  plot.ylabel(r'$p_0$', fontsize=13)
-  plot.savefig("plot_pempty_n_{}.png".format(n) )
-  log(WARNING, "done; n= {}".format(n) )
+  plot.savefig("plot_qoi_n_{}.png".format(n) )
+  log(WARNING, "done.")
 
 def EL_n_2(n):
   return 1/2/(n-2)
@@ -243,6 +263,20 @@ def ET2_n_2(n, ar):
   EL2 = n/2/(n-2)**2
   return 1/((n-1)*ar)**2 * (2*p0 + 2*ro + EL2 + 3*EL)
 
+def tail_exponent(n, k, dist_m):
+  ar = dist_m['mu']
+  pe = pempty(n, k, dist_m)
+  # pe = pempty_approx(n, k)
+  k_ = (k-1)*pe
+  n_ = n - (k-1)*(1-pe)
+  def eq(s):
+    Vs = B(k_, n_-k_+1+s/ar)/B(k_, n_-k_+1)
+    return ar + (s - ar)/Vs
+  mu = scipy.optimize.brentq(eq, -20, -0.001)
+  return mu
+
 if __name__ == "__main__":
   # plot_serv_tail_approx(n=10, k=9, {'dist': 'Exp', 'mu': 1})
-  plot_pempty()
+  # plot_pempty()
+  plot_qoi()
+  

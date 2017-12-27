@@ -1,6 +1,7 @@
 from sim import *
 from patch import *
 from rvs import *
+from mixed_models import *
 
 # *************************************  Mixed Packet Generator  ********************************* #
 class MixedPG(object):
@@ -37,10 +38,7 @@ class SlaveQ(Q): # Release HoL at command
     self.n_recved = 0
     self.n_released = 0
     self.qt_l = []
-    
-    # self.store = simpy.Store(env)
-    # env.process(self.run() )
-
+  
   def __repr__(self):
     return "SlaveQ[_id={}]".format(self._id)
   
@@ -55,16 +53,10 @@ class SlaveQ(Q): # Release HoL at command
   def avg_qtime2(self):
     return sum([t**2 for t in self.qt_l] )/len(self.qt_l)
     
-  # def run(self):
-  #   while True:
-  #     p = (yield self.store.get() )
-  #     self.p_l.append(p)
-  
   def put(self, p):
     sim_log(DEBUG, self.env, self, "recved", p)
     self.n_recved += 1
     p.ref_time = self.env.now
-    # return self.store.put(p)
     
     self.p_l.append(p)
   
@@ -89,24 +81,30 @@ class MixedNet(object): # Network
       self.i_q_map.append(SlaveQ(_id=i, env=env) )
     
     self.start_time = env.now
-    # self.store = simpy.Store(env)
-    # env.process(self.run() )
     
     self.attack_on = False
     self.attacker_startt = None
     self.attack_success = None
+    self.est_attackt = None
     self.attackt_l = []
-    env.process(self.run_attacker() )
+    self.ested_attackt_l = []
+    if self.attacker is not None:
+      env.process(self.run_attacker() )
   
   def __repr__(self):
     return "MixedNet[n={}, k={}]".format(self.n, self.k)
   
   def state(self):
-    ql_l = [len(self.i_q_map[i] ) for i in range(self.n) ]
+    ql_l = [self.i_q_map[i].length() for i in range(self.n) ]
     return ','.join(map(str, ql_l) )
   
+  def qt_l(self):
+    l = []
+    for q in self.i_q_map:
+      l.extend(q.qt_l)
+    return l
+  
   def ET_ET2(self):
-    # Assuming each q is identical
     ET_sum, ET2_sum = 0, 0
     for q in self.i_q_map:
       ET_sum += q.avg_qtime()
@@ -117,49 +115,58 @@ class MixedNet(object): # Network
     n_released = sum([q.n_released for i,q in enumerate(self.i_q_map) ] )
     return n_released/(self.env.now - self.start_time)
   
-  # def run(self):
-  #   while True:
-  #     p = (yield self.store.get() )
-  #     self.i_q_map[p.flow_id].put(p)
-      
-  #     n_busy = 0
-  #     for i,q in enumerate(self.i_q_map):
-  #       if q.length():
-  #         n_busy += 1
-  #     if n_busy >= self.k:
-  #       for i,q in enumerate(self.i_q_map):
-  #         q.release()
-  
   def put(self, p):
     sim_log(DEBUG, self.env, self, "recved", p)
-    # return self.store.put(p)
     
     self.i_q_map[p.flow_id].put(p)
     
     if self.attack_on:
       self.attacker.in_packet(p.flow_id)
     
-    busy_qid_l = []
+    o_l = []
     for i, q in enumerate(self.i_q_map):
       if q.length():
-        busy_qid_l.append(q.length() )
+        o_l.append(i)
     
-    if len(busy_qid_l) >= self.k:
+    if len(o_l) >= self.k:
       for i, q in enumerate(self.i_q_map):
         q.release()
       
       if self.attack_on:
-        self.attacker.out_frame(busy_qid_l)
+        self.attacker.out_frame(o_l)
         
-        if self.attacker.state() == self.state():
-          self.attackt_l.append(self.env.now - self.attacker_startt)
+        # if self.attacker.state() == self.state(): # StateSniffer
+        if len(self.attacker.possibleo_l) == 1: # AttackOne
+          attackt = self.env.now - self.attacker_startt
+          self.attackt_l.append(attackt)
+          # self.ested_attackt_l.append(self.est_attackt)
+          
           self.attack_on = False
           self.attack_success.succeed()
   
   def run_attacker(self):
     while True:
-      yield self.env.timeout(5000)
+      yield self.env.timeout(1000) # 5000
       self.attack_on = True
+      
+      # k, n = self.k, self.n
+      # ql_l = sorted([self.i_q_map[i].length() for i in range(n) ] )
+      # ql_l = [0] + ql_l[n-k+1:]
+      # print("ql_l= {}".format(ql_l) )
+      # sum_ = 0
+      # for i in range(1, k):
+      #   sum_ += (ql_l[i] - ql_l[i-1] ) * (H(n-k+i) - H(n-k) )
+      # self.est_attackt = sum_
+      
+      # longest_ql = ql_l[0]
+      # self.est_attackt = longest_ql / (n-k+1) # lb
+      
+      # dist_m = {'dist': 'Exp', 'mu': 1}
+      # pe = pempty(n, k, dist_m)
+      # self.est_attackt = longest_ql * serv_moment_approx(pe, n, k, 1, dist_m)
+      # mu = -tail_exponent(n, k, dist_m)
+      # self.est_attackt = 1/mu * H(n)
+      
       self.attacker_startt = self.env.now
       self.attacker.reset()
       
@@ -171,14 +178,40 @@ class Attacker(object):
     self.env = env
     self.n = n
     self.k = k
+
+class AttackOne(Attacker):
+  def __init__(self, env, n, k):
+    Attacker.__init__(self, env, n, k)
     
+    self.num_inpack_sofar = 0
+    self.possibleo_l = [o for o in range(n) ]
+  
+  def reset(self):
+    self.num_inpack_sofar = 0
+    self.possibleo_l = [o for o in range(self.n) ]
+  
+  def in_packet(self, i):
+    if i == 0:
+      self.num_inpack_sofar += 1
+  
+  def out_frame(self, o_l):
+    if self.num_inpack_sofar == 0:
+      return
+    
+    for o in self.possibleo_l:
+      if o not in o_l:
+        self.possibleo_l.remove(o)
+
+class StateSniffer(Attacker):
+  def __init__(self, env, n, k):
+    Attacker.__init__(self, env, n, k)
     self.i_ql_map = [0]*self.n
   
   def state(self):
     return ','.join(map(str, self.i_ql_map) )
   
   def reset(self):
-    self.i_ql_map.clear()
+    self.i_ql_map = [0]*self.n
   
   def in_packet(self, i):
     self.i_ql_map[i] += 1

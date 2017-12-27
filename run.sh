@@ -46,8 +46,8 @@ elif [ $1 = 'dep' ]; then
 elif [ $1 = 'a' ]; then
   # $PYTHON arepeat_sim_components.py
   # $PYTHON arepeat_models.py
-  $PYTHON arepeat_exp.py
-  # $PYTHON anonimity.py
+  # $PYTHON arepeat_exp.py
+  $PYTHON anonimity.py
 elif [ $1 = 'r' ]; then
   $PYTHON rvs.py
 elif [ $1 = 'sl' ]; then
