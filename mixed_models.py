@@ -25,17 +25,17 @@ def ET_mixednet_ub(n, k, l, qlambda_l=[] ):
     log(WARNING, "n= {}, k= {}, qlambda_l= {}\n\t ET_l= {}".format(n, k, qlambda_l_, ET_l) )
     return ET_l
   else:
-    ES = 1/l * (H(n-1) - H(n-k) )
-    ES2 = 1/l**2 * (H_2(n-1) - H_2(n-k) ) + ES**2
-    ET = ES + l*ES2/2/(1-l*ES)
+    EV = 1/l * (H(n-1) - H(n-k) )
+    EV2 = 1/l**2 * (H_2(n-1) - H_2(n-k) ) + EV**2
+    ET = EV + l*EV2/2/(1-l*EV)
     log(WARNING, "n= {}, k= {}, l= {}\n\t ET= {}".format(n, k, l, ET) )
     if ET < 0: return None
     return ET
 
 def ET_mixednet_lb(n, k, l):
-  ES = 1/(n-k+1)/l
-  ES2 = 2/((n-k+1)*l)**2
-  ET = ES + l*ES2/2/(1-l*ES)
+  EV = 1/(n-k+1)/l
+  EV2 = 2/((n-k+1)*l)**2
+  ET = EV + l*EV2/2/(1-l*EV)
   log(WARNING, "n= {}, k= {}, l= {}\n\t ET= {}".format(n, k, l, ET) )
   if ET < 0: return None
   return ET
@@ -134,27 +134,28 @@ def plot_serv_tail_approx(n, k, dist_m):
   log(WARNING, "done; n= {}, k= {}".format(n, k) )
 
 def serv_moment_approx(pe, n, k, m, dist_m):
-  return mpmath.quad(lambda t: m*t**(m-1)*serv_tail_approx(pe, n, k, t, dist_m), [0, 100000] ) # [0, mpmath.inf]
+  return mpmath.quad(lambda t: m*t**(m-1)*serv_tail_approx(pe, n, k, t, dist_m), [0, 100000] ) # mpmath.inf
 
 def ET_mg1_approx(n, k, dist_m):
-  pe = pempty_approx(n, k)
-  # pe = pempty(n, k, dist_m)
-  ES = serv_moment_approx(pe, n, k, 1, dist_m)
-  ES2 = serv_moment_approx(pe, n, k, 2, dist_m)
-  print("n= {}, k= {}, pe= {}, ES= {}, ES2= {}".format(n, k, pe, ES, ES2) )
+  # pe = pempty_approx(n, k)
+  pe = pempty(n, k, dist_m)
+  EV = serv_moment_approx(pe, n, k, 1, dist_m)
+  EV2 = serv_moment_approx(pe, n, k, 2, dist_m)
+  print("n= {}, k= {}, pe= {}, EV= {}, EV2= {}".format(n, k, pe, EV, EV2) )
   dist = dist_m['dist']
   if dist == 'Exp':
     ar = dist_m['mu']
-    ET = ES + ar*ES2/2/(1-ar*ES)
+    ET = EV + ar*EV2/2/(1-ar*EV)
   elif dist == 'Pareto':
     rv = Pareto(dist_m['loc'], dist_m['a'] )
     EX, VX = rv.mean(), rv.var()
     ar = 1/EX
     coeffvar_ar2 = VX/EX**2
-    coeffvar_serv2 = (ES2 - ES**2)/EX**2
-    ro = ar*ES
+    coeffvar_serv2 = (EV2 - EV**2)/EX**2
+    ro = ar*EV
     
-    ET = (ro/(1-ro) ) * (coeffvar_ar2 + coeffvar_serv2)/2 * ES
+    ET = (ro/(1-ro) ) * (coeffvar_ar2 + coeffvar_serv2)/2 * EV
+  print("ET= {}".format(ET) )
   if ET < 0: return None
   return ET
 
@@ -174,8 +175,8 @@ def pempty_approx(n, k):
   pe = 1
   
   # for k_ in range(1, k+1):
-  #   ES = serv_moment_approx(pe, n, k_, l, 1)
-  #   pe = 1 - l*ES
+  #   EV = serv_moment_approx(pe, n, k_, l, 1)
+  #   pe = 1 - l*EV
   #   # print("i= {}, pe= {}".format(i, pe) )
   # return pe
   
@@ -201,12 +202,45 @@ def pempty_approx(n, k):
 def plot_qoi():
   dist_m = {'dist': 'Exp', 'mu': 1}
   # dist_m = {'dist': 'Pareto', 'loc': 1, 'a': 50}
-  n = 100
+  n = 10
   print("n= {}, dist_m= {}".format(n, dist_m) )
   
   x_l, y_l, y_approx_l = [], [], []
+  def plot_ar_forfixdelay(d=1):
+    ET_base = ET_mg1_approx(n, 2, dist_m)
+    for k in range(3, n):
+      def eq(ar, data):
+        k = data
+        return ET_mg1_approx(n, k, {'dist': 'Exp', 'mu': ar} ) - ET_base
+      ar = scipy.optimize.brentq(eq, 0.0001, 100, args = (k) )
+      print("ar= {}".format(ar) )
+  
+  def plot_ED_vs_k():
+    for k in range(2, n):
+      x_l.append(k)
+      ED = ET_mg1_approx(n, k, dist_m)
+      # E = ED / () if ED is not None else ED
+      y_l.append(E)
+      
+      pe = pempty(n, k, dist_m)
+      EV = serv_moment_approx(pe, n, k, 1, dist_m)
+      EV2 = serv_moment_approx(pe, n, k, 2, dist_m)
+      # y_l.append(EV**2)
+      pe = 1
+      j, i = n - (k-1)*(1-pe), (k-1)*pe
+      # print("k= {}, i= {}, j= {}".format(k, i, j) )
+      # y_approx_l.append(math.log(1 + j/(j-i))**2 )
+      # y_approx_l.append(math.log(1 + (n+1)/(n-k+1))**2 )
+      y_approx_l.append(math.log(math.sqrt((k-1)/(n-k+2) ) )**2)
+      # y_approx_l.append(H_cont(j) - H_cont(j-i) )
+    plot.plot(x_l, y_l, label='actual', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
+    plot.plot(x_l, y_approx_l, label='approx', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
+    plot.xlabel(r'$k$', fontsize=13)
+  
   def plot_avgdelay():
     for k in range(2, n):
+    # for k in numpy.linspace(2, n-1, 10):
+    #   k = int(k)
       x_l.append(k)
       y_l.append(ET_mg1_approx(n, k, dist_m) )
     plot.plot(x_l, y_l, color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
@@ -223,7 +257,7 @@ def plot_qoi():
     plot.xlabel(r'$k$', fontsize=13)
     plot.ylabel(r'$p_0$', fontsize=14)
   
-  def plot_avg_numbusy():
+  def plot_avgnumempty():
     for k in range(2, n):
       x_l.append(k)
       
@@ -236,8 +270,10 @@ def plot_qoi():
     plot.xlabel(r'$k$', fontsize=13)
     plot.ylabel(r'$E[N_e]$', fontsize=14)
   
-  plot_avgdelay()
-  # plot_avg_numbusy()
+  # plot_ar_forfixdelay()
+  plot_ED_vs_k()
+  # plot_avgdelay()
+  # plot_avgnumempty()
   
   plot.legend()
   plot.title(r'$n= {}$, $X \sim {}$'.format(n, dist_m) )

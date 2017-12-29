@@ -106,7 +106,7 @@ def sim_mixednet(num_frun, n, k, qarrdist_m_l):
     env = simpy.Environment()
     
     pg = MixedPG(env, "pg", qarrdist_m_l)
-    attacker = AttackOne(env, n, k) # StateSniffer(env, n, k)
+    attacker = None # AttackOne(env, n, k) # StateSniffer(env, n, k)
     mn = MixedNet(env, n, k, attacker)
     # monitor = MNMonitor(env, mn, 0.05)
     pg.out = mn
@@ -120,7 +120,7 @@ def sim_mixednet(num_frun, n, k, qarrdist_m_l):
     EL_sum += EL_EL2[0]
     EL2_sum += EL_EL2[1]
     
-    E_Deanont = sum(mn.attackt_l)/len(mn.attackt_l)
+    E_Deanont = sum(mn.attackt_l)/len(mn.attackt_l) if len(mn.attackt_l) else 0
     print("num_deanon= {}, E_Deanont= {}".format(len(mn.attackt_l), E_Deanont) )
     # E_EstedDeanont = sum(mn.ested_attackt_l)/len(mn.ested_attackt_l)
     # print("E_EstedDeanont= {}".format(E_EstedDeanont) )
