@@ -60,6 +60,8 @@ elif [ $1 = 'g' ]; then
 elif [ $1 = 'f' ]; then
   $PYTHON fairness_sim.py
   # $PYTHON fj_heavytail.py
+elif [ $1 = 'fm' ]; then
+  $PYTHON fairness_model.py
 elif [ $1 = 'me' ]; then
   rm *.log *.png
   NUM_Q_MIN=3

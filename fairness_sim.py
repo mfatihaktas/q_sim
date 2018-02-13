@@ -40,14 +40,14 @@ class FF_JSink(object): # Join
 
 # **********************************  Fairness First AVQ  ******************************* #
 class FF_AVQ(object): # Fairness First
-  def __init__(self, _id, env, t, sym__rgroup_l_map, sdist_m, out=None):
+  def __init__(self, _id, env, t, sym__rgroup_l_m, sdist_m, out=None):
     self._id = _id
     self.env = env
-    self.sym__rgroup_l_map = sym__rgroup_l_map
+    self.sym__rgroup_l_m = sym__rgroup_l_m
     self.out = out
     
     self.sym_sysqid_map = {}
-    for s, rg_l in sym__rgroup_l_map.items():
+    for s, rg_l in sym__rgroup_l_m.items():
       sys_qid = None
       for g in rg_l:
         if len(g) == 1:
@@ -60,30 +60,28 @@ class FF_AVQ(object): # Fairness First
     self.jsink = FF_JSink(_id, env)
     self.jsink.out = out
     
-    self.jq = MT_AV_JQ(_id, env, self.qid_l, sym__rgroup_l_map)
+    self.jq = MT_AV_JQ(_id, env, self.qid_l, sym__rgroup_l_m)
     self.jq.out = self.jsink # data outlet
     self.jq.out_c = self # control outlet
     self.id_q_map = {}
     for i in self.qid_l:
-      q = FCFS(i, env, serv, sdist_m)
+      q = FCFS(i, env, sdist_m)
       q.out = self.jq
       self.id_q_map[i] = q
     #
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
     env.process(self.run() )
-    env.process(self.run_c() )
+    # env.process(self.run_c() )
     
-    self.job_id_counter = 0
-    self.starttype__num_map = {i:0 for i in range(t+1) }
+    self.jid_counter = 0
+    self.starttype_numj_map = {i: 0 for i in range(t+1) }
     
     self.hot_store = simpy.Store(env)
     env.process(self.send_hot() )
     self.release_hot = None
     
-    self.qid__job_id_l_map = {i:[] for i in range(self.num_q) }
-    
-    self.m = FF_AVQMonitor(env, self.id_q_map[1], poll_rate=1)
+    # self.m = FF_AVQMonitor(env, self.id_q_map[1], poll_rate=1)
   
   def __repr__(self):
     return "FF_AVQ[qid_l= {}]".format(self.qid_l)
@@ -96,80 +94,92 @@ class FF_AVQ(object): # Fairness First
       p = (yield self.hot_store.get() )
       
       sys_qid = self.sym_sysqid_map[p.sym]
-      if len(self.qid__job_id_l_map[sys_qid] ) > 0:
+      sys_q = self.id_q_map[sys_qid]
+      if sys_q.busy():
         self.release_hot = self.env.event()
         yield self.release_hot
+      self.release_hot = None
+      sys_q.put(p.deep_copy() )
+      # yield self.env.timeout(0.0001)
       
-      self.qid__job_id_l_map[sys_qid].append(p.job_id)
-      self.id_q_map[sys_qid].put(p.deep_copy() )
       st = 0
-      for r_l in self.sym__rgroup_l_map[HOT_SYM]:
+      for r_l in self.sym__rgroup_l_m[HOT_SYM]:
         if len(r_l) == 1: continue
         
         rep = True
         for r in r_l:
-          if len(self.qid__job_id_l_map[r] ) > 0:
+          if self.id_q_map[r].busy():
             rep = False
+            q = self.id_q_map[r]
+            sim_log(WARNING, self.env, self, "busy q!", p)
+            print("q= {}\n q.p_inserv= {}, q.p_l= {}".format(q, q.p_inserv, q.p_l) )
+            # print("q.p_inserv.job_id in q.recved_canceljid_l= {}".format(q.p_inserv.job_id in q.recved_canceljid_l) )
+            # print("q.recved_canceljid_l= {}".format(q.recved_canceljid_l) )
             break
         if rep:
           for r in r_l:
-            self.qid__job_id_l_map[r].append(p.job_id)
             self.id_q_map[r].put(p.deep_copy() )
           st += 1
-      self.starttype__num_map[st] += 1
+      self.starttype_numj_map[st] += 1
   
   def run(self):
     while True:
-      p = (yield self.store.get() )
+      p = yield self.store.get()
       
       if p.sym == HOT_SYM:
         self.hot_store.put(p)
       else:
         sys_qid = self.sym_sysqid_map[p.sym]
         sys_q = self.id_q_map[sys_qid]
+        if sys_q.busy():
+          sys_q.put_c(CPacket(_id=-1, sym=HOT_SYM, prev_hop_id=self._id) )
         
-        for r_l in self.sym__rgroup_l_map[HOT_SYM]:
-          if sys_qid in r_l:
-            for r in r_l:
-              self.id_q_map[r].put_c(CPacket(_id=-1, sym=HOT_SYM, prev_hop_id=self._id) )
-              # print("sending cancel to server-{}".format(r) )
-            break
+        # for r_l in self.sym__rgroup_l_m[HOT_SYM]:
+        #   if sys_qid in r_l:
+        #     for r in r_l:
+        #       self.id_q_map[r].put_c(CPacket(_id=-1, sym=HOT_SYM, prev_hop_id=self._id) )
+        #       # print("sending cancel to server-{}".format(r) )
+        #     break
+        
         # To check if any hot data left
         # for p in sys_q.p_l:
         #   if p.sym == HOT_SYM:
         #     log(ERROR, "Hot data still in p= {}".format(p) )
         
         sys_q.put(p.deep_copy() )
-        self.qid__job_id_l_map[sys_qid].append(p.job_id)
   
   def put(self, p):
     sim_log(DEBUG, self.env, self, "recved", p)
     p.entrance_time = self.env.now
-    self.job_id_counter += 1
-    p.job_id = self.job_id_counter
+    self.jid_counter += 1
+    p.job_id = self.jid_counter
     return self.store.put(p.deep_copy() )
   
-  def run_c(self):
-    while True:
-      cp = (yield self.store_c.get() )
-      # sim_log(WARNING, self.env, self, "recved", cp)
+  # def run_c(self):
+  #   while True:
+  #     cp = (yield self.store_c.get() )
+  #     # sim_log(WARNING, self.env, self, "recved", cp)
       
-      if cp.sym == HOT_SYM:
-        for g, q in self.id_q_map.items():
-          if q._id not in cp.departed_qid_l:
-            q.put_c(cp.deep_copy() )
+  #     if cp.sym == HOT_SYM:
+  #       for _, q in self.id_q_map.items():
+  #         if q._id not in cp.departed_qid_l:
+  #           q.put_c(cp.deep_copy() )
         
-        if self.release_hot is not None:
-          self.release_hot.succeed()
-          self.release_hot = None
-      
-      for i, job_id_l in self.qid__job_id_l_map.items():
-        try: job_id_l.remove(cp._id)
-        except: pass
+  #       if self.release_hot is not None:
+  #         self.release_hot.succeed()
   
   def put_c(self, cp):
     sim_log(DEBUG, self.env, self, "recved", cp)
-    return self.store_c.put(cp.deep_copy() )
+    # return self.store_c.put(cp.deep_copy() )
+    
+    if cp.sym == HOT_SYM:
+      for _, q in self.id_q_map.items():
+        if q._id not in cp.departed_qid_l:
+          # q.put_c(cp.deep_copy() )
+          q.put_c(cp)
+      
+      if self.release_hot is not None:
+        self.release_hot.succeed()
 
 class FF_AVQMonitor(object):
   def __init__(self, env, q, poll_rate):
@@ -190,15 +200,15 @@ class FF_AVQMonitor(object):
 # *********************************  Fairness-First  *********************************** #
 def sim_ff(num_srun, t, car, har, sdist_m):
   ETh_sum, ETc_sum = 0, 0
-  for f in range(num_srun):
+  for _ in range(num_srun):
     log(WARNING, "t= {}, car= {}, har= {}, sdist_m= {}".format(t, car, har, sdist_m) )
     
-    (sym_l, sym__rgroup_l_map) = simplex_sym_l__sym__rgroup_l_m(t)
-    log(WARNING, "sym__rgroup_l_map=\n {}".format(pprint.pformat(sym__rgroup_l_map) ) )
+    (sym_l, sym__rgroup_l_m) = simplex_sym_l__sym__rgroup_l_m(t)
+    log(WARNING, "sym__rgroup_l_m=\n {}".format(pprint.pformat(sym__rgroup_l_m) ) )
     
     env = simpy.Environment()
     pg = MT_PG(env, "pg", (len(sym_l)-1)*car, sym_l, HOT_SYM, har)
-    avq = FF_AVQ("ff_avq", env, t, sym__rgroup_l_map, sdist_m)
+    avq = FF_AVQ("ff_avq", env, t, sym__rgroup_l_m, sdist_m)
     pg.out = avq
     pg.init()
     env.run(until=2*50000)
@@ -216,7 +226,7 @@ def sim_ff(num_srun, t, car, har, sdist_m):
     print("pg.n_sent= {}, total_n_wins= {}".format(pg.n_sent, total_n_wins) )
     print("pg.sym__n_sent= {}".format(pg.sym__n_sent) )
     
-    print("avq.starttype__num_map= {}".format(pprint.pformat(avq.starttype__num_map) ) )
+    print("avq.starttype_numj_map= {}".format(pprint.pformat(avq.starttype_numj_map) ) )
     
     qid__win_freq_map = {i:float(n)/total_n_wins for i, n in avq.jsink.qid__num_hot_win_map.items() }
     print("qid__win_freq_map= {}".format(pprint.pformat(qid__win_freq_map) ) )
@@ -226,9 +236,9 @@ def sim_ff(num_srun, t, car, har, sdist_m):
   return (ETc, ETh)
 
 def plot_fairnessfirst():
-  t = 3
+  t = 1
   serv = "Exp" # "Dolly"
-  car = 0.1 # 0.5
+  car = 0.000001 # 0.1 # 0.5
   if serv == "Exp":
     mu = 1
     sdist_m = {'dist': 'Exp', 'mu': mu}
@@ -241,15 +251,15 @@ def plot_fairnessfirst():
     sdist_m = {'dist': 'Dolly'}
     if t == 1: har_ub = 0.28
     elif t == 3: har_ub = 0.4
-  log(WARNING, "t= {}, car= {}, serv= {}, sdist_m= {}, har_ub= {}".format(t, car, serv, sdist_m, har_ub) )
+  log(WARNING, "t= {}, car= {}, sdist_m= {}, har_ub= {}".format(t, car, serv, sdist_m, har_ub) )
   
   ETc_sim_l, ETh_sim_l = [], []
   ETh_ub_l, ETh_lb_l, ETh_approx_l = [], [], []
   
-  num_srun = 3
+  num_srun = 1
   sim_simplex = False
   if serv == "Exp":
-    if t == 1:
+    if t == 11:
       if car == 0.1:
         # num_srun = 3
         ETh_sim_l= [
@@ -320,8 +330,6 @@ def plot_fairnessfirst():
           None, # 22.48950553473519,
           None, # 97.33546499091221,
           None] # 1274.0523614601243
-    elif t == 77:
-      pass
     else: sim_simplex = True
   elif serv == "Dolly":
     if t == 11:
@@ -331,65 +339,42 @@ def plot_fairnessfirst():
     else: sim_simplex = True
   else: sim_simplex = True
   
-  sim_mds = False
-  if serv == "Exp":
-    if t == 11:
-      pass
-    elif t == 33:
-      pass
-    else: sim_mds = True
-  
-  mew, ms = 2, 8
+  mew, ms = 2, 6
   ar_l = []
-  for har in [*numpy.linspace(0.05, 0.8*har_ub, 5, endpoint=False), *numpy.linspace(0.8*har_ub, har_ub, 10) ]:
-  # for har in numpy.linspace(0.1, 0.1, 1):
+  # for har in [*numpy.linspace(0.05, 0.8*har_ub, 5, endpoint=False), *numpy.linspace(0.8*har_ub, har_ub, 5) ]:
+  for har in numpy.linspace(0.5, 0.5, 1):
     ar_l.append(har)
     if sim_simplex:
       (ETc, ETh) = sim_ff(num_srun, t, car, har, sdist_m)
       ETc_sim_l.append(ETc)
       ETh_sim_l.append(ETh)
-    ETh_approx_l.append(ETh_approx_ff_simplex(har, car, t, serv, sdist_m) )
+    ETh_approx = ff_ETh_approx_(har, car, t, sdist_m)
+    print("ETh_approx= {}".format(ETh_approx) )
+    ETh_approx_l.append(ETh_approx)
   log(WARNING, "ETh_sim_l= {}".format(pprint.pformat(ETh_sim_l) ) )
   plot.plot(ar_l, ETh_sim_l, label="Simulation", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   plot.plot(ar_l, ETh_approx_l, label="Approximation", marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   
   ar_l = []
-  har_ub_min = ff_har_ub_min(t, mu)
+  har_ub_min = ff_har_ub_min(t, sdist_m)
   for har in [*numpy.linspace(0.05, 0.8*har_ub_min, 5, endpoint=False), *numpy.linspace(0.8*har_ub_min, har_ub_min, 10) ]:
     ar_l.append(har)
-    ETh_ub_l.append(ff_ETh_ub(har, t, mu) )
+    ETh_ub_l.append(ff_ETh_ub(har, t, sdist_m) )
   plot.plot(ar_l, ETh_ub_l, label="Upper bound", marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   
   ar_l = []
-  har_ub_max = ff_har_ub_max(t, mu)
+  har_ub_max = ff_har_ub_max(t, sdist_m)
   for har in [*numpy.linspace(0.05, 0.8*har_ub_max, 5, endpoint=False), *numpy.linspace(0.8*har_ub_max, har_ub_max, 10) ]:
     ar_l.append(har)
-    ETh_lb_l.append(ff_ETh_lb(har, t, mu) )
+    ETh_lb_l.append(ff_ETh_lb(har, t, sdist_m) )
   plot.plot(ar_l, ETh_lb_l, label="Lower bound", marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-  
-  # log(WARNING, "ETc_sim_l= {}".format(pprint.pformat(ETc_sim_l) ) )
-  # plot.plot(ar_l, ETc_sim_l, label="Simulation, cold data", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-  
-  # ar_l = []
-  # mds_har_ub = har_ub
-  # for har in [*numpy.linspace(0.05, 0.8*mds_har_ub, 5, endpoint=False), *numpy.linspace(0.8*mds_har_ub, mds_har_ub, 10) ]:
-  #   ar_l.append(har)
-  #   if sim_mds:
-  #     (ETc, ETh) = sim_ff(num_srun, t, car, har, serv, sdist_m, mds=True)
-  #     ETc_sim_mds_l.append(ETc)
-  #     ETh_sim_mds_l.append(ETh)
-  #   # ETh_approx_mds_l.append(ETh_approx_ff_mds(har, car, t, mu) )
-  # log(WARNING, "ETh_sim_mds_l= {}".format(pprint.pformat(ETh_sim_mds_l) ) )
-  # plot.plot(ar_l, ETh_sim_mds_l, label="Simulation", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   
   plot.legend(prop={'size':11} )
   plot.xlabel(r'Hot data arrival rate $\lambda$', fontsize=12)
   plot.ylabel(r'Avg hot data download time', fontsize=12)
   plot.title(r'$V \sim Exp(\mu={})$, $t={}$, $\lambda_c={}$'.format(mu, t, car) )
-  # plot.title(r'Servers $\sim$ Dolly, availability $t={}$'.format(t) )
   fig = plot.gcf()
   def_size = fig.get_size_inches()
-  # fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.4)
   fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.3)
   fig.tight_layout()
   plot.savefig("plot_fairnessfirst_t_{}_lc_{}.pdf".format(t, car) )
@@ -401,12 +386,12 @@ def test_simplex_reptoall(num_srun, t, car, har, serv, sdist_m):
   for f in range(num_srun):
     log(WARNING, "t= {}, car= {}, har= {}, serv= {}, sdist_m= {}, ".format(t, car, har, serv, sdist_m) )
     
-    (sym_l, sym__rgroup_l_map) = simplex_sym_l__sym__rgroup_l_m(t)
-    log(WARNING, "sym__rgroup_l_map=\n {}".format(pprint.pformat(sym__rgroup_l_map) ) )
+    (sym_l, sym__rgroup_l_m) = simplex_sym_l__sym__rgroup_l_m(t)
+    log(WARNING, "sym__rgroup_l_m=\n {}".format(pprint.pformat(sym__rgroup_l_m) ) )
     
     env = simpy.Environment()
     pg = MT_PG(env, "pg", (len(sym_l)-1)*car, sym_l, HOT_SYM, har)
-    avq = MT_AVQ("mt_avq", env, t, sym__rgroup_l_map, serv, sdist_m)
+    avq = MT_AVQ("mt_avq", env, t, sym__rgroup_l_m, serv, sdist_m)
     pg.out = avq
     pg.init()
     c = 4 if serv == "Pareto" else 1
@@ -642,5 +627,5 @@ def plot_reptoall_over_ff():
   log(WARNING, "done; t= {}".format(t) )
 
 if __name__ == "__main__":
-  # plot_fairnessfirst()
+  plot_fairnessfirst()
   # plot_reptoall_over_ff()

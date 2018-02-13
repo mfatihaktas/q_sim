@@ -198,37 +198,35 @@ class FCFS(Q): # First Come First Serve
     self.stime = rv_from_m(sdist_m)
     self.out = out
     
-    self.p_l = []
     self.p_inserv = None
-    self.cancel_flag, self.preempt_flag = False, False
+    self.p_l = []
+    
     self.cancel, self.preempt = None, None
-    self.n_recved = 0
-    self.n_dropped = 0
-    self.size_n = 0 # Current size of the queue in n
-    self.wt_l = []
-    self.qt_l = []
+    self.cancel_flag, self.preempt_flag = False, False
+    # self.wt_l, self.qt_l = [], []
     
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
     self.syncer = simpy.Store(env) # simpy.Resource(env, capacity=1)
     self.action = env.process(self.run() )  # starts the run() method as a SimPy process
-    # self.action = env.process(self.run_c() )
     self.action = env.process(self.run_helper() )
+    
+    self.recved_canceljid_l = []
   
   def __repr__(self):
-    return "FCFS[_id= {}, serv_time= {}]".format(self._id, self.stime)
+    return "FCFS[_id= {}, stime= {}]".format(self._id, self.stime)
   
   def busy(self):
-    return (self.length() > 0)
+    return self.length() > 0
   
   def length(self):
     return len(self.p_l) + (self.p_inserv is not None)
   
-  def pstate_l(self):
-    l = ["{}, ji= {}".format(self.p_inserv.sym, self.p_inserv.job_id) ]
-    for p in self.p_l:
-      l.append("{}, ji= {}".format(p.sym, p.job_id) )
-    return l
+  # def pstate_l(self):
+  #   l = ["{}, ji= {}".format(self.p_inserv.sym, self.p_inserv.job_id) ]
+  #   for p in self.p_l:
+  #     l.append("{}, ji= {}".format(p.sym, p.job_id) )
+  #   return l
   
   def num_sym_in(self, sym):
     num = 0
@@ -264,18 +262,16 @@ class FCFS(Q): # First Come First Serve
   
   def run(self):
     while True:
-      p = (yield self.store.get() )
-      self.p_l.append(p)
+      yield self.store.get()
       self.syncer.put(1)
   
   def run_helper(self): # To implement del from self.store
     while True:
-      (yield self.syncer.get() )
+      yield self.syncer.get()
       if len(self.p_l) == 0:
         continue # log(ERROR, "self.p_l is empty!") # May happen because of task cancellations
       self.p_inserv = self.p_l.pop(0)
-      self.wt_l.append(self.env.now - self.p_inserv.ref_time)
-      self.size_n -= 1
+      # self.wt_l.append(self.env.now - self.p_inserv.ref_time)
       
       self.cancel = self.env.event()
       self.preempt = self.env.event()
@@ -288,13 +284,13 @@ class FCFS(Q): # First Come First Serve
       if self.cancel_flag: # task got cancelled
         sim_log(DEBUG, self.env, self, "cancelled clock on ", self.p_inserv)
         self.cancel_flag = False
-      elif self.preempt_flag: # task got preempted
-        self.p_l.insert(1, self.p_inserv)
-        sim_log(DEBUG, self.env, self, "preempted ", self.p_inserv)
-        self.preempt_flag = False
+      # elif self.preempt_flag: # task got preempted
+      #   self.p_l.insert(1, self.p_inserv)
+      #   sim_log(DEBUG, self.env, self, "preempted ", self.p_inserv)
+      #   self.preempt_flag = False
       else:
         sim_log(DEBUG, self.env, self, "serv done in {}s on ".format(self.env.now-clk_start_time), self.p_inserv)
-        self.qt_l.append(self.env.now - self.p_inserv.ref_time)
+        # self.qt_l.append(self.env.now - self.p_inserv.ref_time)
         if self.out is not None and self.p_inserv.sym != SYS_TRAFF_SYM:
           sim_log(DEBUG, self.env, self, "forwarding", self.p_inserv)
           self.p_inserv.prev_hop_id = self._id
@@ -304,60 +300,36 @@ class FCFS(Q): # First Come First Serve
       self.p_inserv = None
   
   def put(self, p, preempt=False):
-    self.n_recved += 1
     p.ref_time = self.env.now
+    self.p_l.append(p.deep_copy() )
     sim_log(DEBUG, self.env, self, "recved", p)
-    t_size_n = self.size_n + 1
-    # if (self.q_limit is not None and t_size_n > self.q_limit):
-    #   sim_log(DEBUG, self.env, self, "dropping", p)
-    #   self.n_dropped += 1
+    
+    # if preempt and (self.p_inserv is not None):
+    #   self.preempt_flag = True
+    #   self.preempt.succeed()
+    #   self.p_l.insert(0, p)
+    #   self.syncer.put(1)
     #   return
-    # else:
-    # self.size_n = t_size_n
-    if preempt and (self.p_inserv is not None):
-      self.preempt_flag = True
-      self.preempt.succeed()
-      self.p_l.insert(0, p)
-      self.syncer.put(1)
-      return
-    return self.store.put(p.deep_copy() )
-  
-  def run_c(self):
-    while True:
-      cp = (yield self.store_c.get() )
-      # sim_log(WARNING, self.env, self, "!!! cancelling p_inserv= {}, q_length= {}".format(self.p_inserv, self.length() ), cp)
-      # if cp.sym is not None and self.p_inserv is not None and self.p_inserv.sym == cp.sym:
-      #   # log(WARNING, "!!! cancelling p_inserv= {}, with cp= {}".format(self.p_inserv, cp) )
-      #   self.cancel_flag = True
-      #   self.cancel.succeed()
-      #   for p in self.p_l:
-      #     if p.sym == cp.sym:
-      #       self.p_l.remove(p)
-      if cp._id == -1 and self.p_inserv is not None and self.p_inserv.sym == cp.sym: # for ff_simplex
-        self.cancel_flag = True
-        self.cancel.succeed()
-      elif self.p_inserv is not None and self.p_inserv.job_id == cp._id:
-        self.cancel_flag = True
-        self.cancel.succeed()
-      # This has to be run always for mixed-traffic since requests can depart out of order
-      for p in self.p_l:
-        if p.job_id == cp._id:
-          self.p_l.remove(p)
+    return self.store.put(p)
   
   def put_c(self, cp):
     sim_log(DEBUG, self.env, self, "recved", cp)
-    # return self.store_c.put(cp.deep_copy() )
     
-    if cp._id == -1 and self.p_inserv is not None and self.p_inserv.sym == cp.sym: # for ff_simplex
+    self.recved_canceljid_l.append(cp._id)
+    if cp._id == -1 and self.p_inserv is not None and self.p_inserv.sym == cp.sym: # for fairnessfirst
+      self.p_inserv = None
       self.cancel_flag = True
-      self.cancel.succeed()
     elif self.p_inserv is not None and self.p_inserv.job_id == cp._id:
+      self.p_inserv = None
       self.cancel_flag = True
-      self.cancel.succeed()
+      
     # This has to be run always for mixed-traffic since requests can depart out of order
     for p in self.p_l:
       if p.job_id == cp._id:
         self.p_l.remove(p)
+    
+    if self.cancel_flag:
+      self.cancel.succeed()
 
 class QMonitor(object):
   def __init__(self, env, q, poll_interval):

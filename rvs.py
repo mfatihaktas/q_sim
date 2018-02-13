@@ -392,7 +392,7 @@ class X_n_k():
   def gen_sample(self):
     return gen_orderstat_sample(self.X, self.n, self.k)
 
-def moment_ith(X, i):
+def moment_ith(i, X):
   return mpmath.quad(lambda x: i*x**(i-1) * (1 - X.cdf(x) ), [0, 10000*10] ) # mpmath.inf
 
 def rv_from_m(dist_m):

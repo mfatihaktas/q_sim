@@ -121,13 +121,13 @@ def ES2(r, t, mu):
       s += binomial(t, j) * (-1)**j * _s
     return s
 
-def ESi_typej_(i, t, j, sdist_m):
+def ESm_typei(m, t, i, sdist_m):
   V = rv_from_m(sdist_m)
   V_2_2 = X_n_k(V, 2, 2)
   def Pr_Sgs(s):
-    return V.tail(s)**(j+1) * V_2_2.tail(s)**(t-j)
+    return V.tail(s)**(i+1) * V_2_2.tail(s)**(t-i)
   
-  return float(mpmath.quad(lambda s: i*s**(i-1) * Pr_Sgs(s), [0, 10000*10] ) )
+  return float(mpmath.quad(lambda s: m*s**(m-1) * Pr_Sgs(s), [0, 10000*10] ) )
 
 def ES_typei(t, i, sdist_m):
   sdist = sdist_m['dist']
@@ -696,5 +696,5 @@ if __name__ == "__main__":
   t = 3
   for i in range(t+1):
     ESi = ES_typei(t, i, sdist_m)
-    ESi_ = ES_typei_(t, i, sdist_m)
+    ESi_ = ESm_typei(1, t, i, sdist_m)
     print("ESi= {}, ESi_= {}".format(ESi, ESi_) )

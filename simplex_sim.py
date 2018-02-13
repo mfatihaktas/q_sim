@@ -49,13 +49,13 @@ class MT_PG(PG):
       self.send(p)
 
 class MT_AV_JQ(object):
-  def __init__(self, _id, env, input_qid_l, sym__rgroup_l_map):
+  def __init__(self, _id, env, input_qid_l, sym__rgroup_l_m):
     self._id = _id
     self.env = env
     self.input_qid_l = input_qid_l
-    self.sym__rgroup_l_map = sym__rgroup_l_map
+    self.sym__rgroup_l_m = sym__rgroup_l_m
     
-    self.job_id__p_l_map = {}
+    self.jid__p_l_m = {}
     
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
@@ -69,9 +69,9 @@ class MT_AV_JQ(object):
     return "MT_AV_JQ[_id= {}, input_qid_l= {}]".format(self._id, self.input_qid_l)
   
   def check_for_job_completion(self, p):
-    p_l = self.job_id__p_l_map[p.job_id]
+    p_l = self.jid__p_l_m[p.job_id]
     recved_from_qid_l = [p.prev_hop_id for p in p_l]
-    rgroup_l = self.sym__rgroup_l_map[p.sym]
+    rgroup_l = self.sym__rgroup_l_m[p.sym]
     success = False
     for rg in rgroup_l:
       success = True
@@ -94,9 +94,9 @@ class MT_AV_JQ(object):
   def run(self):
     while True:
       p = (yield self.store.get() )
-      if p.job_id not in self.job_id__p_l_map:
-        self.job_id__p_l_map[p.job_id] = []
-      self.job_id__p_l_map[p.job_id].append(p)
+      if p.job_id not in self.jid__p_l_m:
+        self.jid__p_l_m[p.job_id] = []
+      self.jid__p_l_m[p.job_id].append(p)
       self.check_for_job_completion(p)
   
   def put(self, p):
@@ -107,7 +107,7 @@ class MT_AV_JQ(object):
   def run_c(self):
     while True:
       cp = (yield self.store_c.get() )
-      self.job_id__p_l_map.pop(p.job_id, None)
+      self.jid__p_l_m.pop(p.job_id, None)
   
   def put_c(self, cp):
     sim_log(DEBUG, self.env, self, "recved", cp)
@@ -296,10 +296,10 @@ class AVQMonitor(object):
   
 # *******************************  Mixed-Traffic Availability Q  ******************************* #
 class MT_AVQ(object):
-  def __init__(self, _id, env, t, sym__rgroup_l_map, serv, servdist_m, out=None):
+  def __init__(self, _id, env, t, sym__rgroup_l_m, serv, servdist_m, out=None):
     self._id = _id
     self.env = env
-    self.sym__rgroup_l_map = sym__rgroup_l_map
+    self.sym__rgroup_l_m = sym__rgroup_l_m
     self.out = out
     
     self.num_q = int(1 + t*2)
@@ -307,7 +307,7 @@ class MT_AVQ(object):
     
     self.jsink = JSink(_id, env)
     self.jsink.out = out
-    self.join_q = MT_AV_JQ(_id, env, self.qid_l, sym__rgroup_l_map)
+    self.join_q = MT_AV_JQ(_id, env, self.qid_l, sym__rgroup_l_m)
     self.join_q.out = self.jsink
     self.join_q.out_c = self
     self.join_q.out_m = None # can be set by the caller if desired
