@@ -62,7 +62,7 @@ class MT_AV_JQ(object):
     self.out = None
     self.out_c = None
     self.out_m = None
-    self.action = env.process(self.run() ) # starts the run() method as a SimPy process
+    self.action = env.process(self.run() )
     self.action = env.process(self.run_c() )
   
   def __repr__(self):
@@ -84,9 +84,7 @@ class MT_AV_JQ(object):
       if len(rgroup_l) > 1:
         cp = CPacket(_id=p.job_id, sym=p.sym, prev_hop_id=self._id, departed_qid_l=recved_from_qid_l)
         # sim_log(WARNING, self.env, self, "p= {}, sending completion for".format(p), cp)
-        
         self.out_c.put_c(cp)
-      
       p.winner_id = p.prev_hop_id
       p.prev_hop_id = self._id
       self.out.put(p)
@@ -124,7 +122,7 @@ class MT_AV_JQ(object):
   [When do the Availability Codes Make the Stored Data More Available?]
 """
 class AVQ(object): # Availability
-  def __init__(self, _id, env, t, r, k, serv, serv_dist_m, sching, w_sys=True, out=None):
+  def __init__(self, _id, env, t, r, k, servdist_m, sching, w_sys=True, out=None):
     self._id = _id
     self.env = env
     self.t = t
@@ -162,20 +160,20 @@ class AVQ(object): # Availability
       for g in range(1, t + 1 + 1):
         q = None
         if g == 1:
-          q = FCFS(self.qid_l[g-1], env, serv, serv_dist_m)
+          q = FCFS(self.qid_l[g-1], env, servdist_m)
           log(DEBUG, "g= {}, q= {}".format(g, q) )
           q.out = self.join_q
         else:
           li = 1+(g-2)*r
           ri = li + r
-          q = MDSQ("mds{}".format(list(qid_l[li:ri] ) ), env, k, qid_l[li:ri], serv, serv_dist_m, out=self.join_q)
+          q = MDSQ("mds{}".format(list(qid_l[li:ri] ) ), env, k, qid_l[li:ri], servdist_m, out=self.join_q)
           log(DEBUG, "g= {}, q= {}".format(g, q) )
         self.id__q_map[g] = q
     else:
       for g in range(1, t + 1):
         li = (g-1)*r
         ri = li + r
-        q = MDSQ("mds{}".format(list(qid_l[li:ri] ) ), env, k, qid_l[li:ri], serv, serv_dist_m, out=self.join_q)
+        q = MDSQ("mds{}".format(list(qid_l[li:ri] ) ), env, k, qid_l[li:ri], servdist_m, out=self.join_q)
         log(DEBUG, "g= {}, q= {}, qmu_l[li:ri]= {}".format(g, q, qmu_l[li:ri] ) )
         self.id__q_map[g] = q
     self.store = simpy.Store(env)
@@ -298,7 +296,7 @@ class AVQMonitor(object):
   
 # *******************************  Mixed-Traffic Availability Q  ******************************* #
 class MT_AVQ(object):
-  def __init__(self, _id, env, t, sym__rgroup_l_map, serv, serv_dist_m, out=None):
+  def __init__(self, _id, env, t, sym__rgroup_l_map, serv, servdist_m, out=None):
     self._id = _id
     self.env = env
     self.sym__rgroup_l_map = sym__rgroup_l_map
@@ -316,7 +314,7 @@ class MT_AVQ(object):
     
     self.id_q_map = {}
     for i in self.qid_l:
-      q = FCFS(i, env, serv, serv_dist_m)
+      q = FCFS(i, env, serv, servdist_m)
       log(DEBUG, "q= {}".format(q) )
       q.out = self.join_q
       self.id_q_map[i] = q

@@ -192,27 +192,14 @@ class Q(object):
     self.env = env
 
 class FCFS(Q): # First Come First Serve
-  def __init__(self, _id, env, serv="Exp", sdist_m=None, out=None):
+  def __init__(self, _id, env, sdist_m, out=None):
     super().__init__(_id, env)
-    self.serv = serv
-    if serv == "Exp":
-      self.serv_time = Exp(sdist_m['mu'] )
-    elif serv == "SExp":
-      self.serv_time = Exp(sdist_m['mu'], sdist_m['D'] )
-    elif serv == "Pareto":
-      self.serv_time = Pareto(sdist_m['l'], sdist_m['a'] )
-    elif serv == "TPareto":
-      self.serv_time = TPareto(sdist_m['l'], sdist_m['u'], sdist_m['a'] )
-    elif serv == "Bern":
-      self.serv_time = Bern(sdist_m['U'], sdist_m['L'], sdist_m['p'] )
-    elif serv == "Dolly":
-      self.serv_time = Dolly()
-    else:
-      self.serv_time = None
+    self.servdist = sdist_m['dist']
+    self.stime = rv_from_m(sdist_m)
     self.out = out
     
     self.p_l = []
-    self.p_in_serv = None
+    self.p_inserv = None
     self.cancel_flag, self.preempt_flag = False, False
     self.cancel, self.preempt = None, None
     self.n_recved = 0
@@ -229,23 +216,23 @@ class FCFS(Q): # First Come First Serve
     self.action = env.process(self.run_helper() )
   
   def __repr__(self):
-    return "FCFS[_id= {}, serv_time= {}]".format(self._id, self.serv_time)
+    return "FCFS[_id= {}, serv_time= {}]".format(self._id, self.stime)
   
   def busy(self):
     return (self.length() > 0)
   
   def length(self):
-    return len(self.p_l) + (self.p_in_serv is not None)
+    return len(self.p_l) + (self.p_inserv is not None)
   
   def pstate_l(self):
-    l = ["{}, ji= {}".format(self.p_in_serv.sym, self.p_in_serv.job_id) ]
+    l = ["{}, ji= {}".format(self.p_inserv.sym, self.p_inserv.job_id) ]
     for p in self.p_l:
       l.append("{}, ji= {}".format(p.sym, p.job_id) )
     return l
   
   def num_sym_in(self, sym):
     num = 0
-    if (self.p_in_serv is not None) and self.p_in_serv.sym == sym:
+    if (self.p_inserv is not None) and self.p_inserv.sym == sym:
       num += 1
     for p in self.p_l:
       if p.sym == sym:
@@ -261,14 +248,14 @@ class FCFS(Q): # First Come First Serve
       if p.job_id not in job_id_to_exclude:
         p_l.append(p)
     state = len(p_l)
-    if self.p_in_serv != None and (self.p_in_serv.job_id not in job_id_to_exclude):
+    if self.p_inserv != None and (self.p_inserv.job_id not in job_id_to_exclude):
       state += 1
     return [state]
   
   def _in(self, job_id):
-    if self.p_in_serv is None:
+    if self.p_inserv is None:
       return False
-    elif self.p_in_serv.job_id == job_id:
+    elif self.p_inserv.job_id == job_id:
       return True
     for p in self.p_l:
       if job_id == p.job_id:
@@ -286,35 +273,35 @@ class FCFS(Q): # First Come First Serve
       (yield self.syncer.get() )
       if len(self.p_l) == 0:
         continue # log(ERROR, "self.p_l is empty!") # May happen because of task cancellations
-      self.p_in_serv = self.p_l.pop(0)
-      self.wt_l.append(self.env.now - self.p_in_serv.ref_time)
+      self.p_inserv = self.p_l.pop(0)
+      self.wt_l.append(self.env.now - self.p_inserv.ref_time)
       self.size_n -= 1
       
       self.cancel = self.env.event()
       self.preempt = self.env.event()
       
       clk_start_time = self.env.now
-      t = self.p_in_serv.size*self.serv_time.gen_sample()
-      sim_log(DEBUG, self.env, self, "starting {}-clock! on ".format(self.serv), self.p_in_serv)
+      t = self.p_inserv.size*self.stime.gen_sample()
+      sim_log(DEBUG, self.env, self, "starting {}-clock! on ".format(self.servdist), self.p_inserv)
       yield (self.cancel | self.preempt | self.env.timeout(t) )
       
       if self.cancel_flag: # task got cancelled
-        sim_log(DEBUG, self.env, self, "cancelled clock on ", self.p_in_serv)
+        sim_log(DEBUG, self.env, self, "cancelled clock on ", self.p_inserv)
         self.cancel_flag = False
       elif self.preempt_flag: # task got preempted
-        self.p_l.insert(1, self.p_in_serv)
-        sim_log(DEBUG, self.env, self, "preempted ", self.p_in_serv)
+        self.p_l.insert(1, self.p_inserv)
+        sim_log(DEBUG, self.env, self, "preempted ", self.p_inserv)
         self.preempt_flag = False
       else:
-        sim_log(DEBUG, self.env, self, "serv done in {}s on ".format(self.env.now-clk_start_time), self.p_in_serv)
-        self.qt_l.append(self.env.now - self.p_in_serv.ref_time)
-        if self.out is not None and self.p_in_serv.sym != SYS_TRAFF_SYM:
-          sim_log(DEBUG, self.env, self, "forwarding", self.p_in_serv)
-          self.p_in_serv.prev_hop_id = self._id
-          self.out.put(self.p_in_serv)
+        sim_log(DEBUG, self.env, self, "serv done in {}s on ".format(self.env.now-clk_start_time), self.p_inserv)
+        self.qt_l.append(self.env.now - self.p_inserv.ref_time)
+        if self.out is not None and self.p_inserv.sym != SYS_TRAFF_SYM:
+          sim_log(DEBUG, self.env, self, "forwarding", self.p_inserv)
+          self.p_inserv.prev_hop_id = self._id
+          self.out.put(self.p_inserv)
         else:
-          sim_log(DEBUG, self.env, self, "finished serv", self.p_in_serv)
-      self.p_in_serv = None
+          sim_log(DEBUG, self.env, self, "finished serv", self.p_inserv)
+      self.p_inserv = None
   
   def put(self, p, preempt=False):
     self.n_recved += 1
@@ -327,7 +314,7 @@ class FCFS(Q): # First Come First Serve
     #   return
     # else:
     # self.size_n = t_size_n
-    if preempt and (self.p_in_serv is not None):
+    if preempt and (self.p_inserv is not None):
       self.preempt_flag = True
       self.preempt.succeed()
       self.p_l.insert(0, p)
@@ -338,18 +325,18 @@ class FCFS(Q): # First Come First Serve
   def run_c(self):
     while True:
       cp = (yield self.store_c.get() )
-      # sim_log(WARNING, self.env, self, "!!! cancelling p_in_serv= {}, q_length= {}".format(self.p_in_serv, self.length() ), cp)
-      # if cp.sym is not None and self.p_in_serv is not None and self.p_in_serv.sym == cp.sym:
-      #   # log(WARNING, "!!! cancelling p_in_serv= {}, with cp= {}".format(self.p_in_serv, cp) )
+      # sim_log(WARNING, self.env, self, "!!! cancelling p_inserv= {}, q_length= {}".format(self.p_inserv, self.length() ), cp)
+      # if cp.sym is not None and self.p_inserv is not None and self.p_inserv.sym == cp.sym:
+      #   # log(WARNING, "!!! cancelling p_inserv= {}, with cp= {}".format(self.p_inserv, cp) )
       #   self.cancel_flag = True
       #   self.cancel.succeed()
       #   for p in self.p_l:
       #     if p.sym == cp.sym:
       #       self.p_l.remove(p)
-      if cp._id == -1 and self.p_in_serv is not None and self.p_in_serv.sym == cp.sym: # for ff_simplex
+      if cp._id == -1 and self.p_inserv is not None and self.p_inserv.sym == cp.sym: # for ff_simplex
         self.cancel_flag = True
         self.cancel.succeed()
-      elif self.p_in_serv is not None and self.p_in_serv.job_id == cp._id:
+      elif self.p_inserv is not None and self.p_inserv.job_id == cp._id:
         self.cancel_flag = True
         self.cancel.succeed()
       # This has to be run always for mixed-traffic since requests can depart out of order
@@ -361,10 +348,10 @@ class FCFS(Q): # First Come First Serve
     sim_log(DEBUG, self.env, self, "recved", cp)
     # return self.store_c.put(cp.deep_copy() )
     
-    if cp._id == -1 and self.p_in_serv is not None and self.p_in_serv.sym == cp.sym: # for ff_simplex
+    if cp._id == -1 and self.p_inserv is not None and self.p_inserv.sym == cp.sym: # for ff_simplex
       self.cancel_flag = True
       self.cancel.succeed()
-    elif self.p_in_serv is not None and self.p_in_serv.job_id == cp._id:
+    elif self.p_inserv is not None and self.p_inserv.job_id == cp._id:
       self.cancel_flag = True
       self.cancel.succeed()
     # This has to be run always for mixed-traffic since requests can depart out of order

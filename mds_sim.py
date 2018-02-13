@@ -27,7 +27,7 @@ class MDS_PG():
 # Split arrivals to all, wait for any k for download, cancel the outstanding remainings.
 class MDSQ(object):
   # r: split each arrival to randomly any r servers
-  def __init__(self, _id, env, k, qid_l, dist_m, r=None, preempt=False, out=None):
+  def __init__(self, _id, env, k, qid_l, servdist_m, r=None, preempt=False, out=None):
     self._id = _id
     self.env = env
     self.k = k
@@ -45,7 +45,7 @@ class MDSQ(object):
     self.id_q_map = {}
     for i in range(self.n):
       qid = qid_l[i]
-      q = FCFS(qid, env, dist_m['dist'], dist_m)
+      q = FCFS(qid, env, servdist_m)
       q.out = self.jq
       self.id_q_map[qid] = q
     

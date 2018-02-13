@@ -10,7 +10,7 @@ for i in `seq $BEGIN_SIMNODE_ID $END_SIMNODE_ID`; do
   SIM_NODES+="dell$STR$i"
   [ "$i" -lt $END_SIMNODE_ID ] && SIM_NODES+=","
 done
-echo "SIM_NODES= $SIM_NODES"
+# echo "SIM_NODES= $SIM_NODES"
 
 MATLAB=/cac/u01/mfa51/Desktop/matlab_2016/install_/bin/./matlab
 PYTHON=python3 # ~/Desktop/Python-3.5.1/install/bin/python3
@@ -35,7 +35,8 @@ elif [ $1 = 'mm' ]; then
 elif [ $1 = 'p' ]; then
   $PYTHON procsharing.py
 elif [ $1 = 's' ]; then
-  $PYTHON split_red.py
+  # $PYTHON split_red.py
+  $PYTHON simplex_models.py
 elif [ $1 = 'c' ]; then
   $PYTHON codes_stability.py
 elif [ $1 = 'd' ]; then
@@ -57,8 +58,8 @@ elif [ $1 = 'n' ]; then
 elif [ $1 = 'g' ]; then
   $PYTHON google_data.py
 elif [ $1 = 'f' ]; then
-  # $PYTHON fairness_sim.py
-  $PYTHON fj_heavytail.py
+  $PYTHON fairness_sim.py
+  # $PYTHON fj_heavytail.py
 elif [ $1 = 'me' ]; then
   rm *.log *.png
   NUM_Q_MIN=3

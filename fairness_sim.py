@@ -40,7 +40,7 @@ class FF_JSink(object): # Join
 
 # **********************************  Fairness First AVQ  ******************************* #
 class FF_AVQ(object): # Fairness First
-  def __init__(self, _id, env, t, sym__rgroup_l_map, serv, serv_dist_m, out=None):
+  def __init__(self, _id, env, t, sym__rgroup_l_map, sdist_m, out=None):
     self._id = _id
     self.env = env
     self.sym__rgroup_l_map = sym__rgroup_l_map
@@ -65,7 +65,7 @@ class FF_AVQ(object): # Fairness First
     self.jq.out_c = self # control outlet
     self.id_q_map = {}
     for i in self.qid_l:
-      q = FCFS(i, env, serv, serv_dist_m)
+      q = FCFS(i, env, serv, sdist_m)
       q.out = self.jq
       self.id_q_map[i] = q
     #
@@ -188,17 +188,17 @@ class FF_AVQMonitor(object):
       self.num_hot_in_l.append(self.q.num_sym_in(HOT_SYM) )
 
 # *********************************  Fairness-First  *********************************** #
-def test_ff_avq(num_f_run, t, cold_ar, hot_ar, serv, serv_dist_m, mds=False):
-  E_T_hot_f_sum, E_T_cold_f_sum = 0, 0
-  for f in range(num_f_run):
-    log(WARNING, "t= {}, cold_ar= {}, hot_ar= {}, serv= {}, serv_dist_m= {}".format(t, cold_ar, hot_ar, serv, serv_dist_m) )
+def sim_ff(num_srun, t, car, har, sdist_m):
+  ETh_sum, ETc_sum = 0, 0
+  for f in range(num_srun):
+    log(WARNING, "t= {}, car= {}, har= {}, sdist_m= {}".format(t, car, har, sdist_m) )
     
     (sym_l, sym__rgroup_l_map) = simplex_sym_l__sym__rgroup_l_m(t)
     log(WARNING, "sym__rgroup_l_map=\n {}".format(pprint.pformat(sym__rgroup_l_map) ) )
     
     env = simpy.Environment()
-    pg = MT_PG(env, "pg", (len(sym_l)-1)*cold_ar, sym_l, HOT_SYM, hot_ar)
-    avq = FF_AVQ("ff_avq", env, t, sym__rgroup_l_map, serv, serv_dist_m)
+    pg = MT_PG(env, "pg", (len(sym_l)-1)*car, sym_l, HOT_SYM, har)
+    avq = FF_AVQ("ff_avq", env, t, sym__rgroup_l_map, sdist_m)
     pg.out = avq
     pg.init()
     env.run(until=2*50000)
@@ -208,9 +208,9 @@ def test_ff_avq(num_f_run, t, cold_ar, hot_ar, serv, serv_dist_m, mds=False):
     #     log(ERROR, "# of hot= {} > 1!".format(n) )
     
     l = avq.jsink.st_hot_l
-    if len(l): E_T_hot_f_sum += float(sum(l) )/len(l)
+    if len(l): ETh_sum += float(sum(l) )/len(l)
     l = avq.jsink.st_cold_l
-    if len(l): E_T_cold_f_sum += float(sum(l) )/len(l)
+    if len(l): ETc_sum += float(sum(l) )/len(l)
     
     total_n_wins = sum([n for i, n in avq.jsink.qid__num_hot_win_map.items() ] )
     print("pg.n_sent= {}, total_n_wins= {}".format(pg.n_sent, total_n_wins) )
@@ -220,34 +220,39 @@ def test_ff_avq(num_f_run, t, cold_ar, hot_ar, serv, serv_dist_m, mds=False):
     
     qid__win_freq_map = {i:float(n)/total_n_wins for i, n in avq.jsink.qid__num_hot_win_map.items() }
     print("qid__win_freq_map= {}".format(pprint.pformat(qid__win_freq_map) ) )
-  E_T_hot = E_T_hot_f_sum/num_f_run
-  E_T_cold = E_T_cold_f_sum/num_f_run
-  print(">> E_T_hot= {}, E_T_cold= {}".format(E_T_hot, E_T_cold) )
-  return (E_T_cold, E_T_hot)
+  ETh = ETh_sum/num_srun
+  ETc = ETc_sum/num_srun
+  print(">> ETh= {}, ETc= {}".format(ETh, ETc) )
+  return (ETc, ETh)
 
-def plot_ff_simplex():
+def plot_fairnessfirst():
   t = 3
   serv = "Exp" # "Dolly"
-  mu = 1
-  cold_ar = 0.1 # 0.5
+  car = 0.1 # 0.5
   if serv == "Exp":
-    serv_dist_m = {'mu': mu}
-    ar_ub = hot_ar_ub_ff_simplex_approx(cold_ar, t, mu)
+    mu = 1
+    sdist_m = {'dist': 'Exp', 'mu': mu}
+    har_ub = ff_har_ub(car, t, sdist_m)
+  elif serv == "Pareto":
+    loc, a = 1, 3
+    sdist_m = {'dist': 'Pareto', 'loc': loc, 'a': a}
+    har_ub = ff_har_ub(car, t, sdist_m)
   elif serv == "Dolly":
-    if t == 1: ar_ub = 0.28
-    elif t == 3: ar_ub = 0.4
-  log(WARNING, "t= {}, cold_ar= {}, serv= {}, serv_dist_m= {}, ar_ub= {}".format(t, cold_ar, serv, serv_dist_m, ar_ub) )
+    sdist_m = {'dist': 'Dolly'}
+    if t == 1: har_ub = 0.28
+    elif t == 3: har_ub = 0.4
+  log(WARNING, "t= {}, car= {}, serv= {}, sdist_m= {}, har_ub= {}".format(t, car, serv, sdist_m, har_ub) )
   
-  E_T_cold_sim_simplex_l, E_T_hot_sim_simplex_l = [], []
-  E_T_hot_ub_simplex_l, E_T_hot_lb_simplex_l, E_T_hot_approx_simplex_l = [], [], []
+  ETc_sim_l, ETh_sim_l = [], []
+  ETh_ub_l, ETh_lb_l, ETh_approx_l = [], [], []
   
-  num_f_run = 3
+  num_srun = 3
   sim_simplex = False
   if serv == "Exp":
     if t == 1:
-      if cold_ar == 0.1:
-        # num_f_run = 3
-        E_T_hot_sim_simplex_l= [
+      if car == 0.1:
+        # num_srun = 3
+        ETh_sim_l= [
           0.7508814818497344,
           0.8877425592134958,
           1.0935571693945558,
@@ -263,8 +268,8 @@ def plot_ff_simplex():
           21.9774519416767,
           None, # 72.98658763976105
           None] # 707.4689410004945
-      elif cold_ar == 0.5:
-        E_T_hot_sim_simplex_l= [
+      elif car == 0.5:
+        ETh_sim_l= [
           0.9355006832487013,
           1.1208049761868801,
           1.3893483102228363,
@@ -281,8 +286,8 @@ def plot_ff_simplex():
           None,
           None]
     elif t == 3:
-      if cold_ar == 0.1:
-        E_T_hot_sim_simplex_l= [
+      if car == 0.1:
+        ETh_sim_l= [
           0.4939003286095989,
           0.5715098498251754,
           0.6839367636377401,
@@ -298,8 +303,8 @@ def plot_ff_simplex():
           10.8035629393868,
           25.898741689274527,
           None] # 484.0153086904779
-      elif cold_ar == 0.5:
-        E_T_hot_sim_simplex_l= [
+      elif car == 0.5:
+        ETh_sim_l= [
           0.589749465116383,
           0.6946720057825672,
           0.8451953891228225,
@@ -336,112 +341,112 @@ def plot_ff_simplex():
   
   mew, ms = 2, 8
   ar_l = []
-  for hot_ar in [*numpy.linspace(0.05, 0.8*ar_ub, 5, endpoint=False), *numpy.linspace(0.8*ar_ub, ar_ub, 10) ]:
-  # for hot_ar in numpy.linspace(0.1, 0.1, 1):
-    ar_l.append(hot_ar)
+  for har in [*numpy.linspace(0.05, 0.8*har_ub, 5, endpoint=False), *numpy.linspace(0.8*har_ub, har_ub, 10) ]:
+  # for har in numpy.linspace(0.1, 0.1, 1):
+    ar_l.append(har)
     if sim_simplex:
-      (E_T_cold, E_T_hot) = test_ff_avq(num_f_run, t, cold_ar, hot_ar, serv, serv_dist_m)
-      E_T_cold_sim_simplex_l.append(E_T_cold)
-      E_T_hot_sim_simplex_l.append(E_T_hot)
-    E_T_hot_approx_simplex_l.append(E_T_hot_approx_ff_simplex(hot_ar, cold_ar, t, serv, serv_dist_m) )
-  log(WARNING, "E_T_hot_sim_simplex_l= {}".format(pprint.pformat(E_T_hot_sim_simplex_l) ) )
-  plot.plot(ar_l, E_T_hot_sim_simplex_l, label="Simulation", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-  plot.plot(ar_l, E_T_hot_approx_simplex_l, label="Approximation", marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+      (ETc, ETh) = sim_ff(num_srun, t, car, har, sdist_m)
+      ETc_sim_l.append(ETc)
+      ETh_sim_l.append(ETh)
+    ETh_approx_l.append(ETh_approx_ff_simplex(har, car, t, serv, sdist_m) )
+  log(WARNING, "ETh_sim_l= {}".format(pprint.pformat(ETh_sim_l) ) )
+  plot.plot(ar_l, ETh_sim_l, label="Simulation", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  plot.plot(ar_l, ETh_approx_l, label="Approximation", marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   
   ar_l = []
-  ar_ub_min = hot_ar_ub_min_ff_simplex(t, mu)
-  for hot_ar in [*numpy.linspace(0.05, 0.8*ar_ub_min, 5, endpoint=False), *numpy.linspace(0.8*ar_ub_min, ar_ub_min, 10) ]:
-    ar_l.append(hot_ar)
-    E_T_hot_ub_simplex_l.append(E_T_hot_ub_ff_simplex(hot_ar, t, mu) )
-  plot.plot(ar_l, E_T_hot_ub_simplex_l, label="Upper bound", marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  har_ub_min = ff_har_ub_min(t, mu)
+  for har in [*numpy.linspace(0.05, 0.8*har_ub_min, 5, endpoint=False), *numpy.linspace(0.8*har_ub_min, har_ub_min, 10) ]:
+    ar_l.append(har)
+    ETh_ub_l.append(ff_ETh_ub(har, t, mu) )
+  plot.plot(ar_l, ETh_ub_l, label="Upper bound", marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   
   ar_l = []
-  ar_ub_max = hot_ar_ub_max_ff_simplex(t, mu)
-  for hot_ar in [*numpy.linspace(0.05, 0.8*ar_ub_max, 5, endpoint=False), *numpy.linspace(0.8*ar_ub_max, ar_ub_max, 10) ]:
-    ar_l.append(hot_ar)
-    E_T_hot_lb_simplex_l.append(E_T_hot_lb_ff_simplex(hot_ar, t, mu) )
-  plot.plot(ar_l, E_T_hot_lb_simplex_l, label="Lower bound", marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  har_ub_max = ff_har_ub_max(t, mu)
+  for har in [*numpy.linspace(0.05, 0.8*har_ub_max, 5, endpoint=False), *numpy.linspace(0.8*har_ub_max, har_ub_max, 10) ]:
+    ar_l.append(har)
+    ETh_lb_l.append(ff_ETh_lb(har, t, mu) )
+  plot.plot(ar_l, ETh_lb_l, label="Lower bound", marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   
-  # log(WARNING, "E_T_cold_sim_simplex_l= {}".format(pprint.pformat(E_T_cold_sim_simplex_l) ) )
-  # plot.plot(ar_l, E_T_cold_sim_simplex_l, label="Simulation, cold data", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  # log(WARNING, "ETc_sim_l= {}".format(pprint.pformat(ETc_sim_l) ) )
+  # plot.plot(ar_l, ETc_sim_l, label="Simulation, cold data", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   
   # ar_l = []
-  # mds_ar_ub = ar_ub
-  # for hot_ar in [*numpy.linspace(0.05, 0.8*mds_ar_ub, 5, endpoint=False), *numpy.linspace(0.8*mds_ar_ub, mds_ar_ub, 10) ]:
-  #   ar_l.append(hot_ar)
+  # mds_har_ub = har_ub
+  # for har in [*numpy.linspace(0.05, 0.8*mds_har_ub, 5, endpoint=False), *numpy.linspace(0.8*mds_har_ub, mds_har_ub, 10) ]:
+  #   ar_l.append(har)
   #   if sim_mds:
-  #     (E_T_cold, E_T_hot) = test_ff_avq(num_f_run, t, cold_ar, hot_ar, serv, serv_dist_m, mds=True)
-  #     E_T_cold_sim_mds_l.append(E_T_cold)
-  #     E_T_hot_sim_mds_l.append(E_T_hot)
-  #   # E_T_hot_approx_mds_l.append(E_T_hot_approx_ff_mds(hot_ar, cold_ar, t, mu) )
-  # log(WARNING, "E_T_hot_sim_mds_l= {}".format(pprint.pformat(E_T_hot_sim_mds_l) ) )
-  # plot.plot(ar_l, E_T_hot_sim_mds_l, label="Simulation", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  #     (ETc, ETh) = sim_ff(num_srun, t, car, har, serv, sdist_m, mds=True)
+  #     ETc_sim_mds_l.append(ETc)
+  #     ETh_sim_mds_l.append(ETh)
+  #   # ETh_approx_mds_l.append(ETh_approx_ff_mds(har, car, t, mu) )
+  # log(WARNING, "ETh_sim_mds_l= {}".format(pprint.pformat(ETh_sim_mds_l) ) )
+  # plot.plot(ar_l, ETh_sim_mds_l, label="Simulation", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   
   plot.legend(prop={'size':11} )
-  plot.xlabel(r'Hot data arrival rate $\lambda$ (Request/s)', fontsize=12)
-  plot.ylabel(r'Average hot data download time (s)', fontsize=12)
-  plot.title(r'$S \sim Exp(\mu={})$, $t={}$, $\lambda_c={}$'.format(mu, t, cold_ar) )
+  plot.xlabel(r'Hot data arrival rate $\lambda$', fontsize=12)
+  plot.ylabel(r'Avg hot data download time', fontsize=12)
+  plot.title(r'$V \sim Exp(\mu={})$, $t={}$, $\lambda_c={}$'.format(mu, t, car) )
   # plot.title(r'Servers $\sim$ Dolly, availability $t={}$'.format(t) )
   fig = plot.gcf()
   def_size = fig.get_size_inches()
   # fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.4)
   fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.3)
   fig.tight_layout()
-  plot.savefig("plot_ff_simplex_t_{}_lc_{}.pdf".format(t, cold_ar) )
+  plot.savefig("plot_fairnessfirst_t_{}_lc_{}.pdf".format(t, car) )
   log(WARNING, "done; t= {}".format(t) )
 
 # *********************************  Rep-to-all  *********************************** #
-def test_simplex_reptoall(num_f_run, t, cold_ar, hot_ar, serv, serv_dist_m):
-  E_T_f_sum = 0
-  for f in range(num_f_run):
-    log(WARNING, "t= {}, cold_ar= {}, hot_ar= {}, serv= {}, serv_dist_m= {}, ".format(t, cold_ar, hot_ar, serv, serv_dist_m) )
+def test_simplex_reptoall(num_srun, t, car, har, serv, sdist_m):
+  ET_sum = 0
+  for f in range(num_srun):
+    log(WARNING, "t= {}, car= {}, har= {}, serv= {}, sdist_m= {}, ".format(t, car, har, serv, sdist_m) )
     
     (sym_l, sym__rgroup_l_map) = simplex_sym_l__sym__rgroup_l_m(t)
     log(WARNING, "sym__rgroup_l_map=\n {}".format(pprint.pformat(sym__rgroup_l_map) ) )
     
     env = simpy.Environment()
-    pg = MT_PG(env, "pg", (len(sym_l)-1)*cold_ar, sym_l, HOT_SYM, hot_ar)
-    avq = MT_AVQ("mt_avq", env, t, sym__rgroup_l_map, serv, serv_dist_m)
+    pg = MT_PG(env, "pg", (len(sym_l)-1)*car, sym_l, HOT_SYM, har)
+    avq = MT_AVQ("mt_avq", env, t, sym__rgroup_l_map, serv, sdist_m)
     pg.out = avq
     pg.init()
     c = 4 if serv == "Pareto" else 1
-    env.run(until=c*50000) # 20
+    env.run(until=c*50000)
     
     # print("pg.sym__n_sent= {}".format(pprint.pformat(pg.sym__n_sent) ) )
     st_l = avq.jsink.st_l
     if len(st_l) > 0:
-      E_T_f_sum += float(sum(st_l) )/len(st_l)
+      ET_sum += float(sum(st_l) )/len(st_l)
     total_n_wins = sum([n for i, n in avq.jsink.qid__num_win_map.items() ] )
     print("pg.n_sent= {}, total_n_wins= {}".format(pg.n_sent, total_n_wins) )
     qid__win_freq_map = {i:float(n)/total_n_wins for i, n in avq.jsink.qid__num_win_map.items() }
     print("qid__win_freq_map= {}".format(pprint.pformat(qid__win_freq_map) ) )
-  E_T = E_T_f_sum/num_f_run
-  print(">> E_T= {}".format(E_T) )
-  if E_T > 100: return None
-  return E_T
+  ET = ET_sum/num_srun
+  print(">> ET= {}".format(ET) )
+  if ET > 100: return None
+  return ET
 
 def plot_reptoall_over_ff():
   t = 3
-  serv = "Exp" # "Dolly"
+  serv = "Dolly" # "Exp"
   mu = 1
-  cold_ar = 0.5 # 0.1 # 0.5
+  sdist_m = {'mu': mu}
+  car = 0.5 # 0.1 # 0.5
   if serv == "Exp":
-    serv_dist_m = {'mu': mu}
-    ar_ub = 0.9*hot_ar_ub_ff_simplex_approx(cold_ar, t, mu)
+    har_ub = 0.9 * ff_har_ub(car, t, mu)
   elif serv == "Dolly":
-    if t == 1: ar_ub = 0.28
-    elif t == 3: ar_ub = 0.4
-  log(WARNING, "t= {}, cold_ar= {}, serv= {}, serv_dist_m= {}, ar_ub= {}".format(t, cold_ar, serv, serv_dist_m, ar_ub) )
+    if t == 1: har_ub = 0.28
+    elif t == 3: har_ub = 0.4
+  log(WARNING, "t= {}, car= {}, serv= {}, sdist_m= {}, har_ub= {}".format(t, car, serv, sdist_m, har_ub) )
   
-  E_T_reptoall_cold_sim_l, E_T_reptoall_hotcold_sim_l = [], []
-  E_T_ff_cold_sim_l, E_T_ff_hot_sim_l = [], []
+  ETc_reptoall_sim_l, EThc_reptoall_sim_l = [], []
+  ETc_ff_sim_l, ETh_ff_sim_l = [], []
   
-  num_f_run = 3
+  num_srun = 3
   sim = False
   if serv == "Exp":
     if t == 1:
-      if cold_ar == 0.1:
-        E_T_reptoall_hotcold_sim_l= [
+      if car == 0.1:
+        EThc_reptoall_sim_l= [
           0.7201505037958582,
           0.8137041264569737,
           0.9576988819341777,
@@ -457,7 +462,7 @@ def plot_reptoall_over_ff():
           3.8673792894924,
           4.502426067143943,
           5.060620345144394]
-        E_T_ff_hot_sim_l= [
+        ETh_ff_sim_l= [
           0.7528640774127929,
           0.8883769671299149,
           1.0910725127844978,
@@ -473,7 +478,7 @@ def plot_reptoall_over_ff():
           20.50708165354279,
           64.65613140956314,
           None] # 632.4531468836764
-        E_T_ff_cold_sim_l= [
+        ETc_ff_sim_l= [
           1.1130973761654523,
           1.1163667464165845,
           1.1251563242508384,
@@ -489,9 +494,9 @@ def plot_reptoall_over_ff():
           1.1132450899382687,
           1.1291230722102326,
           1.1138810147686706]
-      elif cold_ar == 0.5:
-        # num_f_run = 3
-        E_T_reptoall_hotcold_sim_l= [
+      elif car == 0.5:
+        # num_srun = 3
+        EThc_reptoall_sim_l= [
           0.9363139990245205,
           1.0592291690482762,
           1.231488381151278,
@@ -507,7 +512,7 @@ def plot_reptoall_over_ff():
           7.719995100957113,
           10.64296466417875,
           15.515612762889816]
-        E_T_ff_hot_sim_l= [
+        ETh_ff_sim_l= [
           0.9319581938424295,
           1.115623991352767,
           1.4227089127566297,
@@ -523,7 +528,7 @@ def plot_reptoall_over_ff():
           181.76685991791166,
           None, # 872.4424105424245
           None] # 1647.3312422694653
-        E_T_ff_cold_sim_l= [
+        ETc_ff_sim_l= [
           1.977366720016086,
           1.9922420452600413,
           1.9636128875179872,
@@ -540,10 +545,10 @@ def plot_reptoall_over_ff():
           1.9915303364254016,
           1.9846564963461162]
     elif t == 3:
-      if cold_ar == 0.1:
+      if car == 0.1:
         pass
-      elif cold_ar == 0.5:
-        E_T_reptoall_hotcold_sim_l= [
+      elif car == 0.5:
+        EThc_reptoall_sim_l= [
           0.6840010904077812,
           0.7859533196791282,
           0.9274142482662505,
@@ -559,7 +564,7 @@ def plot_reptoall_over_ff():
           None, # 157.58532507782218
           None, # 380.1302925876542
           None] # 699.7387982678907
-        E_T_ff_hot_sim_l= [
+        ETh_ff_sim_l= [
           0.5907714676944101,
           0.6710283396413771,
           0.8068957630374675,
@@ -575,7 +580,7 @@ def plot_reptoall_over_ff():
           None, # 4.643556010602577
           None, # 5.59704091169721
           None] # 7.344123932313496
-        E_T_ff_cold_sim_l= [
+        ETc_ff_sim_l= [
           2.009345254639259,
           1.9861399350607394,
           1.9959564824533977,
@@ -598,28 +603,28 @@ def plot_reptoall_over_ff():
   
   mew, ms = 2, 8
   ar_l = []
-  for hot_ar in [*numpy.linspace(0.05, 0.8*ar_ub, 5, endpoint=False), *numpy.linspace(0.8*ar_ub, ar_ub, 10) ]:
-    ar_l.append(hot_ar)
+  for har in [*numpy.linspace(0.05, 0.8*har_ub, 5, endpoint=False), *numpy.linspace(0.8*har_ub, har_ub, 10) ]:
+    ar_l.append(har)
     if sim:
-      E_T = test_simplex_reptoall(num_f_run, t, cold_ar, hot_ar, serv, serv_dist_m)
-      E_T_reptoall_cold_sim_l.append(E_T)
-      E_T_reptoall_hotcold_sim_l.append(E_T)
+      ET = test_simplex_reptoall(num_srun, t, car, har, serv, sdist_m)
+      # ETc_reptoall_sim_l.append(ET)
+      EThc_reptoall_sim_l.append(ET)
       
-      (E_T_cold, E_T_hot) = test_ff_avq(num_f_run, t, cold_ar, hot_ar, serv, serv_dist_m)
-      E_T_ff_cold_sim_l.append(E_T_cold)
-      E_T_ff_hot_sim_l.append(E_T_hot)
-  log(WARNING, "E_T_reptoall_hotcold_sim_l= {}".format(pprint.pformat(E_T_reptoall_hotcold_sim_l) ) )
-  log(WARNING, "E_T_ff_hot_sim_l= {}".format(pprint.pformat(E_T_ff_hot_sim_l) ) )
-  log(WARNING, "E_T_ff_cold_sim_l= {}".format(pprint.pformat(E_T_ff_cold_sim_l) ) )
+      (ETc, ETh) = sim_ff(num_srun, t, car, har, serv, sdist_m)
+      ETc_ff_sim_l.append(ETc)
+      ETh_ff_sim_l.append(ETh)
+  log(WARNING, "EThc_reptoall_sim_l= {}".format(pprint.pformat(EThc_reptoall_sim_l) ) )
+  log(WARNING, "ETh_ff_sim_l= {}".format(pprint.pformat(ETh_ff_sim_l) ) )
+  log(WARNING, "ETc_ff_sim_l= {}".format(pprint.pformat(ETc_ff_sim_l) ) )
   
   gain_l, pain_l = [], []
-  for i, E_T_reptoall in enumerate(E_T_reptoall_hotcold_sim_l):
-    if E_T_ff_hot_sim_l[i] is None:
+  for i, ET_reptoall in enumerate(EThc_reptoall_sim_l):
+    if ETh_ff_sim_l[i] is None:
       gain_in_hot = None
       pain_in_cold = None
     else:
-      gain_in_hot = (E_T_reptoall - E_T_ff_hot_sim_l[i])/E_T_ff_hot_sim_l[i] * 100
-      pain_in_cold = (E_T_reptoall - E_T_ff_cold_sim_l[i])/E_T_ff_cold_sim_l[i] * 100
+      gain_in_hot = (ET_reptoall - ETh_ff_sim_l[i])/ETh_ff_sim_l[i] * 100
+      pain_in_cold = (ET_reptoall - ETc_ff_sim_l[i])/ETc_ff_sim_l[i] * 100
     gain_l.append(gain_in_hot)
     pain_l.append(pain_in_cold)
   plot.plot(ar_l, gain_l, label="Gain in hot data", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
@@ -628,14 +633,14 @@ def plot_reptoall_over_ff():
   plot.legend(prop={'size':11} )
   plot.xlabel(r'Hot data arrival rate $\lambda$ (Request/s)', fontsize=12)
   plot.ylabel(r'Pain or gain in percentage', fontsize=12)
-  plot.title('Pain and gain of Rep-to-all over Fairness-First\n' + r'$S \sim Exp(\mu={})$, $t={}$, $\lambda_c={}$'.format(mu, t, cold_ar) )
+  plot.title('Pain and gain of Rep-to-all over Fairness-First\n' + r'$S \sim Exp(\mu={})$, $t={}$, $\lambda_c={}$'.format(mu, t, car) )
   fig = plot.gcf()
   def_size = fig.get_size_inches()
   fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.2)
   fig.tight_layout()
-  plot.savefig("plot_reptoall_over_ff_t_{}_lc_{}.pdf".format(t, cold_ar) )
+  plot.savefig("plot_reptoall_over_ff_t_{}_lc_{}.pdf".format(t, car) )
   log(WARNING, "done; t= {}".format(t) )
 
 if __name__ == "__main__":
-  # plot_ff_simplex()
-  plot_reptoall_over_ff()
+  # plot_fairnessfirst()
+  # plot_reptoall_over_ff()

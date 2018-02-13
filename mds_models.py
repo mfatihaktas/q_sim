@@ -43,7 +43,7 @@ def mds_inner_bound_on_arr_rate(mu, n, k):
   sm_mds_n_k_E_S = 1/mu * (H(n) - H(n-k) )
   return 1/sm_mds_n_k_E_S
 
-def mds_exact_bound_on_arr_rate(mu, n, k):
+def mds_exactbound_on_ar(mu, n, k):
   return n*mu/k
 
 def E_T_mds_n_r_2(l, mu, n, r):
@@ -243,7 +243,7 @@ def mds_innerbound_on_ar(n, k, dist_m):
     EV_sm = 1/mu * (H(n) - H(n-k) )
     return 1/EV_sm
 
-def mds_exact_bound_on_arr_rate(n, k, dist_m):
+def mds_exactbound_on_ar(n, k, dist_m):
   dist = dist_m['dist']
   if dist == 'Exp':
     mu = dist_m['mu']

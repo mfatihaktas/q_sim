@@ -199,36 +199,51 @@ class Dolly(RV):
   # Kristen et al. A Better Model for Job Redundancy: Decoupling Server Slowdown and Job Size
   def __init__(self):
     RV.__init__(self, l_l=1, u_l=12)
+    
+    self.v = numpy.arange(1, 13)
+    self.p = [0.23, 0.14, 0.09, 0.03, 0.08, 0.1, 0.04, 0.14, 0.12, 0.021, 0.007, 0.002]
+    self.dist = scipy.stats.rv_discrete(name='dolly', values=(self.v, self.p) )
   
   def __str__(self):
-    return "Dolly"
+    return "Dolly[{}, {}]".format(self.l_l, self.u_l)
+  
+  def pdf(self, x):
+    return self.dist.pmf(x) if (x >= self.l_l and x <= self.u_l) else 0
+  
+  def cdf(self, x):
+    if x < self.l_l:
+      return 0
+    elif x > self.u_l:
+      return 1
+    return float(self.dist.cdf(x) )
   
   def gen_sample(self):
     u = random.uniform(0, 1)
-    if u <= 0.23: return 1 + u/100
-    u -= 0.23
-    if u <= 0.14: return 2 + u/100
-    u -= 0.14
-    if u <= 0.09: return 3 + u/100
-    u -= 0.09
-    if u <= 0.03: return 4 + u/100
-    u -= 0.03
-    if u <= 0.08: return 5 + u/100
-    u -= 0.08
-    if u <= 0.1: return 6 + u/100
-    u -= 0.1
-    if u <= 0.04: return 7 + u/100
-    u -= 0.04
-    if u <= 0.14: return 8 + u/100
-    u -= 0.14
-    if u <= 0.12: return 9 + u/100
-    u -= 0.12
-    if u <= 0.021: return 10 + u/100
-    u -= 0.021
-    if u <= 0.007: return 11 + u/100
-    u -= 0.007
-    if u <= 0.002: return 12 + u/100
-    return 12 + u/100 # for safety
+    # if u <= 0.23: return 1 + u/100
+    # u -= 0.23
+    # if u <= 0.14: return 2 + u/100
+    # u -= 0.14
+    # if u <= 0.09: return 3 + u/100
+    # u -= 0.09
+    # if u <= 0.03: return 4 + u/100
+    # u -= 0.03
+    # if u <= 0.08: return 5 + u/100
+    # u -= 0.08
+    # if u <= 0.1: return 6 + u/100
+    # u -= 0.1
+    # if u <= 0.04: return 7 + u/100
+    # u -= 0.04
+    # if u <= 0.14: return 8 + u/100
+    # u -= 0.14
+    # if u <= 0.12: return 9 + u/100
+    # u -= 0.12
+    # if u <= 0.021: return 10 + u/100
+    # u -= 0.021
+    # if u <= 0.007: return 11 + u/100
+    # u -= 0.007
+    # if u <= 0.002: return 12 + u/100
+    # return 12 + u/100 # for safety
+    return self.dist.rvs() + u/100
 
 class Bern(RV):
   def __init__(self, L, U, p):
@@ -352,6 +367,61 @@ class Gamma():
   
   def gen_sample(self):
     return self.dist.rvs(size=1)
+
+class X_n_k():
+  def __init__(self, X, n, k):
+    RV.__init__(self, l_l=X.l_l, u_l=X.u_l)
+    self.X, self.n, self.k = X, n, k
+  
+  def __str__(self):
+    return "{}_{{}:{}}".format(self.X, self.n, self.k)
+  
+  def pdf(self, x):
+    return self.n*self.X.pdf(x) * binomial(self.n-1, self.k-1) * self.X.cdf(x)**(self.k-1) * self.X.tail(x)**(self.n-self.k)
+  
+  def cdf(self, x):
+    # return cdf_n_k(self.X, self.n, self.k, x)
+    cdf = 0
+    for i in range(self.k, self.n+1):
+      cdf += binomial(self.n, i) * self.X.cdf(x)**i * self.X.tail(x)**(self.n-i)
+    return cdf
+  
+  def tail(self, x):
+    return 1 - self.cdf(x)
+  
+  def gen_sample(self):
+    return gen_orderstat_sample(self.X, self.n, self.k)
+
+def moment_ith(X, i):
+  return mpmath.quad(lambda x: i*x**(i-1) * (1 - X.cdf(x) ), [0, 10000*10] ) # mpmath.inf
+
+def rv_from_m(dist_m):
+  d = dist_m['dist']
+  if d == 'Exp':
+    return Exp(dist_m['mu'] )
+  elif d == "SExp":
+    return Exp(dist_m['mu'], dist_m['D'] )
+  elif d == "Pareto":
+    return Pareto(dist_m['loc'], dist_m['a'] )
+  elif d == "TPareto":
+    return TPareto(dist_m['l'], dist_m['u'], dist_m['a'] )
+  elif d == "Bern":
+    return Bern(dist_m['U'], dist_m['L'], dist_m['p'] )
+  elif d == 'Dolly':
+    return Dolly()
+
+def binomial(n, k):
+  # if n == k:
+  #   return 1
+  # elif k == 1:
+  #   return n
+  # elif k == 0:
+  #   return 1
+  # elif k > n:
+  #   return 0
+  # else:
+  #   return math.factorial(n)/math.factorial(k)/math.factorial(n-k)
+  return scipy.special.binom(n, k)
 
 if __name__ == "__main__":
   plot_gensample_check()
