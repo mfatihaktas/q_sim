@@ -21,7 +21,8 @@ class Exp(RV):
     self.mu = mu
   
   def __str__(self):
-    return "Exp(D={}, mu={})".format(self.D, self.mu)
+    # return "Exp(D={}, mu={})".format(self.D, self.mu)
+    return r'Exp(\mu={})'.format(self.mu)
   
   def tail(self, x):
     if x <= self.l_l:
@@ -54,7 +55,8 @@ class Pareto(RV):
     self.a = a
   
   def __str__(self):
-    return "Pareto(loc= {}, a= {})".format(self.loc, self.a)
+    # return "Pareto(loc= {}, a= {})".format(self.loc, self.a)
+    return r'Pareto(s= {}, \alpha= {})'.format(self.loc, self.a)
   
   def tail(self, x):
     if x <= self.l_l:
@@ -393,7 +395,7 @@ class X_n_k():
     return gen_orderstat_sample(self.X, self.n, self.k)
 
 def moment_ith(i, X):
-  return mpmath.quad(lambda x: i*x**(i-1) * (1 - X.cdf(x) ), [0, 10000*10] ) # mpmath.inf
+  return float(mpmath.quad(lambda x: i*x**(i-1) * (1 - X.cdf(x) ), [0, mpmath.inf] ) ) # 10000*10
 
 def rv_from_m(dist_m):
   d = dist_m['dist']

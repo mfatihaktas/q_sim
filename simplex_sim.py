@@ -296,7 +296,7 @@ class AVQMonitor(object):
   
 # *******************************  Mixed-Traffic Availability Q  ******************************* #
 class MT_AVQ(object):
-  def __init__(self, _id, env, t, sym__rgroup_l_m, serv, servdist_m, out=None):
+  def __init__(self, _id, env, t, sym__rgroup_l_m, servdist_m, out=None):
     self._id = _id
     self.env = env
     self.sym__rgroup_l_m = sym__rgroup_l_m
@@ -314,7 +314,7 @@ class MT_AVQ(object):
     
     self.id_q_map = {}
     for i in self.qid_l:
-      q = FCFS(i, env, serv, servdist_m)
+      q = FCFS(i, env, servdist_m)
       log(DEBUG, "q= {}".format(q) )
       q.out = self.join_q
       self.id_q_map[i] = q

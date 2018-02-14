@@ -210,8 +210,6 @@ class FCFS(Q): # First Come First Serve
     self.syncer = simpy.Store(env) # simpy.Resource(env, capacity=1)
     self.action = env.process(self.run() )  # starts the run() method as a SimPy process
     self.action = env.process(self.run_helper() )
-    
-    self.recved_canceljid_l = []
   
   def __repr__(self):
     return "FCFS[_id= {}, stime= {}]".format(self._id, self.stime)
@@ -315,7 +313,6 @@ class FCFS(Q): # First Come First Serve
   def put_c(self, cp):
     sim_log(DEBUG, self.env, self, "recved", cp)
     
-    self.recved_canceljid_l.append(cp._id)
     if cp._id == -1 and self.p_inserv is not None and self.p_inserv.sym == cp.sym: # for fairnessfirst
       self.p_inserv = None
       self.cancel_flag = True

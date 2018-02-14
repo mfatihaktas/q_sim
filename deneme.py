@@ -186,18 +186,33 @@ def rep_wcancel():
 
 def waitingtime_repwcancel():
   def laplace(X, r):
-    return mpmath.quad(lambda x: math.exp(-r*x) * X.pdf(x), [0, 10000*10] )
-  ar = 0.1
-  X = Exp(ar)
+    return mpmath.quad(lambda x: math.exp(-r*x) * X.pdf(x), [0, mpmath.inf] ) # 10000*10
   
-  V = Pareto(1, 2)
-  V_21 = X_nk(V, 2, 1)
+  # V = Exp(1)
+  # V = Pareto(1, 3)
+  V = Pareto(0.1, 3)
+  V21 = X_n_k(V, 2, 1)
+  EV = moment_ith(1, V)
+  EV21 = moment_ith(1, V21)
+  def solvefor_War(ar):
+    X = Exp(ar)
+    V_21 = X_n_k(V, 2, 1)
+    a = laplace(V_21, ar)
+    b = laplace(V, ar)
+    
+    ro = ar*EV
+    eq = lambda W: (a-b)*W**2 + (b + ar*(EV21 - EV) )*W + ar*EV-1
+    roots = scipy.optimize.brentq(eq, 0.0001, 2)
+    print("ar= {}, roots= {}".format(ar, roots) )
   
-  
+  for ar in numpy.linspace(0.05, 1/EV-0.05, 10):
+    solvefor_War(ar)
 
 if __name__ == "__main__":
   # plot_ratios_of_Gammas()
   # plot_MG1_tail()
   # reptoall(t=5)
-  rep_wcancel()
+  # rep_wcancel()
+  
+  waitingtime_repwcancel()
   
