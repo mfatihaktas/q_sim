@@ -193,10 +193,10 @@ def sim_psq(num_f_run, ar, h, psize_dist):
     
     l = psq.sl_l
     if len(l): sum_ += float(sum(l) )/len(l)
-  E_sl = sum_/num_f_run
-  print(">> E_sl= {}".format(E_sl) )
-  if E_sl > 50: return None
-  return E_sl
+  Esl = sum_/num_f_run
+  print(">> Esl= {}".format(Esl) )
+  if Esl > 50: return None
+  return Esl
 
 def plot_psq():
   # D, mu = 1, 0.5
@@ -209,7 +209,7 @@ def plot_psq():
   
   num_f_run = 1
   def plot_(h):
-    ar_l, E_sl_l, E_T_l = [], [], []
+    ar_l, Esl_l, E_T_l = [], [], []
     ar_ub = 1/psize_dist.mean() # /h
     log(WARNING, "h= {}, ar_ub= {}, psize_dist= {}".format(h, ar_ub, psize_dist) )
     
@@ -217,10 +217,10 @@ def plot_psq():
     for ar in numpy.linspace(0.05, 1.5*ar_ub, 10):
       ar_l.append(ar)
     
-      E_sl = sim_psq(num_f_run, ar, h, psize_dist)
-      E_sl_l.append(E_sl)
-    print("E_sl_l= \n{}".format(pprint.pformat(E_sl_l) ) )
-    plot.plot(ar_l, E_sl_l, label="h= {}".format(h), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+      Esl = sim_psq(num_f_run, ar, h, psize_dist)
+      Esl_l.append(Esl)
+    print("Esl_l= \n{}".format(pprint.pformat(Esl_l) ) )
+    plot.plot(ar_l, Esl_l, label="h= {}".format(h), marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   
   plot_(h=1)
   plot_(h=2)
@@ -284,9 +284,9 @@ def plot_psq_tail():
       env.run(until=50000*20)
       
       sl_l = numpy.sort(q.sl_l)
-      E_Sl = float(sum(sl_l) )/len(sl_l)
-      print(">>> E_Sl= {}".format(E_Sl) )
-      if E_Sl > 1000*10:
+      Esl = float(sum(sl_l) )/len(sl_l)
+      print(">>> Esl= {}".format(Esl) )
+      if Esl > 1000*10:
         return None
       x_l = sl_l[::-1]
       # y_sim_l = numpy.arange(sl_l.size)/sl_l.size
@@ -464,14 +464,14 @@ def plot_EC_vs_ET_wsim():
     # q = DollyQ(env)
     pg.out = q
     pg.init()
-    qm = QMonitor(env, q, poll_interval=0.1)
+    # qm = QMonitor(env, q, poll_interval=0.1)
     env.run(until=50000*20)
     
-    ro = sum(qm.qbusy_l)/len(qm.qbusy_l)
-    E_Sl = float(sum(q.sl_l) )/len(q.sl_l)
-    print(">>> ro= {}, E_Sl= {}".format(ro, E_Sl) )
+    # ro = sum(qm.qbusy_l)/len(qm.qbusy_l)
+    Esl = float(sum(q.sl_l) )/len(q.sl_l)
+    print("> Esl= {}".format(Esl) )
     # if ro > 0.95: return None # 200 1000*1
-    if E_Sl > 1000*6: return None # 200 1000*1
+    if Esl > 1000: return None # 200 1000*1
     return q.lt_l # q.sl_l
   
   def plot_EC_vs_ET(num_frun, h, ar, k):
@@ -521,8 +521,8 @@ def plot_EC_vs_ET_wsim():
         x_par_l.append(E_T_par/num_frun)
         y_par_l.append(E_C_par/num_frun)
       n_k += 1
-    plot.plot(x_sim_l[0], y_sim_l[0], label=r'No redundancy', zorder=2, marker='x', color='blue', mew=3, ms=9)
-    plot.plot(x_sim_l, y_sim_l, label=r'Simulation', zorder=1, marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+    plot.plot(x_sim_l[0], y_sim_l[0], label=r'No redundancy', zorder=2, marker='x', color='red', mew=3, ms=9)
+    plot.plot(x_sim_l, y_sim_l, label=r'Simulation', zorder=1, marker=next(marker), color='green', linestyle=':', mew=mew, ms=ms)
     # plot.legend()
     # plot.xscale('log')
     # plot.yscale('log')
@@ -533,9 +533,9 @@ def plot_EC_vs_ET_wsim():
     # plot.gcf().clear()
     
     # plot.plot(x_tpar_l[0], y_tpar_l[0], zorder=2, marker='x', color='blue', mew=3, ms=9)
-    plot.plot(x_tpar_l, y_tpar_l, zorder=0, label=r'Using fitted Truncated-Pareto', color=next(dark_color), linestyle='-.', lw=2)
+    plot.plot(x_tpar_l, y_tpar_l, zorder=0, label=r'Model by fitted Truncated-Pareto', color='goldenrod', linestyle='-.', lw=2)
     # plot.plot(x_par_l[0], y_par_l[0], zorder=2, marker='x', color='blue', mew=3, ms=9)
-    plot.plot(x_par_l, y_par_l, zorder=0, label=r'Using fitted Pareto', color=next(dark_color), linestyle='-', lw=2)
+    plot.plot(x_par_l, y_par_l, zorder=0, label=r'Model by fitted Pareto', color='blue', linestyle='-', lw=2)
     # plot.legend()
     # plot.xscale('log')
     # plot.yscale('log')
@@ -554,8 +554,8 @@ def plot_EC_vs_ET_wsim():
   plot.legend()
   plot.xscale('log')
   plot.yscale('log')
-  plot.xlabel(r'$E[T]$', fontsize=13)
-  plot.ylabel(r'$E[C]$', fontsize=13)
+  plot.xlabel(r'Latency', fontsize=14)
+  plot.ylabel(r'Cost', fontsize=14)
   # plot.title(r'$T \sim {}$, $k= {}$'.format(proc_in_latex, k) )
   plot.title(r'$k= {}$'.format(k) )
   fig = plot.gcf()

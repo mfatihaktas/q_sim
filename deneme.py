@@ -208,11 +208,32 @@ def waitingtime_repwcancel():
   for ar in numpy.linspace(0.05, 1/EV-0.05, 10):
     solvefor_War(ar)
 
+def EC_k_n():
+  def EC(n, k, l, a):
+    return l*n/(a-1) * (a - G(n)/G(n-k)*G(n-k+1-1/a)/G(n+1-1/a) )
+  
+  def ECkp1_m_ECk(k, l, a):
+    return a - G(k+2)*G(2-1/a)/G(k+2-1/a) + G(k+1)*G(1-1/a)/G(k+1-1/a)
+  
+  l, a = 1, 1.5
+  # k = 10
+  # EC0 = EC(k, k, l, a)
+  # for n in range(k, 3*k):
+  #   EC_m_EC0 = EC(n, k, l, a) - EC0
+  #   print("n-k= {}, EC_m_EC0= {}".format(n-k, EC_m_EC0) )
+  
+  print("G(0)= {}".format(G(0) ) )
+  
+  for k in range(10, 20):
+    c = ECkp1_m_ECk(k, l, a)
+    print("k= {}, ECkp1_m_ECk= {}".format(k, c) )
+
 if __name__ == "__main__":
   # plot_ratios_of_Gammas()
   # plot_MG1_tail()
   # reptoall(t=5)
   # rep_wcancel()
   
-  waitingtime_repwcancel()
+  # waitingtime_repwcancel()
+  EC_k_n()
   

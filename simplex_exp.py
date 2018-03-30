@@ -404,14 +404,14 @@ def plot_simplex_vs_rep():
     #       E_T_sim_mds_l.append(test_avq(nf, ar, t=1, r, k, serv, {'mu': mu_mds}, w_sys=True) )
     #   print("E_T_sim_mds_l= {}".format(pprint.pformat(E_T_sim_mds_l) ) )
     #   plot.plot(ar_mds_l, E_T_sim_mds_l, label=r'MDS', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
-  def plot_select_one():
+  def plot_selectone():
     # Simplex
-    ar_ub = ar_ub_simplex_split_to_one(t, mu) + 0.1
+    ar_ub = arub_simplex_selectone(t, mu) + 0.1
     log(WARNING, "ar_ub= {}".format(ar_ub) )
     ar_l, ET_l = [], []
     for ar in numpy.linspace(0.05, ar_ub, 20):
       ar_l.append(ar)
-      ET_l.append(E_T_simplex_split_to_one_min(t, ar, mu) )
+      ET_l.append(ET_selectone(t, ar, mu) )
     label = 'Simplex' # if t != 1 else 'Simplex or MDS'
     plot.plot(ar_l, ET_l, label=label, color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
     # Rep
@@ -421,24 +421,9 @@ def plot_simplex_vs_rep():
       ar_l.append(ar)
       E_T_rep_l.append(E_T_rep_n_1_split_to_one(ar, mu_rep, n_rep) )
     plot.plot(ar_l, E_T_rep_l, label=r'Replication', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
-    # # MDS
-    # if t != 1:
-    #   ar_ub_mds = 1.1*ar_ub_rep
-    #   ar_l = []
-    #   for ar in numpy.linspace(0.05, ar_ub_mds, 15):
-    #   # for ar in numpy.linspace(ar_ub, ar_ub_mds, 2):
-    #     ar_l.append(ar)
-    #     if sim_mds_split_to_one_reqed:
-    #       sys = 1/(mu_mds-0.5*ar)
-    #       mds = sim_mds_nk(nf, 0.5*ar, mu_mds, n_mds-1, k_mds)
-    #       if sys < 0 or sys > 30 or mds is None: E_T = None
-    #       else: E_T = 0.5*sys + 0.5*mds
-    #       E_T_sim_split_to_one_mds_l.append(E_T)
-    #   print("E_T_sim_split_to_one_mds_l= {}".format(pprint.pformat(E_T_sim_split_to_one_mds_l) ) )
-    #   plot.plot(ar_l, E_T_sim_split_to_one_mds_l, label=r'MDS', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
   plot_reptoall()
   scheduling = "Replicate-to-all"
-  # plot_select_one()
+  # plot_selectone()
   # scheduling = "Split-to-one"
   plot.legend(prop={'size':12})
   plot.xlabel(r'Arrival rate $\lambda$ (Request/s)', fontsize=12)
@@ -477,7 +462,7 @@ def plot_simplex_vs_rep():
 def plot_reptoall():
   mixed_traff, w_sys = False, True
   t, r, k = 3, 2, 2
-  serv = "Bern" # "Bern*Pareto" # "Pareto" # "Exp" # "Dolly"
+  serv = "Exp" # "Bern" # "Bern*Pareto" # "Pareto" # "Dolly"
   mu = 1
   # loc, a = 1, 2
   # U, L, p, loc, a = 1, 8, 0.2, 0.1, 1.5 # 1, 8, 0.2, 1, 3
@@ -627,23 +612,6 @@ def plot_reptoall():
           23.582209372296532,
           36.21619587757658]
       elif t == 3:
-        # # nf = 3
-        # ET_sim_l= [
-        #   1.1111615206072647,
-        #   1.2612248957282188,
-        #   1.4716074809966988,
-        #   1.8227059853938297,
-        #   2.4253777975833004,
-        #   4.071010185184682,
-        #   4.396238433456311,
-        #   5.0137801610805175,
-        #   5.848770901912878,
-        #   6.813386046075639,
-        #   8.718909855975161,
-        #   11.188496302711075,
-        #   17.300044430648644,
-        #   39.39675358464152,
-        #   None] # 429.63361702902347
         # nf = 1
         ET_sim_l= [
           1.1072895175117927,
@@ -686,42 +654,6 @@ def plot_reptoall():
       elif t == 33:
         pass
       else: sim_simplex = True
-    else: sim_simplex = True
-  elif serv == "Dolly":
-    if t == 1:
-      ET_sim_l= [
-        4.22328767666145,
-        4.823454590545595,
-        5.47788941944525,
-        6.653117802625027,
-        8.386534132261174,
-        11.154130969612298,
-        12.317176790462392,
-        13.849887620599285,
-        15.045261743181854,
-        15.87766190797448,
-        18.216667705027934,
-        21.875615519464304,
-        26.73281267396671,
-        32.719196669256654,
-        43.1768928350346]
-    elif t == 3:
-      ET_sim_l= [
-        3.086242755109778,
-        3.4565215526005986,
-        4.149439893412835,
-        4.8549935753781455,
-        6.526521777974817,
-        9.83470467200604,
-        10.976546914176106,
-        12.57918845202335,
-        15.298045609416624,
-        17.3724624787327,
-        22.968814016951395,
-        28.094907636707248,
-        39.4076087504906,
-        82.79714971812109,
-        None]
     else: sim_simplex = True
   else: sim_simplex = True
   
@@ -828,9 +760,9 @@ def plot_reptoall():
       plot.plot(ar_l, ET_sm_l, label=r'Split-merge upper bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
       plot.plot(ar_l, ET_bestapprox_l, label=r'$M/G/1$ approximation', zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
       plot.plot(ar_l, ET_lb_l, label=r'Lower bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      # if t == 1:
-      #   plot.plot(ar_l, ET_matrixanalytic_l, label=r'Matrix-analytic upper-bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      #   plot.plot(ar_l, ET_l, label=r'High traffic approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+      if t == 1:
+        #   plot.plot(ar_l, ET_matrixanalytic_l, label=r'Matrix-analytic upper-bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+        plot.plot(ar_l, ET_l, label=r'High-traffic approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
       # plot.plot(ar_l, ET_naiveapprox_l, label=r'Naive approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
       # plot.plot(ar_l, ET_betterapprox_l, label=r'Better approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
       # plot.plot(ar_l, ET_bestapprox_l, label=r'Best approximation', zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
@@ -839,61 +771,23 @@ def plot_reptoall():
     # plot.axvline(stab_lim, label="Stability limit", color='black', linestyle='--')
     # plot.gca().set_xlim([0, stab_lim+0.1] )
   
-  def plot_select_one():
-    if serv == "Dolly":
-      if t == 1: ar_ub = 0.38 # 0.42
-      elif t == 3: ar_ub = 0.8
-    else:
-      ar_ub = 0.9*ar_ub_simplex_split_to_one(t, serv, servdist_m)
+  def plot_selectone():
+    ar_ub = 0.9*arub_simplex_selectone(t, serv, servdist_m)
     log(WARNING, "ar_ub={}".format(ar_ub) )
-    
     ar_l, ET_l = [], []
-    sim = False
-    if serv == "Dolly":
-      if t == 1:
-        ET_l= [
-          5.979621418627012,
-          6.55643249250334,
-          7.054673549793297,
-          7.890777601754846,
-          8.766930646457245,
-          10.091617126676645,
-          11.777110306541644,
-          15.332517617463784,
-          20.769546821434727,
-          38.6178996740499]
-      elif t == 3:
-        ET_l= [
-          6.292626535550048,
-          6.748311201511538,
-          7.329345727405202,
-          8.068522130176675,
-          9.258354113442321,
-          11.043470090867936,
-          13.164928266950477,
-          18.038756786530055,
-          26.83166116144638,
-          63.04484770016015]
-      else: sim = True
-    elif serv == "Bern*Pareto":
-      if U == 1 and L == 8 and p == 0.2 and loc == 1 and a == 3:
-        if t == 11:
-          pass
-        else: sim = True
-      else: sim = True
-    else: sim = True
-    
-    for ar in numpy.linspace(0.05, ar_ub, 10):
+    for ar in numpy.linspace(0.05, ar_ub, 50):
     # for ar in numpy.linspace(0.05, ar_ub, 2):
       ar_l.append(ar)
-      if sim:
-        ET_l.append(test_avq(nf, ar, t, r, k, serv, servdist_m, w_sys=w_sys, sching="select-one") )
-      # ET_l.append(E_T_simplex_split_to_one_min(t, ar, mu) )
-    log(WARNING, "ET_l= {}".format(pprint.pformat(ET_l) ) )
-    plot.plot(ar_l, ET_l, 'b', label=r'Select-one', marker=next(marker), linestyle=':', mew=mew, ms=ms)
+      # if sim:
+      #   ET_l.append(test_avq(nf, ar, t, r, k, serv, servdist_m, w_sys=w_sys, sching="select-one") )
+      ET_l.append(ET_selectone(t, ar, mu) )
+    # log(WARNING, "ET_l= {}".format(pprint.pformat(ET_l) ) )
+    plot.plot(ar_l, ET_l, 'b', label=r'Select-one', linestyle='--', lw=3)
   # plot_poster()
-  plot_()
-  # plot_select_one()
+  # plot_()
+  
+  plot.plot(ar_l, ET_sim_l, 'k', label=r'Replicate-to-all', linestyle='-', lw=3)
+  plot_selectone()
   plot.legend(prop={'size':11} )
   plot.xlabel(r'Arrival rate $\lambda$', fontsize=14)
   plot.ylabel(r'Average download time', fontsize=14)

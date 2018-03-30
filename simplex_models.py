@@ -185,7 +185,7 @@ def reptoall_innerbound_on_ar(t, sdist_m):
   return float(1/E_S)
 
 # -----------------------------------  Simplex w/ split-to-one  ------------------------------- #
-def ar_ub_simplex_split_to_one(t, serv, sdist_m):
+def arub_simplex_selectone(t, serv, sdist_m):
   if serv == "Exp":
     rv = Exp(sdist_m['mu'] )
   elif serv == "Pareto":

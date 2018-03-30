@@ -711,17 +711,17 @@ def E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=True):
     if d <= loc:
       return k*d + E_C_pareto_k_n_wrelaunch(loc, a, 0, k, n, w_cancel=True)
     else:
-      # E_X_given_X_leq_d = a/(a-1)/q * (loc - d*(1-q) )
+      # EX_given_X_leq_d = a/(a-1)/q * (loc - d*(1-q) )
       # E = 0
       # for r in range(k+1):
       #   E += G(n-r+1)/G(n-r+1-1/a) * binomial(k,r) * q**r * (1-q)**(k-r)
       
-      # return k*q*E_X_given_X_leq_d + k*(1-q)*d + a/(a-1)*loc*(n - k*q) \
+      # return k*q*EX_given_X_leq_d + k*(1-q)*d + a/(a-1)*loc*(n - k*q) \
       #       - loc/(a-1) * G(n-k+1-1/a)/G(n-k)*E \
       #       - q**k * loc*(n-k)
       
       return a/(a-1)*(k*(1-q)*(loc-d) + n*loc) + k*(1-q)*d - loc*(n-k)*q**k \
-             - loc/(a-1) * (n-k)*B(n-k*q+1, -1/a)/B(n-k+1, -1/a) # G(n-k+1-1/a)/G(n-k)*E
+            - loc/(a-1) * (n-k)*B(n-k*q+1, -1/a)/B(n-k+1, -1/a) # G(n-k+1-1/a)/G(n-k)*E
   else:
     if d <= loc:
       return k*d + n*loc/(1-1/a)
@@ -729,8 +729,6 @@ def E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=True):
       return a/(a-1)*(k*loc*(1-q+q**k) + n*loc*(1-q**k) ) - k*d*(1-q)/(a-1)
 
 def E_C_pareto_k_n_wrelaunch_approx(loc, a, d, k, n, w_cancel=True):
-  q = (d > loc)*(1 - (loc/d)**a)
-  
   q = (d > loc)*(1 - (loc/d)**a)
   if w_cancel:
     if d <= loc:

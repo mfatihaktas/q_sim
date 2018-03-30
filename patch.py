@@ -2,7 +2,7 @@ import inspect, math, mpmath, scipy, itertools
 from scipy import special
 
 # dark_color = itertools.cycle(('green', 'red', 'blue', 'turquoise', 'goldenrod', 'purple', 'gray', 'brown', 'magenta', 'gold', 'olive', 'orangered', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'darkgray'))
-dark_color = itertools.cycle(('green', 'red', 'blue', 'goldenrod', 'magenta', 'purple', 'gray', 'brown', 'turquoise', 'gold', 'olive', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'darkgray', 'orangered'))
+dark_color = itertools.cycle(('green', 'red', 'goldenrod', 'blue', 'magenta', 'purple', 'gray', 'brown', 'turquoise', 'gold', 'olive', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'darkgray', 'orangered'))
 light_color = itertools.cycle(('silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise'))
 linestyle = itertools.cycle(('-', '--', '-.', ':') )
 marker = itertools.cycle(('^', 'p', 'd', 'v', '<', '>', '+', '1' , '2', '3', '4', 'x') )
@@ -95,18 +95,18 @@ def binomial(n, k):
 #   return binom
 
 def I(u_l, m, n):
-  den = B(m, n)
-  if den == 0:
-    return None
-  return B(m, n, u_l=u_l)/den
-  # return scipy.special.betainc(m, n, u_l)
+  # den = B(m, n)
+  # if den == 0:
+  #   return None
+  # return B(m, n, u_l=u_l)/den
+  return scipy.special.betainc(m, n, u_l)
 
 def B(m, n, u_l=1):
-  # if u_l == 1:
-  #   return scipy.special.beta(m, n)
-  return mpmath.quad(lambda x: x**(m-1) * (1-x)**(n-1), [0, u_l] )
-  # else:
-  #   return I(u_l, m, n)*B(m, n)
+  if u_l == 1:
+    return scipy.special.beta(m, n)
+  # return mpmath.quad(lambda x: x**(m-1) * (1-x)**(n-1), [0, u_l] )
+  else:
+    return I(u_l, m, n)*B(m, n)
 
 def G(z):
   return scipy.special.gamma(z)

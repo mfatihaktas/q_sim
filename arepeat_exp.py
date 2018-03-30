@@ -338,12 +338,12 @@ def plot_cost_reduction_vs_redundant_occupation():
 
 def plot_zerodelay_reped_vs_coded(loc, a):
   w_cancel = True
-  load_m = None # {'ro_0': 0.15, 'a_0': 1.2} # None
-  K = 1050 # 15 # 400 # 10
+  K = 10 # 1050 # 15 # 400 # 10
   D, mu = 30, 0.5
-  loc, a = 3, 3 # 1.5 # 1.3 # 2 # 2.5 # 3
+  loc, a = 3, 1.2
+  load_m = {'ro_0': 0.15, 'a_0': a}
   # l, u, a = 1, 100, 1.5
-  task_t = "Google" # "TPareto" # "Google" # "Exp" # "SExp" # "Pareto"
+  task_t = "Pareto" # "TPareto" # "Google" # "Exp" # "SExp" # "Pareto"
   if task_t == "Exp": task_t_in_latex = r'X \sim Exp(\mu={})'.format(mu)
   elif task_t == "SExp": task_t_in_latex = r'{} \sim D/k + Exp(\mu), D= {}, \mu= {}'.format('Tasks', D, mu)
   elif task_t == "Pareto": task_t_in_latex = r'{} \sim Pareto(\lambda={}, \alpha={})'.format('Tasks', loc, a)
@@ -417,7 +417,7 @@ def plot_zerodelay_reped_vs_coded(loc, a):
               plot.annotate('No redundancy \n $c=0$, $n={}$'.format(K), xy=xy, xytext=xytext)
               # plot.annotate('No redundancy', xy=xy, xytext=xytext)
               # print('>> stdev_T= {}, stdev_C= {}'.format(stdev_T, stdev_C) )
-              plot.errorbar([E_T], [E_C], xerr=[stdev_T], yerr=[stdev_C], color='black')
+              # plot.errorbar([E_T], [E_C], xerr=[stdev_T], yerr=[stdev_C], color='black')
               # plot.errorbar([E_T], [E_C], xerr=[E_T-1], yerr=[stdev_C], color='black')
             elif coeffvar:
               if task_t == "SExp":
@@ -491,8 +491,8 @@ def plot_zerodelay_reped_vs_coded(loc, a):
       if sim:
         plot.plot(x_sim_l, y_sim_l, label='Simulation, replication', color=color, marker=next(marker), linestyle=':', mew=2)
       else:
-        # plot.plot(x_l, y_l, label='Replication', color=color, marker=next(marker), zorder=0, mew=2, linestyle=':')
-        plot.errorbar(x_l, y_l, xerr=xerr_l, yerr=yerr_l, label='Replication', color=color, marker=next(marker), zorder=0, mew=2, linestyle=':')
+        plot.plot(x_l, y_l, label='Replication', color=color, marker=next(marker), zorder=0, mew=2, linestyle=':')
+        # plot.errorbar(x_l, y_l, xerr=xerr_l, yerr=yerr_l, label='Replication', color=color, marker=next(marker), zorder=0, mew=2, linestyle=':')
     elif n:
       # if first_moment and load_m is not None:
       #   n_ = n_max_before_ETpain(load_m['ro_0'], load_m['a_0'], k)
@@ -509,8 +509,8 @@ def plot_zerodelay_reped_vs_coded(loc, a):
           E_C = E_C_k_l_n(task_t, task_dist_m, d, k, k, n_, w_cancel, load_m)
           E_T_2 = E_T_2_k_n(task_t, task_dist_m, k, n_, load_m)
           E_C_2 = E_C_2_k_n(task_t, task_dist_m, k, n_, load_m)
-          stdev_T = math.sqrt(max(E_T_2 - E_T**2, 0) )
-          stdev_C = math.sqrt(max(E_C_2 - E_C**2, 0) )
+          stdev_T = 0 # math.sqrt(max(E_T_2 - E_T**2, 0) )
+          stdev_C = 0 # math.sqrt(max(E_C_2 - E_C**2, 0) )
           coeffvar_T = 0 # stdev_T/E_T
           coeffvar_C = 0 # stdev_C/E_C
           
@@ -570,6 +570,8 @@ def plot_zerodelay_reped_vs_coded(loc, a):
               elif k == 1050: xytext = (E_T+0.02, E_C+1)
               elif k == 15: xytext = (E_T+0.003, E_C+0.015)
               plot.annotate(r'$n={}$'.format(n_), xy=xy, xytext=xytext, color=color)
+        if E_T is None:
+          continue
         if task_t == "SExp":
           if first_moment:
             if n_ > K and n_ < k+3:
@@ -639,10 +641,10 @@ def plot_zerodelay_reped_vs_coded(loc, a):
       if sim:
         plot.plot(x_sim_l, y_sim_l, label='Simulation, coding', color=color, zorder=1, marker=next(marker), linestyle=':', mew=1)
       else:
-        # plot.plot(x_l, y_l, label='Coding', color=color, zorder=1, marker=next(marker), mew=mew, linestyle=':')
+        plot.plot(x_l, y_l, label='Coding', color=color, zorder=1, marker=next(marker), mew=mew, linestyle=':')
         # print("xerr_l= {}".format(pprint.pformat(xerr_l) ) )
         # print("yerr_l= {}".format(pprint.pformat(yerr_l) ) )
-        plot.errorbar(x_l, y_l, xerr=xerr_l, yerr=yerr_l, label='Coding', color=color, zorder=1, marker=next(marker), mew=1, linestyle=':')
+        # plot.errorbar(x_l, y_l, xerr=xerr_l, yerr=yerr_l, label='Coding', color=color, zorder=1, marker=next(marker), mew=1, linestyle=':')
   def plot_ET_min(k, n, c):
     x_l, y_l = [], []
     for c_ in range(c+1):
@@ -664,7 +666,7 @@ def plot_zerodelay_reped_vs_coded(loc, a):
     E_Tmin = E_T_k_c(task_t, task_dist_m, d, k, c_max, load_m)
     E_C = E_C_k_c(task_t, task_dist_m, d, k, c_max, w_cancel, load_m)
     plot.annotate(r'$c={}$'.format(c_max), xy=(E_Tmin, E_C), xytext=(E_Tmin+0.3, E_C+0.3), color=color)
-    # 
+    #
     x_l, y_l = [], []
     for n_ in numpy.arange(k, n+1, 1):
       E_T = E_T_k_l_n(task_t, task_dist_m, d, k, k, n_, load_m)
@@ -682,16 +684,16 @@ def plot_zerodelay_reped_vs_coded(loc, a):
     f.axes.xaxis.set_ticklabels([] )
     f.axes.yaxis.set_ticklabels([] )
   
-  # plot_(c=5)
-  # plot_(n=6*K)
+  plot_(c=5)
+  plot_(n=6*K)
   
-  # plot_(c=5)
-  # plot_(n=6*K)
+  # plot_(c=4)
+  # plot_(n=5*K)
   
   # plot_ET_min(k=K, n=3*K, c=2)
   
-  plot_(c=5, sim=True)
-  plot_(n=6*K, sim=True)
+  # plot_(c=5, sim=True)
+  # plot_(n=6*K, sim=True)
   #
   # plot.xscale('log')
   # plot.yscale('log')
@@ -1535,8 +1537,8 @@ if __name__ == "__main__":
   # plot_dE_T_shiftedexp_k_n_dk()
   # plot_arepeat_shiftedexp_k_n()
   
-  plot_EC_vs_ET_wdelay(w_cancel=True)
-  # plot_zerodelay_reped_vs_coded(loc=3, a=2)
+  # plot_EC_vs_ET_wdelay(w_cancel=True)
+  plot_zerodelay_reped_vs_coded(loc=3, a=2)
   # plot_zerodelay_reped_vs_coded(loc=3, a=1.2)
   # plot_zerodelay_reped_vs_coded(loc=3, a=1.5)
   
@@ -1556,3 +1558,4 @@ if __name__ == "__main__":
   # plot_k_nc_retainl_atd__C_vs_T()
   
   # plot_cost_reduction_vs_redundant_occupation()
+ 
