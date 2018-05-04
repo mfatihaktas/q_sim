@@ -331,6 +331,29 @@ class BoundedZipf():
   def gen_sample(self):
     return self.dist.rvs(size=1)
 
+class Binomial():
+  def __init__(self, n, p):
+    RV.__init__(self, l_l=0, u_l=n)
+    self.n = n
+    self.p = p
+    
+    self.dist = scipy.stats.binom(n, p)
+  
+  def __str__(self):
+    return "Binom[n= {}, p= {}]".format(self.n, self.p)
+  
+  def pdf(self, x):
+    return self.dist.pmf(x)
+    
+  def cdf(self, x):
+    return self.dist.cdf(x)
+  
+  def tail(self, x):
+    return 1 - self.cdf(x)
+  
+  def gen_sample(self):
+    return self.dist.rvs(size=1)
+
 class NegBinomial():
   def __init__(self, num_succ, p):
     RV.__init__(self, l_l=num_succ, u_l=float("Inf") )
@@ -379,13 +402,13 @@ class X_n_k():
     return "{}_{{}:{}}".format(self.X, self.n, self.k)
   
   def pdf(self, x):
-    return self.n*self.X.pdf(x) * binomial(self.n-1, self.k-1) * self.X.cdf(x)**(self.k-1) * self.X.tail(x)**(self.n-self.k)
+    return self.n*self.X.pdf(x) * binom(self.n-1, self.k-1) * self.X.cdf(x)**(self.k-1) * self.X.tail(x)**(self.n-self.k)
   
   def cdf(self, x):
     # return cdf_n_k(self.X, self.n, self.k, x)
     cdf = 0
     for i in range(self.k, self.n+1):
-      cdf += binomial(self.n, i) * self.X.cdf(x)**i * self.X.tail(x)**(self.n-i)
+      cdf += binom(self.n, i) * self.X.cdf(x)**i * self.X.tail(x)**(self.n-i)
     return cdf
   
   def tail(self, x):
@@ -412,7 +435,7 @@ def rv_from_m(dist_m):
   elif d == 'Dolly':
     return Dolly()
 
-def binomial(n, k):
+def binom(n, k):
   # if n == k:
   #   return 1
   # elif k == 1:

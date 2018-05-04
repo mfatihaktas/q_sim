@@ -236,7 +236,7 @@ def sim_ff(num_srun, t, car, har, sdist_m):
 def plot_fairnessfirst():
   t = 1
   serv = "Pareto" # "Exp" # "Pareto" # "Dolly"
-  car = 0.1 # 0.000001
+  car = 0.3 # 0.1 # 0.5
   if serv == "Exp":
     mu = 1
     sdist_m = {'dist': 'Exp', 'mu': mu}
@@ -401,8 +401,10 @@ def plot_fairnessfirst():
       (ETc, ETh) = sim_ff(num_srun, t, car, har, sdist_m)
       ETc_sim_l.append(ETc)
       ETh_sim_l.append(ETh)
-    ETh_approx = ff_ETh_approx_(har, car, t, sdist_m)
-    print("ETh_approx= {}".format(ETh_approx) )
+    # ETh_approx = ff_ETh_approx_(har, car, t, sdist_m)
+    # print("ETh_approx= {}".format(ETh_approx) )
+    ETh_approx = ff_ETh_newapprox(har, car, t, sdist_m)
+    print("ETh_newapprox= {}".format(ETh_approx) )
     ETh_approx_l.append(ETh_approx)
   log(WARNING, "ETh_sim_l= {}".format(pprint.pformat(ETh_sim_l) ) )
   plot.plot(ar_l, ETh_sim_l, label="Simulation", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
@@ -410,14 +412,16 @@ def plot_fairnessfirst():
   
   ar_l = []
   har_ub_min = ff_har_ub_min(t, sdist_m)
-  for har in [*numpy.linspace(0.05, 0.8*har_ub_min, 5, endpoint=False), *numpy.linspace(0.8*har_ub_min, har_ub_min, 10) ]:
+  # for har in [*numpy.linspace(0.05, 0.8*har_ub_min, 5, endpoint=False), *numpy.linspace(0.8*har_ub_min, har_ub_min, 10) ]:
+  for har in numpy.linspace(0.05, har_ub_min, 100):
     ar_l.append(har)
     ETh_ub_l.append(ff_ETh_ub(har, t, sdist_m) )
   plot.plot(ar_l, ETh_ub_l, label="Upper bound", color=next(dark_color), linestyle='--', lw=2)
   
   ar_l = []
   har_ub_max = ff_har_ub_max(t, sdist_m)
-  for har in [*numpy.linspace(0.05, 0.8*har_ub_max, 5, endpoint=False), *numpy.linspace(0.8*har_ub_max, har_ub_max, 10) ]:
+  # for har in [*numpy.linspace(0.05, 0.8*har_ub_max, 5, endpoint=False), *numpy.linspace(0.8*har_ub_max, har_ub_max, 10) ]:
+  for har in numpy.linspace(0.05, har_ub_max, 100):
     ar_l.append(har)
     ETh_lb_l.append(ff_ETh_lb(har, t, sdist_m) )
   plot.plot(ar_l, ETh_lb_l, label="Lower bound", color=next(dark_color), linestyle='-.', lw=2)
@@ -425,7 +429,8 @@ def plot_fairnessfirst():
   plot.legend(prop={'size':11} )
   plot.xlabel(r'Hot data arrival rate $\lambda$', fontsize=14)
   plot.ylabel(r'Avg hot data download time', fontsize=14)
-  plot.title(r'$V \sim {}$, $t={}$, $\lambda_c={}$'.format(V, t, car) ) # Fairness-first, 
+  # plot.title(r'Fairness-first $t={}$, Servers $\sim {}$, $\lambda_c={}$'.format(t, V, car) )
+  plot.title(r'Fairness-first $t= {}$, Servers$\sim {}$'.format(t, V) + "\n" + r'Cold data arrival rate= {}'.format(car) )
   fig = plot.gcf()
   def_size = fig.get_size_inches()
   fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.3)
@@ -464,7 +469,7 @@ def sim_reptoall(num_srun, t, car, har, sdist_m):
 def plot_reptoall_vs_ff():
   t = 1
   serv = "Exp" # "Dolly"
-  car = 0.5
+  car = 0.5 # 0.1 # 0.5
   if serv == "Exp":
     mu = 1
     sdist_m = {'dist': 'Exp', 'mu': mu}
@@ -484,8 +489,8 @@ def plot_reptoall_vs_ff():
   ETc_reptoall_l, EThc_reptoall_l = [], []
   ETc_ff_l, ETh_ff_l = [], []
   
-  num_srun = 3
-  sim = True # False
+  num_srun = 5
+  sim = False # True
   if serv == "Exp":
     if t == 1:
       if car == 0.1:
@@ -538,7 +543,102 @@ def plot_reptoall_vs_ff():
           1.1093576986128773,
           1.1307572696780974]
       elif car == 0.5:
-        pass
+        # EThc_reptoall_l= [
+        #   0.9357724942120637,
+        #   1.0195073997857127,
+        #   1.1390600110812168,
+        #   1.2839997790832902,
+        #   1.508433291917468,
+        #   1.8353683210888068,
+        #   1.9182499166648572,
+        #   2.005499474648738,
+        #   2.1262070566662343,
+        #   2.158185158260862,
+        #   2.267768633383888,
+        #   2.331300182993372,
+        #   2.4693773038135114,
+        #   2.558164399620566,
+        #   2.6993829524203203]
+        EThc_reptoall_l= [
+          0.9412838787757932,
+          1.0226867661452232,
+          1.1271541586439433,
+          1.2852656403912046,
+          1.5213904086219823,
+          1.8484614880081793,
+          1.9329176879280179,
+          1.9662625487946195,
+          2.080318851000592,
+          2.1613783654833854,
+          2.2397408521746343,
+          2.333284621648475,
+          2.457727501060236,
+          2.590198586725196,
+          2.730893670865941]
+        # ETh_ff_l= [
+        #   0.9235816250143966,
+        #   1.0432936019456611,
+        #   1.210933971711239,
+        #   1.4425091636665603,
+        #   1.7765407222538554,
+        #   2.3481727775719268,
+        #   2.431752034302232,
+        #   2.5534547595530372,
+        #   2.6230174844081,
+        #   2.86747562230979,
+        #   3.08040820848498,
+        #   3.2263201208846035,
+        #   3.3525433256976203,
+        #   3.6285838718416534,
+        #   3.840151807003022]
+        ETh_ff_l= [
+          0.8988449705708461,
+          1.0422460107787392,
+          1.2072340729101128,
+          1.4348460941999397,
+          1.7785372934364996,
+          2.32529339487659,
+          2.4361372855169408,
+          2.5667379736338223,
+          2.7055939669080917,
+          2.8449083674648623,
+          3.0538179996365695,
+          3.1869798429664042,
+          3.35925912433934,
+          3.6086801263382773,
+          3.9278158322372647]
+        # ETc_ff_l= [
+        #   2.002169040112291,
+        #   1.9865201856659145,
+        #   2.0029129814973348,
+        #   2.0026859424489474,
+        #   1.9921846936850471,
+        #   2.00073164130422,
+        #   1.9992582177117828,
+        #   2.027578688717941,
+        #   1.984036470630879,
+        #   1.997604087674219,
+        #   1.9904973362315517,
+        #   1.9850721470152282,
+        #   2.0006263019829813,
+        #   1.9936189860324502,
+        #   2.01215295024685]
+        ETc_ff_l= [
+          1.9799401626936597,
+          2.0128526627309293,
+          1.993172187101203,
+          2.0059887312972533,
+          1.9950806941435169,
+          2.002054238086192,
+          2.0116933638566,
+          2.0080279888803956,
+          1.9877198454729186,
+          2.011780919800691,
+          2.0153969494113317,
+          2.011096360545667,
+          1.9827236077353896,
+          2.016087449883659,
+          1.997929666975192]
     elif t == 33:
       if car == 0.1:
         pass
@@ -573,13 +673,14 @@ def plot_reptoall_vs_ff():
       gain_in_cold = (ETc_ff_l[i] - ET_reptoall)/ETc_ff_l[i] * 100
     gain_in_hot_l.append(gain_in_hot)
     gain_in_cold_l.append(gain_in_cold)
-  plot.plot(ar_l, gain_in_hot_l, label="Hot data", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-  plot.plot(ar_l, gain_in_cold_l, label="Cold data", marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  plot.plot(ar_l, gain_in_hot_l, label="In hot data", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+  plot.plot(ar_l, gain_in_cold_l, label="In cold data", marker=next(marker), color=next(dark_color), linestyle=':', mew=mew, ms=ms)
   
   plot.legend(prop={'size':11} )
   plot.xlabel(r'Hot data arrival rate', fontsize=14)
   plot.ylabel(r'Gain in percentage', fontsize=14)
-  plot.title('Gain of Rep-to-all over Fairness-First\n' + r'$V \sim {}$, $t={}$, $\lambda_c={}$'.format(V, t, car) )
+  # plot.title('Gain of Rep-to-all over Fairness-First\n' + r'Servers $\sim {}$, $t={}$, $\lambda_c={}$'.format(V, t, car) )
+  plot.title(r'Servers$\sim {}$, $t={}$'.format(V, t) + '\nCold data arrival rate= {}'.format(car) )
   fig = plot.gcf()
   def_size = fig.get_size_inches()
   fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.2)

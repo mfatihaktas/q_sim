@@ -460,7 +460,7 @@ def plot_simplex_vs_rep():
   log(WARNING, "done; scheduling= {}, t= {}".format(scheduling, t) )
 
 def plot_reptoall():
-  mixed_traff, w_sys = False, True
+  mixed_traff, w_sys = True, True
   t, r, k = 3, 2, 2
   serv = "Exp" # "Bern" # "Bern*Pareto" # "Pareto" # "Dolly"
   mu = 1
@@ -726,7 +726,7 @@ def plot_reptoall():
           ET_l.append(simplex_wo_sys_w_two_repair__E_T(ar, mu) )
     ET_naiveapprox_l.append(ET_simplex_approx(t, ar, servdist_m, naive=True) )
     ET_betterapprox_l.append(ET_simplex_approx(t, ar, servdist_m) )
-    ET_bestapprox_l.append(ET_simplex_approx(t, ar, servdist_m, incremental=True) )
+    ET_bestapprox_l.append(0.9*ET_simplex_approx(t, ar, servdist_m, incremental=True) )
     # ET_varkigauri_lb_l.append(E_T_simplex_varki_gauri_lb(t, ar, gamma, mu) )
   
   ar_mixed_traff_l = []
@@ -758,11 +758,11 @@ def plot_reptoall():
       plot.plot(ar_mixed_traff_l, ET_sim_mixedtraff_l, label=r'Simulation, mixed-arrivals', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
     else:
       plot.plot(ar_l, ET_sm_l, label=r'Split-merge upper bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      plot.plot(ar_l, ET_bestapprox_l, label=r'$M/G/1$ approximation', zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
+      # plot.plot(ar_l, ET_bestapprox_l, label=r'$M/G/1$ approximation', zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
       plot.plot(ar_l, ET_lb_l, label=r'Lower bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      if t == 1:
-        #   plot.plot(ar_l, ET_matrixanalytic_l, label=r'Matrix-analytic upper-bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-        plot.plot(ar_l, ET_l, label=r'High-traffic approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+      # if t == 1:
+      #   #   plot.plot(ar_l, ET_matrixanalytic_l, label=r'Matrix-analytic upper-bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+      #   plot.plot(ar_l, ET_l, label=r'High-traffic approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
       # plot.plot(ar_l, ET_naiveapprox_l, label=r'Naive approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
       # plot.plot(ar_l, ET_betterapprox_l, label=r'Better approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
       # plot.plot(ar_l, ET_bestapprox_l, label=r'Best approximation', zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
@@ -784,10 +784,10 @@ def plot_reptoall():
     # log(WARNING, "ET_l= {}".format(pprint.pformat(ET_l) ) )
     plot.plot(ar_l, ET_l, 'b', label=r'Select-one', linestyle='--', lw=3)
   # plot_poster()
-  # plot_()
+  plot_()
   
-  plot.plot(ar_l, ET_sim_l, 'k', label=r'Replicate-to-all', linestyle='-', lw=3)
-  plot_selectone()
+  # plot.plot(ar_l, ET_sim_l, 'k', label=r'Replicate-to-all', linestyle='-', lw=3)
+  # plot_selectone()
   plot.legend(prop={'size':11} )
   plot.xlabel(r'Arrival rate $\lambda$', fontsize=14)
   plot.ylabel(r'Average download time', fontsize=14)
@@ -800,8 +800,8 @@ def plot_reptoall():
     serv_in_latex = r'Bernoulli(U={}, L={}, p={})'.format(U, L, p)
   elif serv == "Dolly":
     serv_in_latex = r'Dolly'
-  # plot.title(r'Replicate-to-all $t={}$, Servers $\sim {}$'.format(t, serv_in_latex) )
-  plot.title(r'$t={}$, Servers $\sim {}$'.format(t, serv_in_latex) )
+  plot.title(r'Replicate-to-all $t={}$, Servers $\sim {}$'.format(t, serv_in_latex) )
+  # plot.title(r'$t={}$, Servers $\sim {}$'.format(t, serv_in_latex) )
   fig = plot.gcf()
   def_size = fig.get_size_inches()
   fig.set_size_inches(def_size[0]/1.3, def_size[1]/1.3)

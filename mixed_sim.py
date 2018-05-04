@@ -11,8 +11,9 @@ class MixedPG(object):
     self.qarrdist_m_l = qarrdist_m_l
     
     self.i__n_sent = len(qarrdist_m_l)*[0]
+    self.run_l = []
     for i, dist_m in enumerate(qarrdist_m_l):
-      self.env.process(self.run(i, dist_m) )
+      self.run_l.append(self.env.process(self.run(i, dist_m) ) )
     self.out = None
   
   def __repr__(self):
@@ -68,7 +69,7 @@ class SlaveQ(Q): # Release HoL at command
       self.n_released += 1
 
 # *************************************  Mixed Net  ****************************************** #
-# n servers with Poisson arrivals, once any k servers are busy, Hol is immediately released
+# n servers with Poisson arrivals, once any k servers are busy, Hol is immediately released.
 class MixedNet(object): # Network
   def __init__(self, env, n, k, attacker=None):
     self.env = env
@@ -76,9 +77,9 @@ class MixedNet(object): # Network
     self.k = k
     self.attacker = attacker
     
-    self.i_q_map = []
+    self.i_q_m = []
     for i in range(self.n):
-      self.i_q_map.append(SlaveQ(_id=i, env=env) )
+      self.i_q_m.append(SlaveQ(_id=i, env=env) )
     
     self.start_time = env.now
     
@@ -95,52 +96,50 @@ class MixedNet(object): # Network
     return "MixedNet[n={}, k={}]".format(self.n, self.k)
   
   def state(self):
-    ql_l = [self.i_q_map[i].length() for i in range(self.n) ]
+    ql_l = [self.i_q_m[i].length() for i in range(self.n) ]
     return ','.join(map(str, ql_l) )
   
   def qt_l(self):
     l = []
-    for q in self.i_q_map:
+    for q in self.i_q_m:
       l.extend(q.qt_l)
     return l
   
   def ET_ET2(self):
     ET_sum, ET2_sum = 0, 0
-    for q in self.i_q_map:
+    for q in self.i_q_m:
       ET_sum += q.avg_qtime()
       ET2_sum += q.avg_qtime2()
     return ET_sum/self.n, ET2_sum/self.n
   
   def throughput(self):
-    n_released = sum([q.n_released for i,q in enumerate(self.i_q_map) ] )
+    n_released = sum([q.n_released for i,q in enumerate(self.i_q_m) ] )
     return n_released/(self.env.now - self.start_time)
   
   def put(self, p):
     sim_log(DEBUG, self.env, self, "recved", p)
     
-    self.i_q_map[p.flow_id].put(p)
+    self.i_q_m[p.flow_id].put(p)
     
     if self.attack_on:
       self.attacker.in_packet(p.flow_id)
     
     o_l = []
-    for i, q in enumerate(self.i_q_map):
+    for i, q in enumerate(self.i_q_m):
       if q.length():
         o_l.append(i)
     
     if len(o_l) >= self.k:
-      for i, q in enumerate(self.i_q_map):
-        q.release()
+      for i in o_l:
+        self.i_q_m[i].release()
       
       if self.attack_on:
         self.attacker.out_frame(o_l)
-        
         # if self.attacker.state() == self.state(): # StateSniffer
         if len(self.attacker.possibleo_l) == 1: # AttackOne
           attackt = self.env.now - self.attacker_startt
           self.attackt_l.append(attackt)
           # self.ested_attackt_l.append(self.est_attackt)
-          
           self.attack_on = False
           self.attack_success.succeed()
   
@@ -150,7 +149,7 @@ class MixedNet(object): # Network
       self.attack_on = True
       
       # k, n = self.k, self.n
-      # ql_l = sorted([self.i_q_map[i].length() for i in range(n) ] )
+      # ql_l = sorted([self.i_q_m[i].length() for i in range(n) ] )
       # ql_l = [0] + ql_l[n-k+1:]
       # print("ql_l= {}".format(ql_l) )
       # sum_ = 0

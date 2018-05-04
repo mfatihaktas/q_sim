@@ -29,12 +29,14 @@ def F(x, dist_m):
     rv = Pareto(loc, a)
   return rv.cdf(x)
 
-def Pr_X_n_k_leq_x(n, k, x, dist_m):
+def Pr_Xnk_leq_x(n, k, x, dist_m):
+  if k == 0:
+    return 1
   p = F(x, dist_m)
-  return sum([binomial(n,i)*p**i*(1-p)**(n-i) for i in range(k, n+1) ] )
+  return sum([binom(n, i)*p**i*(1-p)**(n-i) for i in range(k, n+1) ] )
 
 def EXm_n_k(m, n, k, dist_m):
-  return mpmath.quad(lambda t: m*t**(m-1)*(1 - Pr_X_n_k_leq_x(n, k, t, dist_m) ), [0, mpmath.inf] )
+  return mpmath.quad(lambda t: m*t**(m-1)*(1 - Pr_Xnk_leq_x(n, k, t, dist_m) ), [0, mpmath.inf] )
 
 def EXm(m, dist_m):
   return mpmath.quad(lambda t: m*t**(m-1)*(1 - F(t, dist_m) ), [0, mpmath.inf] )

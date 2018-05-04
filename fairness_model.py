@@ -5,7 +5,7 @@ from rvs import *
 from simplex_models import ESm_typei
 
 r = 2
-ET_UB = 20
+ET_UB = 17 # 20
 
 def ff_har_ub_max(t, sdist_m):
   return 1/ESm_typei(1, t, 0, sdist_m)
@@ -82,8 +82,29 @@ def ff_ETh_approx_(har, car, t, sdist_m):
   ES = mpmath.quad(lambda s: Pr_Sgs(s), [0, mpmath.inf] ) # 10000*10
   ES2 = mpmath.quad(lambda s: 2*s*Pr_Sgs(s), [0, mpmath.inf] )
   # log(WARNING, "ES= {}, ES2= {}".format(ES, ES2) )
-  ET = ES + har*ES2/2/(1 - har*ES)
+  ET = ES + har*ES2/2/(1 - har*ES) if har*ES < 1 else 10**3
   return ET if ET >= 0 and ET < ET_UB else None
+
+def ff_ETh_newapprox(har, car, t, sdist_m):
+  X = Exp(car)
+  V = rv_from_m(sdist_m)
+  ro = car*moment_ith(1, V)
+  m = int(numpy.log2(t+1) )
+  
+  V22 = X_n_k(V, 2, 2)
+  Pr_Vprime_g_v = lambda v: 1 - V.cdf(v)*scipy.integrate.quad(lambda x: math.exp(-car*x)*V.pdf(x), 0, v)[0]
+  def Pr_S_g_s(s):
+    return V.tail(s)*V22.tail(s)**(t-m) * (Pr_Vprime_g_v(s)*(1 - ro) + ro)**m
+  
+  # ES = scipy.integrate.quad(lambda s: Pr_S_g_s(s), 0, numpy.inf)[0]
+  # ES2 = scipy.integrate.quad(lambda s: 2*s*Pr_S_g_s(s), 0, numpy.inf)[0]
+  ES = mpmath.quad(lambda s: Pr_S_g_s(s), [0, mpmath.inf] ) # 10000*10
+  ES2 = mpmath.quad(lambda s: 2*s*Pr_S_g_s(s), [0, mpmath.inf] )
+  log(WARNING, "ES= {}, ES2= {}".format(ES, ES2) )
+  ET = ES + har*ES2/2/(1 - har*ES) if har*ES < 1 else 10**3
+  return ET if ET >= 0 and ET < ET_UB else None
+  # ET = ES + har*ES2/2/(1 - har*ES)
+  # return ET
 
 def ff_ETh_approx(har, car, t, sdist_m):
   if sdist_m['dist'] == "Exp":

@@ -75,7 +75,7 @@ def gen_H(n, k):
     sum_ += float(1/(i*(i - k) ) )
   return sum_
 
-def binomial(n, k):
+def binom(n, k):
   if n == k:
     return 1
   elif k == 1:
@@ -87,7 +87,7 @@ def binomial(n, k):
   else:
     return math.factorial(n)/math.factorial(k)/math.factorial(n-k)
 
-# def binomial(x, y):
+# def binom(x, y):
 #   try:
 #     binom = factorial(x) // factorial(y) // factorial(x - y)
 #   except ValueError:
@@ -116,7 +116,7 @@ def G(z):
 def cdf_n_k(n, k, X, x): # Pr{X_n:k < x}
   cdf = 0
   for i in range(k, n+1):
-    cdf += binomial(n, i) * X.cdf(x)**i * X.tail(x)**(n-i)
+    cdf += binom(n, i) * X.cdf(x)**i * X.tail(x)**(n-i)
   return cdf
 
 def moment_i_n_k(i, n, k, X): # E[X_n:k]

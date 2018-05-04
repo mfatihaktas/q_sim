@@ -1,17 +1,32 @@
 import matplotlib
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
-
 matplotlib.use('Agg')
 import matplotlib.pyplot as plot
 
-import numpy
-import matplotlib.pyplot as plot
+import scipy
+import numpy as np
 from scipy.optimize import fsolve
 
 from patch import *
 from rvs import *
 from commonly_used import *
+
+def lyapunov_stability_test():
+  n, k = 100, 10
+  
+  V = lambda s_l: min(s_l)**(math.log(n/(n-1), 2.0) )
+  for c in range(1, 10000):
+    s_l = [c]*(k-1)
+    
+    d = -V(s_l)
+    for i in range(k-1):
+      s_l_ = list(s_l)
+      s_l_[i] += 1
+      d += V(s_l_)/n
+    s_l_ = [s-1 for s in s_l]
+    d += V(s_l_)*(n-k+1)/n
+    print("c= {}, d= {}".format(c, d) )
 
 def ET_mixednet_ub(n, k, l, qlambda_l=[] ):
   if len(qlambda_l):
@@ -67,14 +82,14 @@ def Pr_busy_mixednet_approx(n=100, k=None):
     def p():
       sum_ = 0.0
       for i in range(k):
-        sum_ += binomial(n, i) * pbusy**i * (1-pbusy)**(n-i)
-      return binomial(n, k-1) * pbusy**(k-1) * (1-pbusy)**(n-k+1) / sum_
+        sum_ += binom(n, i) * pbusy**i * (1-pbusy)**(n-i)
+      return binom(n, k-1) * pbusy**(k-1) * (1-pbusy)**(n-k+1) / sum_
       
       # sum_ = 0.0
       # for i in range(k-1, n+1):
-      #   sum_ += binomial(n, i)* pbusy**i * (1-pbusy)**(n-i)
+      #   sum_ += binom(n, i)* pbusy**i * (1-pbusy)**(n-i)
       # return sum_
-      # return binomial(n, k-1)* pbusy**(k-1) * (1-pbusy)**(n-k+1)
+      # return binom(n, k-1)* pbusy**(k-1) * (1-pbusy)**(n-k+1)
     # return p() - 1/(n-k+1)/pbusy
     return p() - 1/(1 + (n-k)*pbusy)
   
@@ -90,7 +105,7 @@ def Pr_busy_mixednet_approx(n=100, k=None):
       roots = scipy.optimize.brentq(eq, 0.0001, 0.95, args = (k) )
       print("n= {}, k= {}, roots= {}".format(n, k, roots) )
     #   pbusy_l, eq_l = [], []
-    #   for pbusy in numpy.linspace(0.01, 1, 1000):
+    #   for pbusy in np.linspace(0.01, 1, 1000):
     #     pbusy_l.append(pbusy)
     #     eq_l.append(eq(pbusy, k) )
     #   plot.plot(pbusy_l, eq_l, label=r'$k={}$'.format(k), color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
@@ -111,8 +126,7 @@ def Pr_busy_mixednet_approx(n=100, k=None):
 def serv_tail_approx(pe, n, k, t, dist_m):
   cdf = 0
   for e in range(k):
-    cdf += binomial(k-1,e)*pe**e*(1-pe)**(k-1-e) * Pr_X_n_k_leq_x(n-k+1+e, e, t, dist_m)
-  
+    cdf += binom(k-1,e)*pe**e*(1-pe)**(k-1-e) * Pr_Xnk_leq_x(n-k+1+e, e, t, dist_m)
   return 1 - cdf
 
 def approx_serv_tail_approx(pe, n, k, t, dist_m):
@@ -121,7 +135,7 @@ def approx_serv_tail_approx(pe, n, k, t, dist_m):
 def plot_serv_tail_approx(n, k, dist_m):
   pe = pempty(n, k, l)
   x_l, y_l = [], []
-  for t in numpy.linspace(0, 10, 100):
+  for t in np.linspace(0, 10, 100):
     x_l.append(t)
     y_l.append(serv_tail_approx(pe, n, k, t, dist_m) )
   plot.plot(x_l, y_l, label=r'$\lambda= {}$'.format(l), color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
@@ -134,14 +148,15 @@ def plot_serv_tail_approx(n, k, dist_m):
   log(WARNING, "done; n= {}, k= {}".format(n, k) )
 
 def serv_moment_approx(pe, n, k, m, dist_m):
-  return mpmath.quad(lambda t: m*t**(m-1)*serv_tail_approx(pe, n, k, t, dist_m), [0, 100000] ) # mpmath.inf
+  # return mpmath.quad(lambda t: m*t**(m-1)*serv_tail_approx(pe, n, k, t, dist_m), [0, mpmath.inf] ) # 100000
+  return scipy.integrate.quad(lambda t: m*t**(m-1)*serv_tail_approx(pe, n, k, t, dist_m), 0, np.inf)[0]
 
-def ET_mg1_approx(n, k, dist_m):
+def ET_mg1approx(n, k, dist_m):
   # pe = pempty_approx(n, k)
   pe = pempty(n, k, dist_m)
   EV = serv_moment_approx(pe, n, k, 1, dist_m)
   EV2 = serv_moment_approx(pe, n, k, 2, dist_m)
-  print("n= {}, k= {}, pe= {}, EV= {}, EV2= {}".format(n, k, pe, EV, EV2) )
+  print("k= {}, pe= {}".format(k, pe) )
   dist = dist_m['dist']
   if dist == 'Exp':
     ar = dist_m['mu']
@@ -159,45 +174,44 @@ def ET_mg1_approx(n, k, dist_m):
   if ET < 0: return None
   return ET
 
+def ET_mg1approx_(n, k, dist_m):
+  pe = pempty_approx(n, k, dist_m)
+  print("k= {}, pe= {}".format(k, pe) )
+  ar = dist_m['mu']
+  
+  EB = serv_moment_approx(pe, n, k, 1, dist_m)
+  EB2 = serv_moment_approx(pe, n, k, 2, dist_m)
+  ET = EB + ar*EB2/2/(1 - ar*EB)
+  return ET
+
 def pempty(n, k, dist_m):
   pe = 1
-  # for i in range(20):
-  #   pe = mpmath.quad(lambda t: (1 - serv_tail_approx(pe, n, k, l, t) ) * l*math.exp(-l*t), [0, mpmath.inf] )
-  #   print("i= {}, pe= {}".format(i, pe) )
   
+  mu = dist_m['mu']
+  x_pdf = lambda x: mu*math.exp(-mu*x)
   for k_ in range(1, k+1):
-    pe = mpmath.quad(lambda t: (1 - serv_tail_approx(pe, n, k_, t, dist_m) ) * f(t, dist_m), [0, mpmath.inf] )
+    # pe = mpmath.quad(lambda t: (1 - serv_tail_approx(pe, n, k_, t, dist_m) ) * f(t, dist_m), [0, mpmath.inf] )
+    pe = scipy.integrate.quad(lambda t: (1 - serv_tail_approx(pe, n, k_, t, dist_m) ) * x_pdf(t), 0, np.inf)[0]
     # print("k_= {}, pe= {}".format(k_, pe) )
+    
+  # for _ in range(10):
+  #   print("... pe= {}".format(pe) )
+  #   pe = scipy.integrate.quad(lambda t: (1 - serv_tail_approx(pe, n, k, t, dist_m) ) * x_pdf(t), 0, np.inf)[0]
   return pe
   # return 1 - (k-1)/n
 
-def pempty_approx(n, k):
-  pe = 1
+def pempty_approx(n, k, dist_m):
+  # pe = 1
+  # a = (k-1)/(n-k+2)
+  # if a == 0: return None
+  # return (-1 + math.sqrt(1 + 4*a) )/2/a
   
-  # for k_ in range(1, k+1):
-  #   EV = serv_moment_approx(pe, n, k_, l, 1)
-  #   pe = 1 - l*EV
-  #   # print("i= {}, pe= {}".format(i, pe) )
-  # return pe
-  
-  # for k_ in range(2, k+1):
-  #   pe = mpmath.quad(lambda t: (1 - approx_serv_tail_approx(pe, n, k_, l, t) ) * l*math.exp(-l*t), [0, mpmath.inf] )
-  #   # print("k_= {}, pe= {}".format(k_, pe) )
-  # return pe
-  
-  # h = lambda p: 1 - p - B((k-1)*p+1, n-k+2)/B((k-1)*p, n-k+2)
-  # return scipy.optimize.brentq(h, 0, 1)
-  a = (k-1)/(n-k+2)
-  if a == 0: return None
-  return (-1 + math.sqrt(1 + 4*a) )/2/a
-  
-  # # p_0 = 1 - ro = 1 - l*E[V]; does not work well because cannot capture definition of p_0 well
-  # def h(pe):
-  #   E = 0
-  #   for e in range(k):
-  #     E += H(n-k+1+e) * binomial(k-1, e)*pe**e*(1-pe)**(k-1-e)
-  #   return 1 + H(n-k+1) - E - pe
-  # return scipy.optimize.brentq(h, 0, 1)
+  ar = dist_m['mu']
+  def ro(pe):
+    return ar*serv_moment_approx(pe, n, k, 1, dist_m)
+  eq = lambda pe: pe - (1 - ro(pe) )
+  pe = scipy.optimize.brentq(eq, 0.0001, 1)
+  return pe
 
 def plot_qoi():
   dist_m = {'dist': 'Exp', 'mu': 1}
@@ -207,18 +221,18 @@ def plot_qoi():
   
   x_l, y_l, y_approx_l = [], [], []
   def plot_ar_forfixdelay(d=1):
-    ET_base = ET_mg1_approx(n, 2, dist_m)
+    ET_base = ET_mg1approx(n, 2, dist_m)
     for k in range(3, n):
       def eq(ar, data):
         k = data
-        return ET_mg1_approx(n, k, {'dist': 'Exp', 'mu': ar} ) - ET_base
+        return ET_mg1approx(n, k, {'dist': 'Exp', 'mu': ar} ) - ET_base
       ar = scipy.optimize.brentq(eq, 0.0001, 100, args = (k) )
       print("ar= {}".format(ar) )
   
   def plot_ED_vs_k():
     for k in range(2, n):
       x_l.append(k)
-      ED = ET_mg1_approx(n, k, dist_m)
+      ED = ET_mg1approx(n, k, dist_m)
       # E = ED / () if ED is not None else ED
       y_l.append(E)
       
@@ -239,10 +253,10 @@ def plot_qoi():
   
   def plot_avgdelay():
     for k in range(2, n):
-    # for k in numpy.linspace(2, n-1, 10):
+    # for k in np.linspace(2, n-1, 10):
     #   k = int(k)
       x_l.append(k)
-      y_l.append(ET_mg1_approx(n, k, dist_m) )
+      y_l.append(ET_mg1approx(n, k, dist_m) )
     plot.plot(x_l, y_l, color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
     plot.xlabel(r'$k$', fontsize=13)
     plot.ylabel(r'$E[D]$', fontsize=14)
@@ -312,7 +326,16 @@ def tail_exponent(n, k, dist_m):
   return mu
 
 if __name__ == "__main__":
+  # n = 50
+  # dist_m = {'dist': 'Exp', 'mu': 1}
+  # print("n= {}, X ~ {}".format(n, dist_m) )
+  # for k in range(1, n, 5):
+  #   pe = pempty(n, k, dist_m)
+  #   print("k= {}, pe= {}".format(k, pe) )
+  
   # plot_serv_tail_approx(n=10, k=9, {'dist': 'Exp', 'mu': 1})
-  # plot_pempty()
-  plot_qoi()
+  # plot_qoi()
+  
+  lyapunov_stability_test()
+  
   

@@ -25,8 +25,11 @@ if [ $1 = 'e' ]; then
   $PYTHON simplex_exp.py
 elif [ $1 = 'x' ]; then
   $PYTHON mixed_exp.py
+  # $PYTHON randmix_exp.py
+  # $PYTHON randmix_model.py
 elif [ $1 = 'xm' ]; then
-  $PYTHON mixed_models.py
+  # $PYTHON mixed_models.py
+  $PYTHON mixed_newmodels.py
 elif [ $1 = 'm' ]; then
   # $PYTHON multiq_exp.py
   $PYTHON mds_exp.py
