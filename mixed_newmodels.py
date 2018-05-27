@@ -63,14 +63,6 @@ def pempty(n, k, dist_m):
     pe = scipy.integrate.quad(lambda t: (1 - Pr_B_g_t(pe, n, k_, t, dist_m) ) * x_pdf(t), 0, np.inf)[0]
   return pe
 
-def pempty(n, k, dist_m):
-  pe = 1
-  mu = dist_m['mu']
-  x_pdf = lambda x: mu*math.exp(-mu*x)
-  for k_ in range(1, k+1):
-    pe = scipy.integrate.quad(lambda t: (1 - Pr_B_g_t_(pe, n, k_, t, dist_m) ) * x_pdf(t), 0, np.inf)[0]
-  return pe
-
 def pempty_mg1efsapprox(n, k, dist_m):
   ar = dist_m['mu']
   # pe = 1

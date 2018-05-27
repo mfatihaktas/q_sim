@@ -427,7 +427,7 @@ def rv_from_m(dist_m):
   elif d == "SExp":
     return Exp(dist_m['mu'], dist_m['D'] )
   elif d == "Pareto":
-    return Pareto(dist_m['loc'], dist_m['a'] )
+    return Pareto(dist_m['l'], dist_m['a'] )
   elif d == "TPareto":
     return TPareto(dist_m['l'], dist_m['u'], dist_m['a'] )
   elif d == "Bern":

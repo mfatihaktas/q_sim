@@ -76,16 +76,7 @@ def gen_H(n, k):
   return sum_
 
 def binom(n, k):
-  if n == k:
-    return 1
-  elif k == 1:
-    return n
-  elif k == 0:
-    return 1
-  elif k > n:
-    return 0
-  else:
-    return math.factorial(n)/math.factorial(k)/math.factorial(n-k)
+  return scipy.special.binom(n, k)
 
 # def binom(x, y):
 #   try:

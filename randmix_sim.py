@@ -43,7 +43,7 @@ class SamplekMix(object):
     self.env = env
     self.n = n
     self.k = k
-    self.pd = pd if pd is not None else k/n
+    self.pd = pd if pd is not None else 1/n
     
     self.i_q_m = []
     for i in range(self.n):

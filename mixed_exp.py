@@ -159,11 +159,16 @@ def plot_mixednet():
         ET_sim_l.append(ET_sim)
         # ET_approx = ET_n_2(n, ar)
         # ET2_approx = ET2_n_2(n, ar)
+        
+        ET_mg1_ = ET_mg1approx_(n, k, dist_m)
+        print("ET_mg1_= {}".format(ET_mg1_) )
+        
         ET_mg1efs = ET_mg1efsapprox(n, k, dist_m)
         print("ET_mg1efs= {}".format(ET_mg1efs) )
-        ET_mg1 = ET_mg1approx_(n, k, dist_m)
-        print("ET_mg1= {}".format(ET_mg1) )
-        ET_approx_l.append(ET_mg1)
+        
+        ET_mg1efs_ = ET_mg1efsapprox_(n, k, dist_m)
+        print("ET_mg1efs_= {}".format(ET_mg1efs_) )
+        ET_approx_l.append(ET_mg1efs_)
       elif pET2:
         print("ET2_sim= {}".format(ET2_sim) )
         ET2_sim_l.append(ET2_sim)
@@ -187,8 +192,8 @@ def plot_mixednet():
     # plot.plot(x_l, ET_ub_l, label=r'Upper-bound', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
     if pET:
       plot.plot(x_l, ET_sim_l, label=r'$k= {}$, Simulation'.format(k), color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
-      plot.plot(x_l, ET_approx_l, label=r'$k= {}$, Approx'.format(k), color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
-      plot.ylabel(r'$E[D]$', fontsize=13)
+      plot.plot(x_l, ET_approx_l, label=r'$k= {}$, M/G/1/efs approximation'.format(k), color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
+      plot.ylabel(r'Average delay', fontsize=14)
     elif pET2:
       plot.plot(x_l, ET2_sim_l, label=r'Simulation', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
       plot.plot(x_l, ET2_approx_l, label=r'Approx', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
@@ -203,8 +208,8 @@ def plot_mixednet():
       plot.ylabel(r'$E[L^2]$', fontsize=13)
     
     # plot.title(r'$n= {}$, $k= {}$'.format(n, k) )
-    plot.title(r'$n= {}$'.format(n) )
-    plot.xlabel(r'$\lambda$', fontsize=13)
+    plot.title(r'Batch mix, $n= {}$'.format(n) )
+    plot.xlabel(r'$\lambda$', fontsize=14)
     
   def plot_ET_vs_k(n, dist_m):
     pET, pET2, pEL, pEL2 = True, False, False, False
@@ -242,8 +247,6 @@ def plot_mixednet():
         
         # ETtighterlb = ET_tighterlb(n, k, dist_m)
         # print("ETtighterlb= {}".format(ETtighterlb) )
-        
-        plot.xlabel(r'$E[D]$', fontsize=13)
       elif pET2:
         print("ET2_sim= {}".format(ET2_sim) )
         ET2_sim_l.append(ET2_sim)
@@ -252,15 +255,16 @@ def plot_mixednet():
         ET2_approx_l.append(ET2_approx)
     if pET:
       plot.plot(k_l, ET_sim_l, label=r'Simulation', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
-      plot.plot(k_l, ET_approx_l, label=r'M/G/1/efs Approx', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
+      plot.plot(k_l, ET_approx_l, label=r'M/G/1/efs approximation', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
       plot.ylabel(r'Average delay', fontsize=13)
     elif pET2:
       plot.plot(k_l, ET2_sim_l, label=r'Simulation', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
-      plot.plot(k_l, ET2_approx_l, label=r'M/G/1 Approx', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
+      plot.plot(k_l, ET2_approx_l, label=r'M/G/1 approximation', color=next(dark_color), marker=next(marker), mew=mew, ms=ms, linestyle=':')
       plot.ylabel(r'$E[D^2]$', fontsize=13)
     
-    plot.title(r'$n= {}$, $X \sim {}$'.format(n, dist_to_latex(dist_m) ) )
-    plot.xlabel(r'$k$', fontsize=12)
+    # plot.title(r'$n= {}$, $X \sim {}$'.format(n, dist_to_latex(dist_m) ) )
+    plot.title(r'Batch mix, $n= {}$, $\lambda= {}$'.format(n, dist_m['mu'] ), fontsize=13)
+    plot.xlabel(r'$k$', fontsize=14)
   
   def plot_ET_vs_EDeanont(dist_m):
     k_l = []
@@ -307,7 +311,7 @@ def plot_mixednet():
     plot.title(r'$n= {}$, $X \sim {}$'.format(n, dist_to_latex(dist_m) ) )
   #
   # plot_ET_vs_ar(k=9)
-  # plot_ET_vs_ar(k=7)0
+  # plot_ET_vs_ar(k=7)
   # plot_ET_vs_ar(k=3)
   
   n = 40
@@ -315,7 +319,8 @@ def plot_mixednet():
   print("n= {}, X ~ {}".format(n, dist_m) )
   # dist_m = {'dist': 'Pareto', 'loc': 1, 'a': 50}
   plot_ET_vs_k(n, dist_m)
-  # plot_ET_vs_ar(n, k=int(n/2) )
+  # plot_ET_vs_ar(n, k=10)
+  # plot_ET_vs_ar(n, k=20)
   
   # plot_ET_vs_EDeanont(dist_m)
   # plot_EDeanont_vs_k(dist_m)

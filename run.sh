@@ -24,8 +24,8 @@ if [ $1 = 'e' ]; then
   # rm *.png; $PYTHON exp.py
   $PYTHON simplex_exp.py
 elif [ $1 = 'x' ]; then
-  $PYTHON mixed_exp.py
-  # $PYTHON randmix_exp.py
+  # $PYTHON mixed_exp.py
+  $PYTHON randmix_exp.py
   # $PYTHON randmix_model.py
 elif [ $1 = 'xm' ]; then
   # $PYTHON mixed_models.py

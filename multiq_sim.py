@@ -174,10 +174,10 @@ class PSQ(object): # Process Sharing Queue
           self.t_l.remove(t)
 
 class FCFS(object):
-  def __init__(self, _id, env, slowdown_dist, out):
+  def __init__(self, _id, env, sl_dist, out):
     self._id = _id
     self.env = env
-    self.slowdown_dist = slowdown_dist
+    self.sl_dist = sl_dist
     self.out = out
     
     self.t_l = []
@@ -208,7 +208,7 @@ class FCFS(object):
       
       self.cancel = self.env.event()
       clk_start_time = self.env.now
-      st = self.t_inserv.size * self.slowdown_dist.gen_sample()
+      st = self.t_inserv.size * self.sl_dist.gen_sample()
       # sim_log(DEBUG, self.env, self, "starting {}s-clock on ".format(st), self.t_inserv)
       yield (self.cancel | self.env.timeout(st) )
       
@@ -317,16 +317,16 @@ class JQ(object):
   #   return self.store_c.put(m)
 
 class MultiQ(object):
-  def __init__(self, env, N, sching_m):
+  def __init__(self, env, N, sching_m, sl_dist):
     self.env = env
     self.N = N
     self.sching_m = sching_m
     
-    self.jq = JQ(env, range(self.N) )
+    self.jq = JQ(env, list(range(self.N) ) )
     self.jq.out_c = self
-    self.q_l = [PSQ(i, env, h=4, out=self.jq) for i in range(self.N) ]
-    # slowdown_dist = Dolly() # DUniform(1, 1)
-    # self.q_l = [FCFS(i, env, slowdown_dist, out=self.jq) for i in range(self.N) ]
+    # self.q_l = [PSQ(i, env, h=4, out=self.jq) for i in range(self.N) ]
+    # sl_dist = DUniform(1, 1) # Dolly()
+    self.q_l = [FCFS(i, env, sl_dist, out=self.jq) for i in range(self.N) ]
     
     self.jid_info_m = {}
     
@@ -361,8 +361,8 @@ class MultiQ(object):
   def run(self):
     while True:
       j = (yield self.store.get() )
-      toi_l = random.sample(range(self.N), j.n)
-      # toi_l = self.get_sorted_qids()[:j.n]
+      # toi_l = random.sample(range(self.N), j.n)
+      toi_l = self.get_sorted_qids()[:j.n]
       
       for i in toi_l:
         self.q_l[i].put(Task(j._id, j.k, j.tsize, j.tsize) )

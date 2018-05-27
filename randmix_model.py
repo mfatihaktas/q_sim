@@ -12,7 +12,7 @@ from commonly_used import *
 
 def ET_randmix(n, k, ar, pd=None):
   if pd is None:
-    pd = k/n
+    pd = 1/n
   po = pd*(k-1)/(n-1) + (1 - pd)*k/(n-1)
   ro = (1-pd)/(n-1)/po
   """
