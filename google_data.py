@@ -26,10 +26,17 @@ task events table contains the following fields:
 13. different-machine constraint
 """
 
-f_to_i = {
+jobevents_f_to_i = {
   'timestamp': 0,
-  'job_i': 2,
-  'task_i': 3,
+  'job id': 2,
+  'event': 3,
+  'job name': 6,
+  'logical job name': 7
+}
+taskevents_f_to_i = {
+  'timestamp': 0,
+  'job id': 2,
+  'task index': 3,
   'event': 5
 }
 e_to_i = {
@@ -37,11 +44,10 @@ e_to_i = {
   'finish': 4
 }
 
-def counter_to_furl(counter):
+def counter_to_furl(counter, obj="task"):
   part = str(counter)
   part = (5 - len(part) )*'0' + part
-  # return "/home/ubuntu/task_events/part-" + part + "-of-00500.csv.gz"
-  return "/cac/u01/mfa51/Desktop/google_cluster_data/task_events/part-" + part + "-of-00500.csv.gz"
+  return "/home/mfa51/google-clusterdata-2011/{}_events/part-{}-of-00500.csv.gz".format(obj, part)
 
 def deneme():
   job_task_i__sch_finish_time_m = {}
@@ -52,10 +58,10 @@ def deneme():
       with gzip.open(furl, mode="rt") as f:
         reader = csv.reader(f)
         for line in reader:
-          i = line[f_to_i['job_i'] ] + '_' + line[f_to_i['task_i'] ]
-          e = int(line[f_to_i['event'] ] )
+          i = line[taskevents_f_to_i['job id'] ] + '_' + line[taskevents_f_to_i['task index'] ]
+          e = int(line[taskevents_f_to_i['event'] ] )
           if e == e_to_i['schedule'] or e == e_to_i['finish']:
-            t = float(line[f_to_i['timestamp'] ] )/10**6
+            t = float(line[taskevents_f_to_i['timestamp'] ] )/10**6
             if i not in job_task_i__sch_finish_time_m:
               job_task_i__sch_finish_time_m[i] = [t]
             else:
@@ -90,15 +96,15 @@ def write_num_tasks_per_job():
       with gzip.open(furl, mode="rt") as f:
         reader = csv.reader(f)
         for line in reader:
-          ji = int(line[f_to_i['job_i'] ] )
-          ti = int(line[f_to_i['task_i'] ] )
-          e = int(line[f_to_i['event'] ] )
+          ji = int(line[taskevents_f_to_i['job id'] ] )
+          ti = int(line[taskevents_f_to_i['task index'] ] )
+          e = int(line[taskevents_f_to_i['event'] ] )
           if e == e_to_i['schedule']:
             if ji not in ji__ti_l_m:
               ji__ti_l_m[ji] = set()
             ji__ti_l_m[ji].add(ti)
       print("counter= {}, writing now...".format(counter) )
-      for ji,ti_l in ji__ti_l_m.items():
+      for ji, ti_l in ji__ti_l_m.items():
         writer.writerow([ji, len(ti_l) ] )
     except (OSError, IOError) as e:
       log(WARNING, "done with the files.")
@@ -156,13 +162,13 @@ def write_task_lifetimes(num_task):
       with gzip.open(furl, mode="rt") as f:
         reader = csv.reader(f)
         for line in reader:
-          ji = int(line[f_to_i['job_i'] ] )
+          ji = int(line[taskevents_f_to_i['job id'] ] )
           if ji in ji_l:
-            e = int(line[f_to_i['event'] ] )
+            e = int(line[taskevents_f_to_i['event'] ] )
             if e == e_to_i['schedule'] or e == e_to_i['finish']:
-              ti = int(line[f_to_i['task_i'] ] )
+              ti = int(line[taskevents_f_to_i['task index'] ] )
               entry = Entry(ji=ji, ti=ti)
-              t = float(line[f_to_i['timestamp'] ] )/10**6
+              t = float(line[taskevents_f_to_i['timestamp'] ] )/10**6
               if entry not in entry__sch_fin_l_m:
                 entry__sch_fin_l_m[entry] = [0,0]
               if e == e_to_i['schedule']:
@@ -391,4 +397,4 @@ if __name__ == "__main__":
   # pplot_task_lifetime_hist(k=1050)
   
   # plot_qq_task_lifetimes(k=400)
-  
+  pass

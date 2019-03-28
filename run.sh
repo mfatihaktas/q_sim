@@ -59,7 +59,8 @@ elif [ $1 = 'sl' ]; then
 elif [ $1 = 'n' ]; then
   $PYTHON new.py
 elif [ $1 = 'g' ]; then
-  $PYTHON google_data.py
+  # $PYTHON google_data.py
+  $PYTHON googledata_job_events.py
 elif [ $1 = 'f' ]; then
   $PYTHON fairness_sim.py
   # $PYTHON fj_heavytail.py
