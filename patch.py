@@ -1,3 +1,11 @@
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+# matplotlib.rcParams['ps.useafm'] = True
+# matplotlib.rcParams['pdf.use14corefonts'] = True
+# matplotlib.rcParams['text.usetex'] = True
+matplotlib.use('Agg')
+import matplotlib.pyplot as plot
 import inspect, math, mpmath, scipy, itertools
 from scipy import special
 
@@ -5,7 +13,7 @@ from scipy import special
 dark_color = itertools.cycle(('green', 'red', 'goldenrod', 'blue', 'magenta', 'purple', 'gray', 'brown', 'turquoise', 'gold', 'olive', 'silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'darkgray', 'orangered'))
 light_color = itertools.cycle(('silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise'))
 linestyle = itertools.cycle(('-', '--', '-.', ':') )
-marker = itertools.cycle(('^', 'p', 'd', 'v', '<', '>', '+', '1' , '2', '3', '4', 'x') )
+marker = itertools.cycle(('^', 'o', 'd', 'v', '<', '>', 'p', '+', '1' , '2', '3', '4') )
 skinny_marker_l = ['x', '+', '1', '2', '3', '4']
 
 mew, ms = 3, 5
@@ -46,6 +54,12 @@ def log(dlevel, log):
   """
   if DEBUG_LEVEL <= dlevel:
     print("{}] {}:: {}".format(debug_level__string_map[dlevel], inspect.stack()[1][3], log) )
+
+def prettify(ax):
+  plot.tick_params(top='off', right='off', which='both')
+  ax.patch.set_alpha(0.2)
+  ax.spines['right'].set_visible(False)
+  ax.spines['top'].set_visible(False)
 
 def list_to_str(l):
   return ",".join("%s" % e for e in l)
@@ -93,9 +107,9 @@ def I(u_l, m, n):
   return scipy.special.betainc(m, n, u_l)
 
 def B(m, n, u_l=1):
+  # return mpmath.quad(lambda x: x**(m-1) * (1-x)**(n-1), [0, u_l] )
   if u_l == 1:
     return scipy.special.beta(m, n)
-  # return mpmath.quad(lambda x: x**(m-1) * (1-x)**(n-1), [0, u_l] )
   else:
     return I(u_l, m, n)*B(m, n)
 
@@ -114,12 +128,12 @@ def moment_i_n_k(i, n, k, X): # E[X_n:k]
   return mpmath.quad(lambda x: i*x**(i-1) * (1 - cdf_n_k(n, k, X, x) ), [0, mpmath.inf] )
 
 # Qing
-def PK(E_V, E_V_2, ar):
-  if ar*E_V >= 1:
+def PK(EV, EV_2, ar):
+  if ar*EV >= 1:
     return None
-  E_T = E_V + ar*E_V_2/2/(1 - ar*E_V)
-  if E_T > 100: return None
-  return E_T
+  ET = EV + ar*EV_2/2/(1 - ar*EV)
+  if ET > 100: return None
+  return ET
 
 def fit_pareto(s_l):
   n = len(s_l)
@@ -133,18 +147,27 @@ def fit_pareto(s_l):
     a = (n-1)/D
   elif fit_upper_tail:
     l = s_l[-1]
-    i = int(math.sqrt(n) ) # int(n*0.3)
+    i = int(math.sqrt(n) ) # int(n*0.5)
     s_l = s_l[:i]
     l_ = s_l[-1]
     D = 0
     for s in s_l:
       D += math.log(s) - math.log(l_)
     a = i/D
-  # log(WARNING, "done; l= {}, a= {}".format(l, a) )
+  log(WARNING, "done; l= {}, a= {}".format(l, a) )
   return l, a
 
 def fit_tpareto(s_l):
-  # s_l is ordered in descending order
+  ## s_l is ordered in descending order
+  # i_ = 0
+  # for i in range(len(s_l)-1, -1, -1):
+  #   if s_l[i] > 1.05:
+  #     i_ = i
+  #     break
+  # n = len(s_l)
+  # s_l = s_l[:i_]
+  # Pr_to_subtract = (n - i_)/n
+  
   n = len(s_l)
   log(WARNING, "n= {}".format(n) )
   fit_upper_tail = False # True
@@ -167,11 +190,11 @@ def fit_tpareto(s_l):
     # a = sympy.solve(n/a + n*r**a*math.log(r)/(1-r**a) - sum([math.log(x/l) for x in s_l] ) )
     a = solve_a(lambda a: n/a + n*r**a*math.log(r)/(1-r**a) - sum([math.log(x/l) for x in s_l] ) )
   else:
-    i = int(math.sqrt(n) ) # int(n*0.3)
+    i = int(math.sqrt(n) ) # int(n*0.5)
     X_ip1 = s_l[i+1]
     r = X_ip1/u
     a = solve_a(lambda a: i/a + i*r**a*math.log(r)/(1-r**a) - sum([math.log(x) - math.log(X_ip1) for x in s_l[:i+1] ] ) )
-    l = i**(1/a) * X_ip1*(n - (n-i)*(X_ip1/u)**a)**(-1/a)
+    l = 1 # i**(1/a) * X_ip1*(n - (n-i)*(X_ip1/u)**a)**(-1/a)
   log(WARNING, "done; l= {}, u= {}, a= {}".format(l, u, a) )
   return l, u, a
 

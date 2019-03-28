@@ -361,7 +361,7 @@ def plot_qq_task_lifetimes(k):
   log(WARNING, "done; k= {}".format(k) )
 
 if __name__ == "__main__":
-  # Uncomment with caution!
+  ## Uncomment with caution!
   # write_num_tasks_per_job()
   # do_possible_merges_in_num_tasks()
   

@@ -8,16 +8,16 @@ from multiq_sim import *
 from mds_sim import *
 from mds_models import *
 
+def scale_distm(dist_m, k):
+  m = dist_m.copy()
+  m['l'] /= k
+  return m
+
 # Simulating a system of N servers with all arrivals completing as mds[n, k]
 def plot_Nserver_mdsnkjobs():
   N = 10
   tsize_dist = DUniform(1, 1)
   dist_m = {'dist': 'Pareto', 'l': 1, 'a': 2}
-  
-  def scale_distm(k):
-    m = dist_m.copy()
-    m['l'] /= k
-    return m
   
   def sim(ar, k, n, dist_m):
     k_dist = DUniform(k, k)
@@ -35,36 +35,39 @@ def plot_Nserver_mdsnkjobs():
   def plot_varyingk(ar, n):
     print("> ar= {}, n= {}".format(ar, n) )
     k_l, ET_l = [], []
-    for k in range(1, n+1):
+    # for k in range(1, n+1):
+    for k in range(n, n+1):
       print("k= {}".format(k) )
       k_l.append(k)
       
-      ET = sim(ar, k, n, scale_distm(k) )
+      ET = sim(ar, k, n, scale_distm(dist_m, k) )
       print("ET= {}".format(ET) )
       ET_l.append(ET)
-      plot.plot(k_l, ET_l, color=next(dark_color), label=r'$\lambda= {}$'.format(ar), marker=next(marker), linestyle=':', mew=2)
+    plot.plot(k_l, ET_l, color=next(dark_color), label=r'$\lambda= {}$'.format(ar), marker=next(marker), linestyle=':', mew=mew, ms=ms)
     plot.xlabel(r'$k$', fontsize=14)
     plot.title(r'$N= {}$, $n= {}$, $V \sim {}$'.format(N, n, dist_to_latex(dist_m) ) )
   
   def plot_varyingn(ar, k):
     print("> ar= {}, k= {}".format(ar, k) )
-    dist_m = scale_distm(k)
+    dist_m = scale_distm(dist_m, k)
     n_l, ET_l = [], []
     for n in range(k, N+1):
       print("n= {}".format(n) )
-      k_l.append(k)
+      n_l.append(n)
       
       ET = sim(ar, k, n, dist_m)
       print("ET= {}".format(ET) )
       ET_l.append(ET)
-      plot.plot(k_l, ET_l, color=next(dark_color), label=r'$\lambda= {}$'.format(ar), marker=next(marker), linestyle=':', mew=2)
+      plot.plot(n_l, ET_l, color=next(dark_color), label=r'$\lambda= {}$'.format(ar), marker=next(marker), linestyle=':', mew=mew, ms=ms)
     plot.xlabel(r'$n$', fontsize=14)
     plot.title(r'$N= {}$, $k= {}$, $V \sim {}$'.format(N, k, dist_to_latex(dist_m) ) )
   
   print("N= {}, dist_m= {}".format(N, dist_m) )
-  # plot_varyingk(ar=1, n=4)
-  plot_varyingk(ar=1.5, n=4)
+  # plot_varyingk(ar=1.6, n=4)
+  # plot_varyingk(ar=3, n=4)
+  plot_varyingk(ar=4, n=4)
   
+  plot.legend()
   plot.ylabel('Average download time', fontsize=14)
   fig = plot.gcf()
   def_size = fig.get_size_inches()
@@ -75,7 +78,7 @@ def plot_Nserver_mdsnkjobs():
 
 # ###########################################  ISIT'18  ########################################## #
 # Simulating a system of N/n decoupled mds[n, k] storage
-def sim_mds_nk(num_frun, ar, n, k, dist_m, r=None, preempt=False, fi_l=[] ):
+def sim_mdsnk(num_frun, ar, n, k, dist_m, r=None, preempt=False, fi_l=[] ):
   ET_sum = 0
   for f in range(num_frun):
     log(WARNING, "ar= {}, n= {}, k= {}, dist_m= {}".format(ar, n, k, dist_m) )
@@ -84,7 +87,7 @@ def sim_mds_nk(num_frun, ar, n, k, dist_m, r=None, preempt=False, fi_l=[] ):
     mdsq = MDSQ("mdsq", env, k, range(n), dist_m)
     # monitor = MDSQMonitor(env, mdsq, lambda: 1)
     pg.out = mdsq
-    env.run(until=50000*10)
+    env.run(until=50000*1)
     
     st_l = mdsq.jsink.st_l
     ET_sum += float(sum(st_l) )/len(st_l)
@@ -104,12 +107,78 @@ def sim_mds_nk(num_frun, ar, n, k, dist_m, r=None, preempt=False, fi_l=[] ):
     # print("polled_state__freq_map= {}".format(pprint.pformat(polled_state__freq_map) ) )
     # print("----------------------------------------")
   ET = ET_sum/num_frun
-  if ET > 100: return None
+  # if ET > 100: return None
   return ET
 
+def plot_Nnk():
+  N = 20
+  dist_m = {'dist': 'Pareto', 'l': 10, 'a': 2}
+  num_frun = 10 # 10
+  
+  def plot_varyingk(ar, n):
+    print("> ar= {}, n= {}".format(ar, n) )
+    ar_ = ar * n/N
+    k_l, ET_l = [], []
+    for k in range(1, n+1):
+      print("k= {}".format(k) )
+      k_l.append(k)
+      
+      ET = sim_mdsnk(num_frun, ar_, n, k, scale_distm(dist_m, k) )
+      print("ET= {}".format(ET) )
+      ET_l.append(ET)
+    plot.plot(k_l, ET_l, color=next(dark_color), label=r'$\lambda= {}$'.format(ar), marker=next(marker), linestyle=':', mew=2)
+    plot.xlabel(r'$k$', fontsize=14)
+    # plot.title(r'$N= {}$, $n= {}$, $V \sim {}$'.format(N, n, dist_to_latex(dist_m) ) )
+    # plot.title(r'$n= {}$, $V \sim {}$'.format(n, dist_to_latex(dist_m) ) )
+    plot.title(r'$n= {}$, $S= {}$, Slowdown$\sim Pareto(1, \alpha=2)$'.format(n, dist_m['l'] ) )
+  
+  def plot_varyingn(ar, k):
+    print("> ar= {}, k= {}".format(ar, k) )
+    dist_m = scale_distm(dist_m, k)
+    n_l, ET_l = [], []
+    # for n in range(k, N+1):
+    for n in [2, 4, 5, 10, 20]:
+      print("n= {}".format(n) )
+      n_l.append(n)
+      
+      ar_ = ar * n/N
+      ET = sim_mdsnk(num_frun, ar_, n, k, dist_m)
+      print("ET= {}".format(ET) )
+      ET_l.append(ET)
+    plot.plot(n_l, ET_l, color=next(dark_color), label=r'$\lambda= {}$'.format(ar), marker=next(marker), linestyle=':', mew=2)
+    plot.xlabel(r'$n$', fontsize=14)
+    plot.title(r'$N= {}$, $k= {}$, $V \sim {}$'.format(N, k, dist_to_latex(dist_m) ) )
+  
+  print("N= {}, dist_m= {}".format(N, dist_m) )
+  # plot_varyingk(ar=2, n=5)
+  # plot_varyingk(ar=2.5, n=5)
+  # plot_varyingk(ar=3, n=5)
+  # plot_varyingk(ar=3.25, n=5)
+  # plot_varyingk(ar=3.5, n=5)
+  
+  # plot_varyingk(ar=0.2, n=5)
+  # plot_varyingk(ar=0.8, n=5)
+  # plot_varyingk(ar=1.4, n=5)
+  
+  plot_varyingk(ar=2/10, n=5)
+  plot_varyingk(ar=2.5/10, n=5)
+  plot_varyingk(ar=2.75/10, n=5)
+  plot_varyingk(ar=2.95/10, n=5)
+  
+  # plot_varyingn(ar=5, k=2)
+  
+  plot.legend()
+  plot.ylabel('Average download time', fontsize=14)
+  fig = plot.gcf()
+  def_size = fig.get_size_inches()
+  fig.set_size_inches(def_size[0]/1.2, def_size[1]/1.2)
+  fig.tight_layout()
+  plot.savefig("plot_N{}_nk.pdf".format(N) )
+  log(WARNING, "done; N= {}.".format(N) )
+
 def plot_mds_n2_wrtn():
-  N = 10
-  k = 1
+  N = 20
+  k = 2
   dist_m = {'dist': 'Pareto', 'l': 1, 'a': 2}
   
   ar_ub = mds_exactbound_on_ar(N, k, dist_m)
@@ -121,12 +190,12 @@ def plot_mds_n2_wrtn():
     ET_sm_l, ET_sim_l = [], []
     
     print("> ar= {}".format(ar) )
-    # for n in [1, 2, 4, 5, 10]:
-    for n in [1, 2, 5, 10]:
+    for n in [2, 4, 5, 10, 20]:
+    # for n in [1, 2, 5, 10]:
       n_l.append(n)
       
       ar_ = ar*n/N
-      ET_sim = sim_mds_nk(num_frun, ar_, n, k, dist_m)
+      ET_sim = sim_mdsnk(num_frun, ar_, n, k, dist_m)
       print("ET_sim= {}".format(ET_sim) )
       if ET_sim is None: break
       ET_sim_l.append(ET_sim)
@@ -138,12 +207,13 @@ def plot_mds_n2_wrtn():
     # plot.plot(n_l, ET_sm_l, color=next(dark_color), label='Split-merge upper bound', marker=next(marker), linestyle=':', mew=2)
     # print("ET_sim_l= {}".format(pprint.pformat(ET_sim_l) ) )
   ar_l = [0.05, 0.25, 0.45, 0.65, 0.85] # [0.05]
-  ar_l = [1*ar for ar in ar_l]
+  ar_l = [2*ar for ar in ar_l]
   for ar in ar_l:
     plot_(ar)
   plot.legend()
   plot.xlabel(r'$n$', fontsize=14)
-  plot.ylabel(r'$E[T]$', fontsize=14)
+  # plot.ylabel(r'$E[T]$', fontsize=14)
+  plot.ylabel(r'Average download time', fontsize=14)
   plot.title(r'$N= {}$, $k= {}$, $V \sim {}$'.format(N, k, dist_to_latex(dist_m) ) )
   fig = plot.gcf()
   def_size = fig.get_size_inches()
@@ -162,7 +232,7 @@ def plot_mds_n2():
   if dist_m['dist'] == 'Exp':
     ar_ub = 0.9*mds_exactbound_on_ar(n, k, dist_m) # mds_innerbound_on_ar(n, k, dist_m)
   else:
-    ar_ub = 0.85*mds_exactbound_on_ar(n, k, dist_m)
+    ar_ub = 0.75*mds_exactbound_on_ar(n, k, dist_m) # 0.7*
   log(WARNING, "n= {}, k= {}, dist_m={}".format(n, k, dist_m) )
   
   ar_l = []
@@ -170,16 +240,17 @@ def plot_mds_n2():
   ET_approx2_l = []
   ET_varkigauri_lb_l = []
   
-  num_frun = 1
+  num_frun = 5
   for ar in [*numpy.linspace(0.05, 0.6*ar_ub, 4, endpoint=False), *numpy.linspace(0.6*ar_ub, ar_ub, 7) ]:
     pi_l = []
-    ET_sim = sim_mds_nk(num_frun, ar, n, k, dist_m, fi_l=pi_l)
+    ET_sim = sim_mdsnk(num_frun, ar, n, k, dist_m, fi_l=pi_l)
     print("ET_sim= {}".format(ET_sim) )
     if ET_sim is None: break
     ar_l.append(ar)
     ET_sim_l.append(ET_sim)
     
     ET_sm = ET_mds_nk_sm(ar, n, k, dist_m)
+    ET_sm = ET_sm if ET_sm is not None and ET_sm < 15 else None
     print("ET_sm= {}".format(ET_sm) )
     ET_sm_l.append(ET_sm)
     
@@ -194,16 +265,16 @@ def plot_mds_n2():
     ET_varkigauri_lb = ET_mds_nk_varkigauri_lb(ar, n, k, dist_m)
     print("ET_varkigauri_lb= {}".format(ET_varkigauri_lb) )
     ET_varkigauri_lb_l.append(ET_varkigauri_lb)
-  plot.plot(ar_l, ET_sm_l, color=next(dark_color), label='Split-merge upper bound', marker=next(marker), linestyle=':', mew=2)
+  plot.plot(ar_l, ET_sm_l, color=next(dark_color), label='Upper bound of [1]', marker=next(marker), linestyle=':', mew=2)
   # print("ET_sim_l= {}".format(pprint.pformat(ET_sim_l) ) )
   plot.plot(ar_l, ET_sim_l, color=next(dark_color), label='Simulation', marker=next(marker), linestyle=':', mew=2)
   plot.plot(ar_l, ET_approx_l, color=next(dark_color), label=r'$M/G/1$ approximation', marker=next(marker), linestyle=':', mew=2)
   # plot.plot(ar_l, ET_approx2_l, color=next(dark_color), label='Approx_', marker=next(marker), linestyle=':', mew=2)
   if dist_m['dist'] == 'Exp':
-    plot.plot(ar_l, ET_varkigauri_lb_l, color=next(dark_color), label='Varki-Gauri lower bound', marker=next(marker), linestyle=':', mew=2)
+    plot.plot(ar_l, ET_varkigauri_lb_l, color=next(dark_color), label='Lower bound of [1]', marker=next(marker), linestyle=':', mew=2)
   plot.legend()
   plot.xlabel(r'$\lambda$', fontsize=14)
-  plot.ylabel(r'$E[T]$', fontsize=14)
+  plot.ylabel(r'Average download time', fontsize=14)
   plot.title(r'$n= {}$, $k= {}$, $V \sim {}$'.format(n, k, dist_to_latex(dist_m) ) )
   fig = plot.gcf()
   fig.tight_layout()
@@ -214,6 +285,7 @@ def plot_mds_n2():
 
 if __name__ == "__main__":
   # plot_mds_n2_wrtn()
-  # plot_mds_n2()
+  plot_mds_n2()
+  # plot_Nnk()
   
-  plot_Nserver_mdsnkjobs()
+  # plot_Nserver_mdsnkjobs()

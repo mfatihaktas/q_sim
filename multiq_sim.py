@@ -30,7 +30,6 @@ class JG(object): # Job Generator
     
     self.nsent = 0
     self.out = None
-    
     self.action = None
   
   def init(self):
@@ -361,8 +360,8 @@ class MultiQ(object):
   def run(self):
     while True:
       j = (yield self.store.get() )
-      # toi_l = random.sample(range(self.N), j.n)
-      toi_l = self.get_sorted_qids()[:j.n]
+      toi_l = random.sample(range(self.N), j.n)
+      # toi_l = self.get_sorted_qids()[:j.n]
       
       for i in toi_l:
         self.q_l[i].put(Task(j._id, j.k, j.tsize, j.tsize) )

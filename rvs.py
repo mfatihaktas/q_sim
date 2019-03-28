@@ -58,6 +58,9 @@ class Pareto(RV):
     # return "Pareto(loc= {}, a= {})".format(self.loc, self.a)
     return r'Pareto(s= {}, \alpha= {})'.format(self.loc, self.a)
   
+  def to_latex(self):
+    return r"${}(\min= {}, \alpha= {})$".format(r'\mathrm{Pareto}', round(self.loc, 2), round(self.a, 2) )
+  
   def tail(self, x):
     if x <= self.l_l:
       return 1
@@ -106,6 +109,9 @@ class TPareto(): # Truncated
   def __str__(self):
     return "Pareto(l= {}, u= {}, a= {})".format(self.l, self.u, self.a)
   
+  def to_latex(self):
+    return r"${}(\min= {}, \max= {}, \alpha= {})$".format(r'\mathrm{TPareto}', round(self.l, 2), round(self.u, 2), round(self.a, 2) )
+    
   def cdf(self, x):
     if x < self.l: return 0
     elif x >= self.u: return 1

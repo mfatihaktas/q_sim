@@ -60,12 +60,12 @@ def Pr_T_g_t_Exp_k_n(mu, d, k, n, t):
       # print("q_= {}".format(q_) )
       sum_ = 0
       for j in range(k-r, n-r+1):
-        sum_ += binomial(n-r,j) * q_**j * (1-q_)**(n-r-j)
+        sum_ += binom(n-r,j) * q_**j * (1-q_)**(n-r-j)
       return sum_
     sum_ = 0
     for r in range(k):
       # print("prob_X_n_r__k_r_leq_tau(r= {})= {}".format(r, prob_X_n_r__k_r_leq_tau(r) ) )
-      sum_ += prob_X_n_r__k_r_leq_tau(r) * binomial(k,r) * q**r * (1-q)**(k-r)
+      sum_ += prob_X_n_r__k_r_leq_tau(r) * binom(k,r) * q**r * (1-q)**(k-r)
     return (1 - q**k - sum_)
   # print("lhs= {}, rhs= {}".format(lhs(), rhs() ) )
   return lhs() + rhs()
@@ -78,7 +78,7 @@ def Pr_T_g_t_Exp_k_n_approx(mu, d, k, n, t):
   
   sum_ = 0
   for r in range(k+1):
-    sum_ += I(q__, k-r, n-k+1) * binomial(k,r) * q**r * (1-q)**(k-r)
+    sum_ += I(q__, k-r, n-k+1) * binom(k,r) * q**r * (1-q)**(k-r)
   
   return (t < d)*(q**k - q_**k) \
          + (1-q**k) - sum_ + q**k*I(q__, 0, n-k+1)
@@ -96,7 +96,7 @@ def Pr_T_g_t_k_n(task_t, task_dist_m, d, k, n, t):
 def Pr_succ_n_k_w_drop(mu, gamma, n, k):
   p = mu/(gamma+mu)
   def prob_F_f(f):
-    return binomial(f+k-1, f) * p**k * (1-p)**f
+    return binom(f+k-1, f) * p**k * (1-p)**f
   prob = 0
   for f in range(n-k+1):
     prob += prob_F_f(f)
@@ -105,7 +105,7 @@ def Pr_succ_n_k_w_drop(mu, gamma, n, k):
 def E_T_n_k_w_drop_given_succ(mu, gamma, n, k):
   p = mu/(gamma+mu)
   def prob_F_f(f):
-    return binomial(f+k-1, f) * p**k * (1-p)**f
+    return binom(f+k-1, f) * p**k * (1-p)**f
   
   E_T = 0
   for f in range(n-k+1):
@@ -121,7 +121,7 @@ def E_T_n_k_w_drop_given_succ_approx(mu, gamma, n, k):
   
   rhs = 0
   def prob_F_f(f):
-    return binomial(f+k-1, f) * p**k * (1-p)**f
+    return binom(f+k-1, f) * p**k * (1-p)**f
   # for f in range(n-k+1):
   #   rhs += H(n-k-f-1)*prob_F_f(f)
   
@@ -130,13 +130,13 @@ def E_T_n_k_w_drop_given_succ_approx(mu, gamma, n, k):
     for f in range(n-k-i):
       prob += prob_F_f(f)
     rhs += 1/i * prob
-    # rhs += 1/i * sum([binomial(n,j) * p**j * (1-p)**(n-j) for j in range(k+i+1, n+1) ] )
+    # rhs += 1/i * sum([binom(n,j) * p**j * (1-p)**(n-j) for j in range(k+i+1, n+1) ] )
   
   for i in range(1, n-k):
-    rhs += 1/i * sum([binomial(n,j) * p**j * (1-p)**(n-j) for j in range(k+i+1, n+1) ] )
+    rhs += 1/i * sum([binom(n,j) * p**j * (1-p)**(n-j) for j in range(k+i+1, n+1) ] )
   
   # for j in range(k+2, n+1):
-  #   rhs += H(j-k-1) * binomial(n,j) * p**j * (1-p)**(n-j)
+  #   rhs += H(j-k-1) * binom(n,j) * p**j * (1-p)**(n-j)
   
   E_T -= 1/mu*rhs
   
@@ -228,13 +228,13 @@ def E_C_exp_k_l_n(mu, d, k, l, n, w_cancel=False):
 def E_T_exp_k_l_n(mu, d, k, l, n):
   q = 1 - math.exp(-mu*d)
   
-  # E_T = d - mpmath.quad(lambda x: sum([binomial(l,i)*(1-math.exp(-mu*x) )**i * math.exp(-mu*x)**(l-i) for i in range(k, l+1) ] ), [0, d] )
+  # E_T = d - mpmath.quad(lambda x: sum([binom(l,i)*(1-math.exp(-mu*x) )**i * math.exp(-mu*x)**(l-i) for i in range(k, l+1) ] ), [0, d] )
   # for r in range(k):
-  #   E_T += (H(n-r) - H(n-k) ) * binomial(l,r) * q**r * (1-q)**(l-r)
+  #   E_T += (H(n-r) - H(n-k) ) * binom(l,r) * q**r * (1-q)**(l-r)
   # return E_T
   E_T = H(l)-H(l-k) + I(1-q, l-k+1, k)*(H(l-k)-H(n-k) )
   for r in range(k):
-    E_T += (H(n-r) - H(l-r) ) * binomial(l,r) * q**r * (1-q)**(l-r)
+    E_T += (H(n-r) - H(l-r) ) * binom(l,r) * q**r * (1-q)**(l-r)
   return E_T
 
 def E_T_exp_k_l_n_approx(mu, d, k, l, n):
@@ -242,39 +242,39 @@ def E_T_exp_k_l_n_approx(mu, d, k, l, n):
   
   # E_T = 0
   # for r in range(k+1):
-  #   E_T += (H(n) - H(n-r) ) * binomial(k,r) * q**r * (1-q)**(k-r)
+  #   E_T += (H(n) - H(n-r) ) * binom(k,r) * q**r * (1-q)**(k-r)
   
-  # E_T = d - mpmath.quad(lambda x: sum([binomial(l,i)*(1-math.exp(-mu*x) )**i * math.exp(-mu*x)**(l-i) for i in range(k, l+1) ] ), [0, d] )
+  # E_T = d - mpmath.quad(lambda x: sum([binom(l,i)*(1-math.exp(-mu*x) )**i * math.exp(-mu*x)**(l-i) for i in range(k, l+1) ] ), [0, d] )
   
-  # E_T = d - 1/mu*sum([binomial(l,i)*B(i+1, l-i, u_l=q) for i in range(k, l+1) ] )
+  # E_T = d - 1/mu*sum([binom(l,i)*B(i+1, l-i, u_l=q) for i in range(k, l+1) ] )
   # E_T = d + 1/mu*math.log(1-q)*I(q,k,l-k+1) - 1/mu/B(k,l-k+1)*mpmath.quad(lambda x: math.log(1-x)*x**(k-1) * (1-x)**(l-k), [0, q] )
   # E_T = d + 1/mu*math.log(1-q)*I(q,k,l-k+1) - 1/mu/B(k,l-k+1)*sum([-1/i * B(k+i,l-k+1,u_l=q) for i in range(1, 100) ] )
   # E_T = d + 1/mu*math.log(1-q)*I(q,k,l-k+1) - 1/mu/B(k,l-k+1)*sum([-1/i * B(k+i,l-k+1,u_l=q) for i in range(1, 2) ] )
   
   # for r in range(k):
-  #   E_T += (H(n-r) - H(n-k) ) * binomial(l,r) * q**r * (1-q)**(l-r)
+  #   E_T += (H(n-r) - H(n-k) ) * binom(l,r) * q**r * (1-q)**(l-r)
   # sum_ = 0
   # for r in range(k):
-  #   sum_ += H(n-r) * binomial(l,r) * q**r * (1-q)**(l-r)
+  #   sum_ += H(n-r) * binom(l,r) * q**r * (1-q)**(l-r)
   # for r in range(k):
-  #   sum_ += H(n-r) * binomial(k,r) * q**r * (1-q)**(k-r) * (1-q)**(l-k)
+  #   sum_ += H(n-r) * binom(k,r) * q**r * (1-q)**(k-r) * (1-q)**(l-k)
   # for r in range(k):
-  #   sum_ -= H(n-k) * binomial(l,r) * q**r * (1-q)**(l-r)
+  #   sum_ -= H(n-k) * binom(l,r) * q**r * (1-q)**(l-r)
   # return E_T + sum_
   
   # for r in range(k):
-  #   E_T += (H(n-r) - H(n-k) ) * binomial(k,r) * q**r * (1-q)**(k-r)
+  #   E_T += (H(n-r) - H(n-k) ) * binom(k,r) * q**r * (1-q)**(k-r)
   
   # return E_T + (H(n) - H(n-k) )*I(1-q,l-k,k+1) + \
   #         -(l*q*1/n*I(1-q,l-k,k) )
-  # #       -(l*q*(1/n+1/2/n**2)*I(1-q,l-k,k) + binomial(l,2)*(q/n)**2 * I(1-q, l-k, k-1) )
+  # #       -(l*q*(1/n+1/2/n**2)*I(1-q,l-k,k) + binom(l,2)*(q/n)**2 * I(1-q, l-k, k-1) )
   # #       # -(l*q*1/n*I(1-q,l-k,k) )
   
   # return E_T + math.log((n-l*q)/(n-k) ) # works well for large l, k
   
   # Did not turn out to be very good
   # for r in range(k):
-  #   sum_ += math.log((n-r)/(l-r) ) * binomial(l,r) * q**r * (1-q)**(l-r)
+  #   sum_ += math.log((n-r)/(l-r) ) * binom(l,r) * q**r * (1-q)**(l-r)
   # return math.log(l/(l-k) ) + sum_ + I(1-q, l-k+1, k)*math.log((l-k)/(n-k) )
   
   # return (math.ceil(l*q) == l)*(H(l) - H(l-k) ) + (math.ceil(l*q) != l)*(d + 1/mu*math.log(math.exp(-mu*d)*l/(n-k) + (n-l)/(n-k) ) )
@@ -283,7 +283,7 @@ def E_T_exp_k_l_n_approx(mu, d, k, l, n):
   
   E_T = H(l)-H(l-k) + I(1-q, l-k+1, k)*(H(l-k)-H(n-k) )
   # for r in range(k):
-  #   E_T += math.log((n-r)/(n-k) ) * binomial(l,r) * q**r * (1-q)**(l-r)
+  #   E_T += math.log((n-r)/(n-k) ) * binom(l,r) * q**r * (1-q)**(l-r)
   r_ = k*q # math.ceil(k*q)
   # E_T += H(n-r_) - H(l-r_)
   E_T += math.log(n-r_) - math.log(l-r_)
@@ -297,7 +297,7 @@ def E_T_exp_k_n(mu, d, k, n):
   
   E_H_n_r = 0
   for r in range(k+1):
-    E_H_n_r += H(n-r) * binomial(k,r) * q**r * (1-q)**(k-r)
+    E_H_n_r += H(n-r) * binom(k,r) * q**r * (1-q)**(k-r)
   
   return d - mpmath.quad(lambda x: (1-math.exp(-mu*x) )**k, [0, d] ) + \
          1/mu*(E_H_n_r - H(n-k) )
@@ -307,7 +307,7 @@ def E_T_exp_k_n_approx(mu, d, k, n):
   q = 1-math.exp(-mu*d)
   E_H_n_r = 0
   for r in range(k+1):
-    E_H_n_r += H(n-r) * binomial(k, r) * q**r * (1-q)**(k-r)
+    E_H_n_r += H(n-r) * binom(k, r) * q**r * (1-q)**(k-r)
   
   return d - 1/mu*B(k+1,0,u_l=q) + \
          1/mu*(E_H_n_r - H(n-k) )
@@ -322,25 +322,32 @@ def E_T_shiftedexp_k_l_n(D, mu, d, k, l, n):
   return D/k + E_T_exp_k_l_n(mu, d, k, l, n)
 
 def E_C_shiftedexp_k_l_n(D, mu, d, k, l, n, w_cancel=False):
-  # return n*D/k + E_C_exp_k_l_n(mu, d, k, l, n, w_cancel=w_cancel)
+  s = D/k
+  # return n*s + E_C_exp_k_l_n(mu, d, k, l, n, w_cancel=w_cancel)
   if l == k:
     if not w_cancel:
-      q = (d > D/k)*(1 - math.exp(-mu*(d-D/k) ) )
-      # return E_C_exp_k_l_n(mu, d, k, l, n, w_cancel=False) + D + (1-q**k)*(n-k)*D/k
-      return k*(1/mu + D/k)*q**k + n*(1/mu + D/k)*(1-q**k)
+      q = (d > s)*(1 - math.exp(-mu*(d-s) ) )
+      # return E_C_exp_k_l_n(mu, d, k, l, n, w_cancel=False) + D + (1-q**k)*(n-k)*s
+      return k*(1/mu + s)*q**k + n*(1/mu + s)*(1-q**k)
     else:
       if d == 0:
         return n/k*D + k/mu
-      F_d = 1 - math.exp(-mu*d)
-      F_d__D_over_k = (d > D/k)*(1 - math.exp(-mu*(d-D/k) ) )
-      
-      q = F_d__D_over_k
-      a = 1 - math.exp(-mu*D/k)
-      k_ = k - k*q
-      E_T_ = 1/mu * a**(-k_) * B(k_+1,0,u_l=a)
-      return k*(1/mu + D/k)*F_d__D_over_k**k + n*(1/mu + D/k)*(1-F_d__D_over_k**k) \
-             - (n-k)*((1-F_d__D_over_k**k)/mu + E_T_*(F_d**k-F_d__D_over_k**k) )
-      # - ((1-F_d__D_over_k**k)*(n-k)/mu + (n-k)*(D/2/k)*(F_d**k-F_d__D_over_k**k) )
+      elif d < s:
+        q = 1 - math.exp(-mu*d)
+        return n*s - q**k*(d - H(k)/mu) + k/mu
+      else:
+        F_d = 1 - math.exp(-mu*d)
+        F_d__D_over_k = (d > s)*(1 - math.exp(-mu*(d-s) ) )
+        
+        q = F_d__D_over_k
+        a = 1 - math.exp(-mu*s)
+        k_ = k - k*q
+        # print("B(k_+1, 0, u_l=a)= {}".format(B(k_+1, 0, u_l=a) ) )
+        E_T_ = 1/mu * a**(-k_) * B(k_+1, 0, u_l=a)
+        # print("E_T_= {}".format(E_T_) )
+        return k*(1/mu + s)*F_d__D_over_k**k + n*(1/mu + s)*(1-F_d__D_over_k**k) \
+               - (n-k)*((1-F_d__D_over_k**k)/mu + E_T_*(F_d**k-F_d__D_over_k**k) )
+        # - ((1-F_d__D_over_k**k)*(n-k)/mu + (n-k)*(D/2/k)*(F_d**k-F_d__D_over_k**k) )
 
 # ####################  X ~ D/k + Exp(mu), (l=k, k, n, \Delta)  ####################### #
 def E_T_shiftedexp_k_n(D, mu, d, k, n):
@@ -370,7 +377,7 @@ def d_E_T_shiftedexp_k_n_dk(D, mu, d, k, n):
   # return r
 
 def E_C_shiftedexp_k_n(D, mu, d, k, n, w_cancel=False):
-  return E_C_shiftedexp_k_l_n(mu, d, k, k, n, w_cancel)
+  return E_C_shiftedexp_k_l_n(D, mu, d, k, k, n, w_cancel)
 
 # ********************************  REPLICATION  ******************************** #
 # ####################  X ~ Exp(mu), (k, \Delta, c)  ####################### #
@@ -381,7 +388,7 @@ def E_T_exp_k_c(mu, d, k, c):
   
   E = 0
   for r in range(k+1):
-    E += H(k-r)* binomial(k,r) * q**r * (1-q)**(k-r)
+    E += H(k-r)* binom(k,r) * q**r * (1-q)**(k-r)
   return 1/mu*(H(k) - c/(c+1)*E)
 
 def E_C_exp_k_c(mu, d, k, c, w_cancel=False):
@@ -614,7 +621,7 @@ def Pr_T_g_t_pareto_k_wrelaunch(loc, a, d, k, t):
   sum_ = 0
   for r in range(k):
   # for r in range(k+1):
-    sum_ += (q1**(k-r) - q2**(k-r)) * binomial(k, r) * q_d**r * (1-q_d)**(k-r)
+    sum_ += (q1**(k-r) - q2**(k-r)) * binom(k, r) * q_d**r * (1-q_d)**(k-r)
   p_T_geq_t = 1 - q_t**k + sum_
   
   return p_T_geq_t
@@ -631,7 +638,7 @@ def Pr_T_g_t_pareto_k_wrelaunch_approx(loc, a, d, k, t):
   p_T_geq_t = 1 - q_t**k + (q_d + q1*(1-q_d))**k - (q_d + q2*(1-q_d))**k
   # sum_ = 0
   # for r in range(k+1):
-  #   sum_ += (q1**(k-r) - q2**(k-r)) * binomial(k, r) * q_d**r * (1-q_d)**(k-r)
+  #   sum_ += (q1**(k-r) - q2**(k-r)) * binom(k, r) * q_d**r * (1-q_d)**(k-r)
   # p_T_geq_t = 1 - q_t**k + sum_
   return p_T_geq_t
 
@@ -677,17 +684,16 @@ def E_T_pareto_k_n_wrelaunch(loc, a, d, k, n):
       if k > 170:
         return loc*(k+1)**(1/a) * G(1-1/a)
       return loc*G(1-1/a)*G(k+1)/G(k+1-1/a)
-    
-    return d*(1-q**k) + g(k, a)*((loc/d-1)*I(1-q,1-1/a,k) + 1)
+    return d*(1-q**k) + g(k, a)*(1 + (loc/d-1)*I(1-q,1-1/a,k) )
   elif n > k:
     if d <= loc:
       return d + E_T_pareto_k_n(loc, a, 0, k, n)
     else:
-      # sum_ = 0
-      # for r in range(k):
-      #   sum_ += (E_X_n_k(n-r, k-r) - E_X_n_k(k-r, k-r) ) * binomial(k,r) * q**r * (1-q)**(k-r)
-      # return sum_ + E_T_pareto_k_n_wrelaunch(loc, a, d, k, n=k)
-      return d*(1-q**k) + loc*(B(n-k*q+1, -1/a)/B(n-k+1, -1/a) + k*B(k, 1-1/a, u_l=q) - q**k)
+      sum_ = 0
+      for r in range(k):
+        sum_ += (E_X_n_k_pareto(loc, a, n-r, k-r) - E_X_n_k_pareto(loc, a, k-r, k-r) ) * binom(k,r) * q**r * (1-q)**(k-r)
+      return sum_ + E_T_pareto_k_n_wrelaunch(loc, a, d, k, n=k)
+      # return d*(1-q**k) + loc*(B(n-k*q+1, -1/a)/B(n-k+1, -1/a) + k*B(k, 1-1/a, u_l=q) - q**k)
 
 def E_T_pareto_k_n_wrelaunch_approx(loc, a, d, k, n):
   q = (d > loc)*(1 - (loc/d)**a)
@@ -714,7 +720,7 @@ def E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=True):
       # EX_given_X_leq_d = a/(a-1)/q * (loc - d*(1-q) )
       # E = 0
       # for r in range(k+1):
-      #   E += G(n-r+1)/G(n-r+1-1/a) * binomial(k,r) * q**r * (1-q)**(k-r)
+      #   E += G(n-r+1)/G(n-r+1-1/a) * binom(k,r) * q**r * (1-q)**(k-r)
       
       # return k*q*EX_given_X_leq_d + k*(1-q)*d + a/(a-1)*loc*(n - k*q) \
       #       - loc/(a-1) * G(n-k+1-1/a)/G(n-k)*E \
@@ -741,12 +747,28 @@ def E_T_pareto_k_c_wrelaunch(loc, a, d, k, c):
   if c == 0:
     return E_T_pareto_k_n_wrelaunch(loc, a, d, k, n=k)
   
-  q = (d > loc)*(1 - (loc/d)**a) if d else 0
-  a_ = 1/(c+1)/a
+  ## Following function defs are required to get the expected result
+  # def I(u_l, m, n):
+  #   return scipy.special.betainc(m, n, u_l)
+  # def B(m, n, u_l=1):
+  #   if u_l == 1:
+  #     return scipy.special.beta(m, n)
+  #   else:
+  #     return I(u_l, m, n)*B(m, n)
+  # def G(z):
+  #   return scipy.special.gamma(z)
+  
+  a_ = (c+1)*a # 1/(c+1)/a
+  if d <= loc:
+    return d + loc*G(k+1)*G(1-1/a_)/G(k+1-1/a_)
+  
+  q = (d > loc)*(1 - (loc/d)**a)
   if d == 0:
     return d + loc*G(k+1)*G(1-a_)/G(k+1-a_)
   else:
-    return loc*G(1-a_)/G(-a_)*B(k-k*q+1, -a_) - loc*G(1-1/a)/G(-1/a)*B(k-k*q+1, -1/a) \
+    f = lambda a: loc*G(1-1/a)/G(-1/a)*B(k-k*q+1, -1/a)
+    # print("E_T_pareto_k_c_wrelaunch(loc, a, d, k, 0)= {}".format(E_T_pareto_k_c_wrelaunch(loc, a, d, k, 0) ) )
+    return f(a_) - f(a) \
            + E_T_pareto_k_c_wrelaunch(loc, a, d, k, 0)
 
 def E_C_pareto_k_c_wrelaunch(loc, a, d, k, c, w_cancel=True):
@@ -789,7 +811,7 @@ def E_T_pareto_k_nd0_wrelaunch(loc, a, d, k, n):
     else:
       # s = 0
       # for r in range(k):
-      #   s += (d + E_X_n_k_pareto(loc, a, n-r, k-r) - E_X_n_k_pareto(d, a, n-r, k-r) ) * binomial(n,r) * q**r * (1-q)**(n-r)
+      #   s += (d + E_X_n_k_pareto(loc, a, n-r, k-r) - E_X_n_k_pareto(d, a, n-r, k-r) ) * binom(n,r) * q**r * (1-q)**(n-r)
       # return s + E_X_n_k_pareto(loc, a, n, k)
       return d*I(1-q, n-k+1, k) + ((loc/d - 1)*I(1-q, n-k+1-1/a, k) + 1)*E_T_pareto_k_n(loc, a, 0, k, n)
 
@@ -804,7 +826,7 @@ def E_C_pareto_k_nd0_wrelaunch(loc, a, d, k, n, w_cancel=True):
     if d <= loc:
       return n*d + E_C_pareto_k_n_wrelaunch(loc, a, 0, k, n, w_cancel=True)
     else:
-      def p_R_r(r): return binomial(n, r) * q**r * (1-q)**(n-r)
+      def p_R_r(r): return binom(n, r) * q**r * (1-q)**(n-r)
       def inner_sum(r):
         s = 0
         for i in range(1, k-r+1):
@@ -828,20 +850,20 @@ def E_T_pareto_k_n_retainl_atd(loc, a, k, n, d):
     
     sum_ = 0
     # for r in range(k):
-    #   sum_ += G(r+1-1/a)/G(r+1) * binomial(k, r) * q**r * (1-q)**(k-r)
+    #   sum_ += G(r+1-1/a)/G(r+1) * binom(k, r) * q**r * (1-q)**(k-r)
     # E_T += d*G(k+1)/G(k+1-1/a) * sum_
     for r in range(k):
       l = min(n-r, k)
       # l = n - r # min(n-r, k)
-      sum_ += E_X_n_k_pareto(d, a, l, k-r) * binomial(k, r) * q**r * (1-q)**(k-r)
+      sum_ += E_X_n_k_pareto(d, a, l, k-r) * binom(k, r) * q**r * (1-q)**(k-r)
     E_T += sum_
     
     sum_ = 0
     # for r in range(k):
-    #   sum_ += G(n-r+1)/G(n-r+1-1/a) * binomial(k, r) * q**r * (1-q)**(k-r)
+    #   sum_ += G(n-r+1)/G(n-r+1-1/a) * binom(k, r) * q**r * (1-q)**(k-r)
     # E_T -= d*G(n-k+1-1/a)/G(n-k+1) * sum_
     for r in range(k):
-      sum_ += E_X_n_k_pareto(d, a, n-r, k-r) * binomial(k, r) * q**r * (1-q)**(k-r)
+      sum_ += E_X_n_k_pareto(d, a, n-r, k-r) * binom(k, r) * q**r * (1-q)**(k-r)
     E_T -= sum_
     
     return E_T
@@ -872,7 +894,7 @@ def E_C_pareto_k_n_retainl_atd(loc, a, k, n, d):
         sum_ += E_X_n_k_pareto(d, a, l, i) - E_X_n_k_pareto(d, a, n-r, i)
       sum_ += (l-k+r)*E_X_n_k_pareto(d, a, l, k-r) - (n-k)*E_X_n_k_pareto(d, a, n-r, k-r)
       
-      E_C += sum_ * binomial(k, r) * q**r * (1-q)**(k-r)
+      E_C += sum_ * binom(k, r) * q**r * (1-q)**(k-r)
     
     return E_C + E_C_pareto_k_n_wrelaunch(loc, a, 0, k, n)
 
@@ -1172,7 +1194,7 @@ def plot_deneme():
 def deneme():
   p = 0.99
   def prob_fast(k, n):
-    return sum([binomial(n, i) * p**i * (1-p)**(n-i) for i in range(k, n+1) ] )
+    return sum([binom(n, i) * p**i * (1-p)**(n-i) for i in range(k, n+1) ] )
   k = 100
   for n in range(k, 2*k):
     pf = prob_fast(k, n)
