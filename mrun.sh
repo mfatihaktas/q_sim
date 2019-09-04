@@ -7,7 +7,7 @@ if [ $1 = 'i' ]; then
   module load intel/16.0.3 mvapich2/2.1
   # source ~/tensorflow/bin/activate
 elif [ $1 = 'r' ]; then
-  FILE=googledata_job_events # 'procsharing' # 'arepeat_exp'
+  FILE='procsharing' # 'arepeat_exp' # 'google_data' # 'googledata_job_events' # 'arepeat_exp'
   NTASKS=1
   echo "#!/bin/bash
 #SBATCH --partition=main             # Partition (job queue)
@@ -16,7 +16,7 @@ elif [ $1 = 'r' ]; then
 #SBATCH --ntasks=$NTASKS             # Total # of tasks across all nodes
 #SBATCH --cpus-per-task=1            # Cores per task (>1 if multithread tasks)
 #SBATCH --mem=16000                  # Real memory (RAM) required (MB)
-#SBATCH --time=12:00:00              # Total run time limit (HH:MM:SS)
+#SBATCH --time=24:00:00              # Total run time limit (HH:MM:SS)
 #SBATCH --export=ALL                 # Export your current env to the job env
 #SBATCH --output=log/slurm.%N.%j.out
 export MV2_ENABLE_AFFINITY=0

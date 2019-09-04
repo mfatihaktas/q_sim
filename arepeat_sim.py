@@ -45,7 +45,7 @@ def plot_pareto():
 
 # #####################  (k, d)  ################### #
 def sim_arepeat_k_c(task_t_rv, d, k, c, num_run, w_relaunch=False):
-  stat_id__trial_stat_l_m = {'T': [], 'C': [], 'C_wc': [], 'T_2': [], 'C_2': [] }
+  stat_id__trial_stat_l_m = {'T': [], 'C': [], 'C_wc': [], 'T2': [], 'C2_wc': [] }
   for i in range(num_run):
     i__t_l_m = {i:[[0, task_t_rv.gen_sample() ] ] for i in range(k) }
     job_compl_t = max([t_l[0][1] for i,t_l in i__t_l_m.items() ] )
@@ -57,19 +57,18 @@ def sim_arepeat_k_c(task_t_rv, d, k, c, num_run, w_relaunch=False):
           for i in range(c):
             t_l.append([d, d + task_t_rv.gen_sample() ] )
     
-    E_T = max([min([t[1] for t in t_l] ) for i,t_l in i__t_l_m.items() ] )
-    stat_id__trial_stat_l_m['T'].append(E_T)
-    stat_id__trial_stat_l_m['T_2'].append(E_T**2)
+    T = max([min([t[1] for t in t_l] ) for i,t_l in i__t_l_m.items() ] )
+    stat_id__trial_stat_l_m['T'].append(T)
+    stat_id__trial_stat_l_m['T2'].append(T**2)
     stat_id__trial_stat_l_m['C'].append(
       sum([sum([t[1]-t[0] for t in t_l] ) for i,t_l in i__t_l_m.items() ] ) )
-    E_C_wc = 0
+    C_wc = 0
     for i,t_l in i__t_l_m.items():
       compl_t = min([t[1] for t in t_l] )
       for t in t_l:
-        E_C_wc += min(compl_t, t[1])-t[0]
-    stat_id__trial_stat_l_m['C_wc'].append(E_C_wc)
-    stat_id__trial_stat_l_m['C_2'].append(E_C_wc**2)
-  
+        C_wc += min(compl_t, t[1])-t[0]
+    stat_id__trial_stat_l_m['C_wc'].append(C_wc)
+    stat_id__trial_stat_l_m['C2_wc'].append(C_wc**2)
   return stat_id__trial_stat_l_m
 
 # ##################  (l, k, n, d)  ################ #
@@ -79,7 +78,7 @@ def sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run, w_relaunch=False):
   log(DEBUG, "k= {}, l= {}, n= {}".format(k, l, n) )
   # if l < k or n < l:
   #   return 1
-  stat_id__trial_stat_l_m = {'T': [], 'C': [], 'C_wc': [], 'T_2': [], 'C_2': [] }
+  stat_id__trial_stat_l_m = {'T': [], 'C': [], 'C_wc': [], 'T2': [], 'C2_wc': [] }
   for i in range(num_run):
     compl_t_l = [[0, task_t_rv.gen_sample() ] for i in range(l) ]
     compl_t_l.sort(key=lambda tup: tup[1] )
@@ -90,21 +89,20 @@ def sim_arepeat_k_l_n(task_t_rv, d, k, l, n, num_run, w_relaunch=False):
       compl_t_l += [[d, d + task_t_rv.gen_sample() ] for i in range(n-l) ]
       compl_t_l.sort(key=lambda tup: tup[1] )
     
-    E_T = compl_t_l[k-1][1]
-    stat_id__trial_stat_l_m['T'].append(E_T)
-    stat_id__trial_stat_l_m['T_2'].append(E_T**2)
+    T = compl_t_l[k-1][1]
+    stat_id__trial_stat_l_m['T'].append(T)
+    stat_id__trial_stat_l_m['T2'].append(T**2)
     stat_id__trial_stat_l_m['C'].append(sum([t[1]-t[0] for t in compl_t_l] ) )
-    E_C = sum([min(t[1], E_T)-t[0] for t in compl_t_l] )
-    stat_id__trial_stat_l_m['C_wc'].append(E_C)
-    stat_id__trial_stat_l_m['C_2'].append(E_C**2)
-  
+    C_wc = sum([min(t[1], T)-t[0] for t in compl_t_l] )
+    stat_id__trial_stat_l_m['C_wc'].append(C_wc)
+    stat_id__trial_stat_l_m['C2_wc'].append(C_wc**2)
   return stat_id__trial_stat_l_m
 
 # ##################  (l, k, n, d)  ################ #
 def sim_arepeat_k_nd0_wrelaunch(task_t_rv, k, n, d, num_run):
   log(DEBUG, "k= {}, n= {}, d= {}".format(k, n, d) )
-  stat_id__trial_stat_l_m = {'T': [], 'C': [], 'C_wc': [], 'T_2': [], 'C_2': [] }
-  for i in range(num_run):
+  stat_id__trial_stat_l_m = {'T': [], 'C': [], 'C_wc': [], 'T2': [], 'C2_wc': [] }
+  for _ in range(num_run):
     compl_t_l = [task_t_rv.gen_sample() for i in range(n) ]
     compl_t_l.sort()
     if compl_t_l[k-1] > d:
@@ -112,14 +110,42 @@ def sim_arepeat_k_nd0_wrelaunch(task_t_rv, k, n, d, num_run):
         if t > d: compl_t_l[i] = d + task_t_rv.gen_sample()
       compl_t_l.sort()
     
-    E_T = compl_t_l[k-1]
-    stat_id__trial_stat_l_m['T'].append(E_T)
-    stat_id__trial_stat_l_m['T_2'].append(E_T**2)
+    T = compl_t_l[k-1]
+    stat_id__trial_stat_l_m['T'].append(T)
+    stat_id__trial_stat_l_m['T2'].append(T**2)
     stat_id__trial_stat_l_m['C'].append(sum([t for t in compl_t_l] ) )
-    E_C = sum([min(t, E_T) for t in compl_t_l] )
-    stat_id__trial_stat_l_m['C_wc'].append(E_C)
-    stat_id__trial_stat_l_m['C_2'].append(E_C**2)
-  
+    C_wc = sum([min(t, T) for t in compl_t_l] )
+    stat_id__trial_stat_l_m['C_wc'].append(C_wc)
+    stat_id__trial_stat_l_m['C2_wc'].append(C_wc**2)
+  return stat_id__trial_stat_l_m
+
+def sim_arepeat_k_cd0_wrelaunch(task_t_rv, k, c, d, num_run):
+  stat_id__trial_stat_l_m = {'T': [], 'C': [], 'C_wc': [], 'T2': [], 'C2_wc': [] }
+  for _ in range(num_run):
+    _i__t_l_m = {i:[task_t_rv.gen_sample() for _ in range(c+1)] for i in range(k) }
+    i__t_l_m = {}
+    for i, t_l in _i__t_l_m.items():
+      if min(t_l) > d:
+        l = []
+        for t in t_l:
+          if t < d:
+            l.append(t)
+          else:
+            l.append(d + task_t_rv.gen_sample() )
+      else:
+        l = t_l
+      i__t_l_m[i] = l
+    T = max(min(t_l) for _, t_l in i__t_l_m.items() )
+    stat_id__trial_stat_l_m['T'].append(T)
+    stat_id__trial_stat_l_m['T2'].append(T**2)
+    stat_id__trial_stat_l_m['C'].append(sum(sum(t_l) for _, t_l in i__t_l_m.items() ) )
+    C_wc = 0
+    for _, t_l in i__t_l_m.items():
+      compl_t = min(t_l)
+      C_wc += sum(min(compl_t, t) for t in t_l)
+    
+    stat_id__trial_stat_l_m['C_wc'].append(C_wc)
+    stat_id__trial_stat_l_m['C2_wc'].append(C_wc**2)
   return stat_id__trial_stat_l_m
 
 if __name__ == "__main__":

@@ -8,11 +8,12 @@ from mds_sim import MDSQ
 from patch import *
 
 class MT_PG(PG):
-  def __init__(self, env, _id, ar, sym_l, hot_sym=None, hot_ar=None, flow_id=0):
+  def __init__(self, env, _id, ar, sym_l, hot_sym=None, hot_ar=None, flow_id=0, fixed=False):
     super().__init__(env, _id, ar, flow_id)
     self.sym_l = sym_l
     self.hot_sym = hot_sym
     self.hot_ar = hot_ar
+    self.fixed = fixed
     
     self.sym__n_sent = {}
   
@@ -36,7 +37,10 @@ class MT_PG(PG):
     
     while 1:
       yield self.env.timeout(random.expovariate(self.ar) )
-      s = sym_l_[random.randint(0, len(sym_l_)-1) ]
+      if not self.fixed:
+        s = sym_l_[random.randint(0, len(sym_l_)-1) ]
+      else:
+        s = sym_l_[0]
       
       p = Packet(time=self.env.now, size=1, _id=self.n_sent, sym=s, flow_id=self.flow_id)
       self.send(p)
@@ -116,9 +120,9 @@ class MT_AV_JQ(object):
 # **************************************  Availability Q  **************************************** #
 """
   Implements (n, k, r, t)-LRC Q
-  A file consists of k-pieces and mapped to n code-words with an MDS code.
+  k objects are encoded into n codewords.
   The (r, t)-availability ensures that each systematic node can be regenerated using one of the t
-  disjoint repair groups of other storage nodes, each of size at most r (typically << k)
+  disjoint repair groups of other servers, each of size at most r (typically << k)
   [When do the Availability Codes Make the Stored Data More Available?]
 """
 class AVQ(object): # Availability
@@ -134,7 +138,7 @@ class AVQ(object): # Availability
     
     self.jsink = JSink(_id, env)
     self.jsink.out = out
-    self.id__q_map = {}
+    self.id_q_map = {}
     
     num_q = int(1 + t*r) if w_sys else int(t*r)
     qid_l = [i for i in range(num_q) ]
@@ -168,14 +172,14 @@ class AVQ(object): # Availability
           ri = li + r
           q = MDSQ("mds{}".format(list(qid_l[li:ri] ) ), env, k, qid_l[li:ri], servdist_m, out=self.join_q)
           log(DEBUG, "g= {}, q= {}".format(g, q) )
-        self.id__q_map[g] = q
+        self.id_q_map[g] = q
     else:
       for g in range(1, t + 1):
         li = (g-1)*r
         ri = li + r
         q = MDSQ("mds{}".format(list(qid_l[li:ri] ) ), env, k, qid_l[li:ri], servdist_m, out=self.join_q)
         log(DEBUG, "g= {}, q= {}, qmu_l[li:ri]= {}".format(g, q, qmu_l[li:ri] ) )
-        self.id__q_map[g] = q
+        self.id_q_map[g] = q
     self.store = simpy.Store(env)
     self.store_c = simpy.Store(env)
     self.action = env.process(self.run() ) # starts the run() method as a SimPy process
@@ -190,7 +194,7 @@ class AVQ(object): # Availability
   
   def state(self, job_id_to_exclude=[]):
     state = []
-    for g, q in self.id__q_map.items():
+    for g, q in self.id_q_map.items():
       state += q.state(job_id_to_exclude)
     
     return state
@@ -199,12 +203,12 @@ class AVQ(object): # Availability
     while True:
       p = (yield self.store.get() )
       if self.sching == "rep-to-all":
-        for i, q in self.id__q_map.items():
+        for i, q in self.id_q_map.items():
           q.put(p.deep_copy() )
       else: # select-one at random
-        id_l = [i for i,q in self.id__q_map.items() ]
+        id_l = [i for i,q in self.id_q_map.items() ]
         i = id_l[random.randint(0, len(id_l)-1) ]
-        self.id__q_map[i].put(p)
+        self.id_q_map[i].put(p)
   
   def put(self, p):
     sim_log(DEBUG, self.env, self, "recved", p)
@@ -219,14 +223,14 @@ class AVQ(object): # Availability
       #
       next_job_id = cp._id + 1
       type_ = 0
-      for g, q in self.id__q_map.items():
+      for g, q in self.id_q_map.items():
         if g == 1:
           if not q._in(next_job_id): break
         else:
           if q.n_servers_in(next_job_id) < self.r: type_ += 1
       self.servtype__num_m[type_] += 1
       #
-      for g, q in self.id__q_map.items():
+      for g, q in self.id_q_map.items():
         if q._id not in cp.departed_qid_l:
           q.put_c(cp.deep_copy() )
   
@@ -296,10 +300,11 @@ class AVQMonitor(object):
   
 # *******************************  Mixed-Traffic Availability Q  ******************************* #
 class MT_AVQ(object):
-  def __init__(self, _id, env, t, sym__rgroup_l_m, servdist_m, out=None):
+  def __init__(self, _id, env, t, sym__rgroup_l_m, servdist_m, sching='rep-to-all', out=None):
     self._id = _id
     self.env = env
     self.sym__rgroup_l_m = sym__rgroup_l_m
+    self.sching = sching
     self.out = out
     
     self.num_q = int(1 + t*2)
@@ -340,6 +345,14 @@ class MT_AVQ(object):
       p = (yield self.store.get() )
       for i, q in self.id_q_map.items():
         q.put(p.deep_copy() )
+      
+      if self.sching == 'rep-to-all':
+        for i, q in self.id_q_map.items():
+          q.put(p.deep_copy() )
+      elif self.sching == 'select-one':
+        id_l = [i for i,q in self.id_q_map.items() ]
+        i = id_l[random.randint(0, len(id_l)-1) ]
+        self.id_q_map[i].put(p)
       
   def put(self, p):
     sim_log(DEBUG, self.env, self, "recved", p)

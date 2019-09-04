@@ -786,10 +786,18 @@ def E_C_pareto_k_c_wrelaunch(loc, a, d, k, c, w_cancel=True):
       return k*(loc - d*(1-q) )*a/(a-1) + k*d*(1-q) \
              + k*loc*(c+1)*(1-q)*(c+1)*a/((c+1)*a-1)
 
-# ****************  Launch n at the beginning relaunch all remaining at \Delta  ****************** #
+# ****************  Launch all at the beginning, relaunch incomplete at \Delta  ****************** #
 def Delta_for_min_E_T_pareto_k_n0_wrelaunch(loc, a, k, n):
   # return loc*math.sqrt(G(k+1)*G(1-1/a)/G(k+1-1/a) )
   return math.sqrt(loc*E_T_pareto_k_n(loc, a, 0, k, n) )
+
+def E_T_pareto_k_cd0_wrelaunch(loc, a, d, k, c):
+  q = (d > loc)*(1 - (loc/d)**((c+1)*a) )
+  if d <= loc:
+    return d + E_T_pareto_k_c(loc, a, 0, k, c)
+  else:
+    return d*(1 - q**k) + \
+      E_T_pareto_k_c(loc, a, 0, k, c)*(1 + (loc/d - 1)*I(1-q,1-1/a,k) )
 
 def E_T_pareto_k_nd0_wrelaunch(loc, a, d, k, n):
   if d == 0:
@@ -900,7 +908,9 @@ def E_C_pareto_k_n_retainl_atd(loc, a, k, n, d):
 
 # ### X ~ TPareto ### #
 def E_TPareto_X_n_i(l, u, a, n, i):
-  return l* G(n+1)/G(i)/G(n-i+1) * mpmath.quad(lambda x: (1 - (1-u**(-a))*x)**(-1/a) * x**(i-1)*(1-x)**(n-i), [0, 1] )
+  # return l* G(n+1)/G(i)/G(n-i+1) * mpmath.quad(lambda x: (1 - (1-u**(-a))*x)**(-1/a) * x**(i-1)*(1-x)**(n-i), [0, 1] )
+  return l* G(n+1)/G(i)/G(n-i+1) * \
+    scipy.integrate.quad(lambda x: (1 - (1-u**(-a))*x)**(-1/a) * x**(i-1)*(1-x)**(n-i), 0, 1)[0]
 
 def E_T_k_n_TPareto(l, u, a, k, n):
   return E_TPareto_X_n_i(l, u, a, n, k)
@@ -916,7 +926,31 @@ def E_C_k_n_TPareto(l, u, a, k, n):
 def a_wred(ro_0, a_0, ro):
   # K = ro/(1 - ro)*(1-ro_0)/ro_0
   # return K*a_0/((K-1)*a_0 + 1)
-  return a_0*(1-ro)/(1-ro_0)
+  # return a_0*ro_0/ro
+  # return a_0*(1-ro)/(1-ro_0)
+  
+  K = ro_0 + math.sqrt(a_0 - 1)
+  return a_0 - (K*ro-ro_0)**2
+
+def a_wred_(a_0, r):
+  # K = (1 + math.sqrt(a_0 - 1))/10
+  # return a_0 - (K*r-1)**2
+  
+  # a_last = 1 # 0.2 # 1
+  # r_mid, r_max = 3, 10
+  # if r <= r_mid:
+  #   return a_0
+  # m = (a_0 - a_last)/(r_mid - r_max)
+  # n = a_0 - m*r_mid
+  # return m*r + n
+  
+  # r_min, r_mid, r_max = 1, 3, 10
+  # a_min, a_mid, a_max = 1, 0.8*a_0, a_0
+  r_1, r_2, r_3 = 1, 5, 10 # 1, 5, 10
+  a_1, a_2, a_3 = a_0, 0.9*a_0, 1
+  return a_1*(r - r_2)/(r_1 - r_2)*(r - r_3)/(r_1 - r_3) + \
+         a_2*(r - r_1)/(r_2 - r_1)*(r - r_3)/(r_2 - r_3) + \
+         a_3*(r - r_1)/(r_3 - r_1)*(r - r_2)/(r_3 - r_2)
 
 def plot_a_wred():
   ro_0 = 0.1
@@ -1081,7 +1115,7 @@ def n_max_before_ETpain(ro_0, a_0, k):
   n = k
   a_n = a_wred(ro_0, a_0, ro=1)
   while True:
-    # if ro >= 0.9: return None
+    # if ro >= 0.99: return None
     a_np1 = a_wred(ro_0, a_0, ro=ro_0*(n+1)/k)
     if a_n/a_np1 >= approxcond_an_over_anp1_for_ETpain(k, n):
       break
@@ -1102,10 +1136,13 @@ def E_T_k_l_n(task_t, task_dist_m, d, k, l, n, load_m=None):
   elif task_t == "Pareto":
     loc, a = task_dist_m["loc"], task_dist_m["a"]
     if load_m is not None:
-      ro_0, a_0 = load_m['ro_0'], load_m['a_0']
-      ro = ro_0*n/k
-      if ro >= 0.9: return None
-      a = a_wred(ro_0, a_0, ro)
+      # ro_0, a_0 = load_m['ro_0'], load_m['a_0']
+      # ro = ro_0*n/k
+      # if ro >= 0.99: return None
+      # a = a_wred(ro_0, a_0, ro)
+      r = n/k
+      a = a_wred_(load_m['a_0'], r)
+      log(WARNING, "r= {}, a= {}".format(r, a) )
     return E_T_pareto_k_n(loc, a, d, k, n)
   elif task_t == "TPareto":
     l, u, a = task_dist_m["l"], task_dist_m["u"], task_dist_m["a"]
@@ -1122,10 +1159,13 @@ def E_C_k_l_n(task_t, task_dist_m, d, k, l, n, w_cancel, load_m=None):
   elif task_t == "Pareto":
     loc, a = task_dist_m["loc"], task_dist_m["a"]
     if load_m is not None:
-      ro_0, a_0 = load_m['ro_0'], load_m['a_0']
-      ro = ro_0*n/k
-      if ro >= 0.9: return None
-      a = a_wred(ro_0, a_0, ro)
+      # ro_0, a_0 = load_m['ro_0'], load_m['a_0']
+      # ro = ro_0*n/k
+      # if ro >= 0.99: return None
+      # a = a_wred(ro_0, a_0, ro)
+      r = n/k
+      a = a_wred_(load_m['a_0'], r)
+      log(WARNING, "r= {}, a= {}".format(r, a) )
     return E_C_pareto_k_n_wrelaunch(loc, a, d, k, n, w_cancel=w_cancel)
   elif task_t == "TPareto":
     l, u, a = task_dist_m["l"], task_dist_m["u"], task_dist_m["a"]
@@ -1141,10 +1181,13 @@ def E_T_k_c(task_t, task_dist_m, d, k, c, load_m=None):
   elif task_t == "Pareto":
     loc, a = task_dist_m["loc"], task_dist_m["a"]
     if load_m is not None:
-      ro_0, a_0 = load_m['ro_0'], load_m['a_0']
-      ro = ro_0*(c+1)
-      if ro >= 0.9: return None
-      a = a_wred(ro_0, a_0, ro)
+      # ro_0, a_0 = load_m['ro_0'], load_m['a_0']
+      # ro = ro_0*(c+1)
+      # if ro >= 0.99: return None
+      # a = a_wred(ro_0, a_0, ro)
+      r = c+1
+      a = a_wred_(load_m['a_0'], r)
+      log(WARNING, "r= {}, a= {}".format(r, a) )
     return E_T_pareto_k_c(loc, a, d, k, c)
 
 def E_C_k_c(task_t, task_dist_m, d, k, c, w_cancel, load_m=None, approx=False):
@@ -1157,10 +1200,13 @@ def E_C_k_c(task_t, task_dist_m, d, k, c, w_cancel, load_m=None, approx=False):
   elif task_t == "Pareto":
     loc, a = task_dist_m["loc"], task_dist_m["a"]
     if load_m is not None:
-      ro_0, a_0 = load_m['ro_0'], load_m['a_0']
-      ro = ro_0*(c+1)
-      if ro >= 0.9: return None
-      a = a_wred(ro_0, a_0, ro)
+      # ro_0, a_0 = load_m['ro_0'], load_m['a_0']
+      # ro = ro_0*(c+1)
+      # if ro >= 0.99: return None
+      # a = a_wred(ro_0, a_0, ro)
+      r = c+1
+      a = a_wred_(load_m['a_0'], r)
+      log(WARNING, "r= {}, a= {}".format(r, a) )
     if approx:
       return E_C_pareto_k_c_approx(loc, a, d, k, c, w_cancel)
     return E_C_pareto_k_c(loc, a, d, k, c, w_cancel)

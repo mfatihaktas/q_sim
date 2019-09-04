@@ -13,7 +13,7 @@ import sys, pprint, math, numpy, simpy, getopt, itertools
 from simplex_sim import *
 from simplex_models import *
 from mds_models import mds_exactbound_on_ar
-from mds_exp import sim_mds_nk
+# from mds_exp import sim_mds_nk
 
 def plot_reptoall_steadystate_probhist():
   t, r, k = 1, 2, 2
@@ -460,8 +460,8 @@ def plot_simplex_vs_rep():
   log(WARNING, "done; scheduling= {}, t= {}".format(scheduling, t) )
 
 def plot_reptoall():
-  mixed_traff, w_sys = True, True
-  t, r, k = 3, 2, 2
+  mixed_traff, w_sys = False, True
+  t, r, k = 1, 2, 2
   serv = "Exp" # "Bern" # "Bern*Pareto" # "Pareto" # "Dolly"
   mu = 1
   # loc, a = 1, 2
@@ -736,7 +736,7 @@ def plot_reptoall():
     if sim_simplex_mixed_traff:
       ET_sim_mixedtraff_l.append(test_avq(nf, ar, t, r, k, serv, servdist_m, w_sys=w_sys, mixed_traff=True) )
   
-  mew, ms = 3, 6 # 8
+  mew, ms = 0.1, 10
   def plot_poster():
     # for better looking plot
     ar_approx_l = list(ar_l)
@@ -745,8 +745,8 @@ def plot_reptoall():
     ar_approx_l.append(ar)
     ET_bestapprox_l.append(ET_simplex_approx(t, ar, servdist_m, incremental=True) )
     
-    plot.plot(ar_l, ET_sim_l, label="Rep-to-all, simulation", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
-    plot.plot(ar_approx_l, ET_bestapprox_l, label="Rep-to-all, M/G/1 approximation", zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
+    plot.plot(ar_l, ET_sim_l, label="FJ-FA, simulation", marker=next(marker), zorder=1, color=next(dark_color), linestyle=':', mew=mew, ms=ms)
+    plot.plot(ar_approx_l, ET_bestapprox_l, label="FJ-FA, M/G/1 approximation", zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
   
   def plot_():
     log(WARNING, "ET_sim_l= {}".format(pprint.pformat(ET_sim_l) ) )
@@ -757,15 +757,15 @@ def plot_reptoall():
       log(WARNING, "ET_sim_mixedtraff_l= {}".format(pprint.pformat(ET_sim_mixedtraff_l) ) )
       plot.plot(ar_mixed_traff_l, ET_sim_mixedtraff_l, label=r'Simulation, mixed-arrivals', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
     else:
-      plot.plot(ar_l, ET_sm_l, label=r'Split-merge upper bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+      plot.plot(ar_l, ET_sm_l, label=r'Split-Merge upper bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
       # plot.plot(ar_l, ET_bestapprox_l, label=r'$M/G/1$ approximation', zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
-      plot.plot(ar_l, ET_lb_l, label=r'Lower bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+      plot.plot(ar_l, ET_lb_l, label=r'Fast-Split-Merge lower bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
       # if t == 1:
       #   #   plot.plot(ar_l, ET_matrixanalytic_l, label=r'Matrix-analytic upper-bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
       #   plot.plot(ar_l, ET_l, label=r'High-traffic approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      # plot.plot(ar_l, ET_naiveapprox_l, label=r'Naive approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      # plot.plot(ar_l, ET_betterapprox_l, label=r'Better approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      # plot.plot(ar_l, ET_bestapprox_l, label=r'Best approximation', zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
+      plot.plot(ar_l, ET_naiveapprox_l, label=r'Naive approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+      plot.plot(ar_l, ET_betterapprox_l, label=r'Better approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+      plot.plot(ar_l, ET_bestapprox_l, label=r'Best approximation', zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
       # plot.plot(ar_l, ET_varkigauri_lb_l, label=r'$E[\hat{T}_{fast-serial}]$', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew)
     # stab_lim = ET_simplex_approx(t, ar, servdist_m, incremental=True, ar_ub=True)
     # plot.axvline(stab_lim, label="Stability limit", color='black', linestyle='--')
@@ -788,25 +788,24 @@ def plot_reptoall():
   
   # plot.plot(ar_l, ET_sim_l, 'k', label=r'Replicate-to-all', linestyle='-', lw=3)
   # plot_selectone()
-  plot.legend(prop={'size':11} )
+  plot.legend(loc='upper left', fontsize=12, framealpha=0.25)
   plot.xlabel(r'Arrival rate $\lambda$', fontsize=14)
   plot.ylabel(r'Average download time', fontsize=14)
   serv_in_latex = None
   if serv == "Exp":
-    serv_in_latex = r'Exp(\mu={})'.format(mu)
+    serv_in_latex = '\mathrm{Exp}' + r'(\mu={})'.format(mu)
   elif serv == "Pareto":
     serv_in_latex = r'Pareto(s={}, \alpha={})'.format(loc, a)
   elif serv == "Bern":
     serv_in_latex = r'Bernoulli(U={}, L={}, p={})'.format(U, L, p)
   elif serv == "Dolly":
     serv_in_latex = r'Dolly'
-  plot.title(r'Replicate-to-all $t={}$, Servers $\sim {}$'.format(t, serv_in_latex) )
+  plot.title(r'FJ-FA with $r= {}$, $t= {}$, $\mu= {}$'.format(r, t, mu), fontsize=14)
   # plot.title(r'$t={}$, Servers $\sim {}$'.format(t, serv_in_latex) )
   fig = plot.gcf()
-  def_size = fig.get_size_inches()
-  fig.set_size_inches(def_size[0]/1.3, def_size[1]/1.3)
+  fig.set_size_inches(5.5, 4)
   fig.tight_layout()
-  plot.savefig("plot_reptoall_{}_t{}.pdf".format(serv, t) )
+  plot.savefig("plot_FJFA_r{}_t{}.pdf".format(r, t) )
   log(WARNING, "done; t= {}, r= {}, k= {}".format(t, r, k) )
 
 def get_opts(argv):

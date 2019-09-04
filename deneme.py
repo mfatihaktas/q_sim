@@ -10,6 +10,7 @@ import numpy
 
 from rvs import *
 from patch import *
+from arepeat_models import a_wred_
 
 def MG1_tail_for_Pareto_serv(ro, b, a, t):
   def R(x, a):
@@ -54,7 +55,7 @@ def plot_MG1_tail():
   plot.ylabel(r'$p(T > t)$', fontsize=12)
   plot.title('$b= {}$, $a= {}$'.format(b, a) )
   
-  plot.savefig("plot_MG1_tail.png", bbox_inches='tight')
+  plot.savefig("plot_MG1_tail.pdf", bbox_inches='tight')
   plot.gcf().clear()
   log(WARNING, "done.")
 
@@ -101,7 +102,7 @@ def plot_ratios_of_Gammas():
   plot.xlabel(r'$i$', fontsize=12)
   """
   # plot.ylabel(r'', fontsize=12)
-  plot.savefig("plot_ratios_of_Gammas.png", bbox_inches='tight')
+  plot.savefig("plot_ratios_of_Gammas.pdf", bbox_inches='tight')
   plot.gcf().clear()
   log(WARNING, "done.")
 
@@ -180,7 +181,7 @@ def rep_wcancel():
   
   plot.legend()
   plot.title(r'$V \sim {}$, $X \sim Exp(\lambda)$'.format(V) )
-  plot.savefig("rep_wcancel.png", bbox_inches='tight')
+  plot.savefig("rep_wcancel.pdf", bbox_inches='tight')
   plot.gcf().clear()
   log(WARNING, "done.")
 
@@ -228,6 +229,89 @@ def EC_k_n():
     c = ECkp1_m_ECk(k, l, a)
     print("k= {}, ECkp1_m_ECk= {}".format(k, c) )
 
+def plots_for_proposalslides():
+  # """
+  def plot_(S, color, label=None):
+    s_l = numpy.linspace(1, 40, 1000) # 1, 10
+    Pr_S_g_s_l = [S.tail(s) for s in s_l]
+    label = 'Mean= {}'.format(S.mean() ) if label is None else label
+    plot.plot(s_l, Pr_S_g_s_l, marker='None', label=label, color=color, ls='-', lw=2)
+  plot.xscale('log')
+  plot.yscale('log')
+  
+  '''
+  plot_(S=Pareto(1, 2), color='black')
+  plot_(S=Pareto(1.5, 4), color='orange')
+  
+  plot.legend(loc='lower right', fontsize=14, framealpha=0.25)
+  plot.xscale('log')
+  plot.yscale('log')
+  
+  # plot.title(r'${}$'.format(task_t_in_latex), fontsize=24)
+  plot.xlabel(r'Execution time $x$', fontsize=20)
+  plot.ylabel(r'$\Pr\{X > x\}$', fontsize=24)
+  prettify(plot.gca() )
+  plot.gcf().set_size_inches(3, 4)
+  plot.savefig("plot_low_vs_high_variability.pdf", bbox_inches='tight') # , dpi=fig.dpi
+  '''
+  # '''
+  plot.ylim(top=1.5)
+  plot_(S=Exp(1, 1), color='red', label='1 + Exp(1)') # r'Exp: $e^{-\mu x}$'
+  plot_(S=Pareto(1, 2), color='black', label='Pareto(1, 2)') # r'Pareto: $x^{-\alpha}$'
+  
+  # plot_(S=Pareto(1, 3), color='black', label=r'$\alpha_i=3$')
+  # plot_(S=Pareto(1, 2), color='orange', label=r'$\alpha_j=2$')
+  
+  plot.legend(loc='lower left', fontsize=14, framealpha=0.25)
+  plot.xlabel(r'$s$', fontsize=20)
+  plot.ylabel(r'$\Pr\{Sl > s\}$', fontsize=20)
+  prettify(plot.gca() )
+  # plot.gcf().set_size_inches(3, 4)
+  plot.gcf().set_size_inches(4, 3)
+  plot.savefig("plot_tail_exp_vs_pareto.pdf", bbox_inches='tight')
+  # '''
+  """
+  r_l = []
+  suffcond_rep_l, suffcond_coding_l = [], []
+  # for r in range(2, 20):
+  # for r in np.linspace(1.5, 20, 100):
+  r = 1.4
+  while r < 6:
+    r_l.append(r)
+    r_ = r + 0.1
+    suffcond_rep_l.append(r_/r)
+    suffcond_coding_l.append(math.log(r/(r-1)) / math.log(r_/(r_-1)) )
+    r = r_
+  
+  plot.plot(r_l, suffcond_rep_l, label='Replication', color='green', marker='o', ls=':', lw=2)
+  plot.plot(r_l, suffcond_coding_l, label='Coding', color='red', marker='x', ls=':', lw=2)
+  
+  plot.legend(loc='upper right', fontsize=14, framealpha=0.25)
+  plot.xlabel(r'$r$', fontsize=20)
+  plot.ylabel(r'$\alpha_i/\alpha_j < $', fontsize=20)
+  prettify(plot.gca() )
+  plot.gcf().set_size_inches(4, 3)
+  plot.savefig("plot_suffcond_on_tailindexratio.pdf", bbox_inches='tight')
+  """
+  """
+  a_0 = 4
+  r_l, a_l = [], []
+  for r in numpy.linspace(1, 10, 100):
+    r_l.append(r)
+    a_l.append(a_wred_(a_0, r) )
+  plot.plot(r_l, a_l, color='green', ls='-', lw=2)
+  
+  plot.ylim(top=a_0+0.5)
+  plot.legend(loc='upper right', fontsize=14, framealpha=0.25)
+  plot.xlabel(r'$r$', fontsize=20)
+  plot.ylabel(r'$\alpha$', fontsize=20)
+  prettify(plot.gca() )
+  plot.gcf().set_size_inches(4, 3)
+  plot.savefig("plot_tailindex_vs_r.pdf", bbox_inches='tight')
+  """
+  plot.gcf().clear()
+  log(WARNING, "done.")
+
 if __name__ == "__main__":
   # plot_ratios_of_Gammas()
   # plot_MG1_tail()
@@ -235,5 +319,6 @@ if __name__ == "__main__":
   # rep_wcancel()
   
   # waitingtime_repwcancel()
-  EC_k_n()
+  # EC_k_n()
   
+  plots_for_proposalslides()

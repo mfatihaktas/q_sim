@@ -18,6 +18,7 @@ class Proc(object):
     self.remaining = remaining
     
     self.entrance_time = None
+    self.sentrance_time = None
   
   def __repr__(self):
     return "Proc[id= {}, size= {}, remaining= {}]".format(self._id, self.size, self.remaining)
@@ -25,6 +26,7 @@ class Proc(object):
   def deep_copy(self):
     p = Proc(self._id, self.size, self.remaining)
     p.entrance_time = self.entrance_time
+    p.sentrance_time = self.sentrance_time
     return p
 
 class PG(object): # Packet Generator
@@ -59,6 +61,8 @@ class PSQ(object): # Process Sharing Queue
     
     self.lt_l = []
     self.sl_l = []
+    self.lt_for_unitsizetask_l = []
+    self.ssl_l = []
     
     self.store = simpy.Store(env)
     self.action = env.process(self.serv_run() )
@@ -79,6 +83,10 @@ class PSQ(object): # Process Sharing Queue
         yield (self.got_busy)
         sim_log(DEBUG, self.env, self, "got busy!", None)
         continue
+      for p in p_l:
+        if p.sentrance_time is None:
+          p.sentrance_time = self.env.now
+      
       r_l = [p.remaining for p in p_l]
       t = min(r_l)
       i_min = r_l.index(t)
@@ -105,7 +113,10 @@ class PSQ(object): # Process Sharing Queue
         
         lt = self.env.now - p.entrance_time
         self.lt_l.append(lt)
+        self.lt_for_unitsizetask_l.append(p.sentrance_time - p.entrance_time + (self.env.now - p.sentrance_time)/p.size)
         self.sl_l.append(lt/p.size)
+        slt = self.env.now - p.sentrance_time
+        self.ssl_l.append(slt/p.size)
   
   def put_run(self):
     while True:
@@ -451,7 +462,7 @@ def MG1_T():
   log(WARNING, "done.")
 
 def plot_EC_vs_ET_wsim():
-  l, u, a = 1, 10**10, 1.1 # 1, 100, 1.5
+  l, u, a = 1, 10**10, 1.5 # 2 # 1.1 # 1, 100, 1.5
   psize_dist = TPareto(l, u, a)
   proc_in_latex = r'{}(l={}, u={}, \alpha={})'.format(r'\mathrm{TPareto}', l, u, a)
   log(WARNING, "psize_dist= {}".format(psize_dist) )
@@ -471,7 +482,7 @@ def plot_EC_vs_ET_wsim():
     print("> Esl= {}".format(Esl) )
     # if ro > 0.95: return None # 200 1000*1
     # if Esl > 100: return None # 20 200
-    return q.lt_l # q.sl_l
+    return q.lt_l, q.ssl_l # q.lt_for_unitsizetask_l # q.sl_l
   
   def plot_EC_vs_ET(num_frun, h, ro, k):
     _ar = ro/psize_dist.mean()
@@ -480,82 +491,96 @@ def plot_EC_vs_ET_wsim():
     done = False
     # while ro*r < 1:
     while True:
-      print('\n')
+      print('\n>>r= {}'.format(r) )
       n = int(k*r)
       ar = r*_ar
-      E_T_sim, E_C_sim, E_T_tpar, E_C_tpar, E_T_par, E_C_par = 0, 0, 0, 0, 0, 0
+      ET_sim, EC_sim, ET_tpar, EC_tpar, ET_par, EC_par = 0, 0, 0, 0, 0, 0
       for f in range(num_frun):
-        s_l = sim(ar, h)
+        s_l, ss_l = sim(ar, h)
         # if s_l is None: done = True; break
         
-        ## Sim
-        taskt_rv = SimRV(s_l)
-        stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(taskt_rv, 0, k, k, n, num_run=10000*10*10)
-        E_T = sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] )
-        E_C = sum(stat_id__trial_sampleavg_l_m['C_wc'] )/len(stat_id__trial_sampleavg_l_m['C_wc'] )
-        print("Sim: E_T= {}, E_C= {}".format(E_T, E_C) )
-        # E_T, E_C = 0, 0
-        E_T_sim += E_T
-        E_C_sim += E_C
+        s_l = ss_l
         s_l = numpy.sort(s_l)[::-1]
-        
         sim_Pr_S_g_s_l = numpy.arange(len(s_l) )/len(s_l)
         plot.plot(s_l, sim_Pr_S_g_s_l, label='Simulation', marker='x', color='blue', ls=':', mew=1, ms=8)
         
-        ## Fitting TPareto
+        ### ET
+        taskt_rv = SimRV(s_l)
+        stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(taskt_rv, 0, k, k, n, num_run=10000*10)
+        ET = sum(stat_id__trial_sampleavg_l_m['T'] )/len(stat_id__trial_sampleavg_l_m['T'] )
+        print("Sim: ET= {}".format(ET) )
+        ET_sim += ET
+        
+        ## Fitting
         l, u, a = fit_tpareto(s_l)
         task_t = "TPareto"
         task_dist_m = {'l': l, 'u': u, 'a': a}
-        E_T = E_T_k_l_n(task_t, task_dist_m, 0, k, k, n)
-        E_C = E_C_k_l_n(task_t, task_dist_m, 0, k, k, n, w_cancel=True)
-        print("Fitted TPareto: E_T= {}, E_C= {}".format(E_T, E_C) )
-        # E_T, E_C = 0, 0
-        E_T_tpar += E_T
-        E_C_tpar += E_C
+        ET = E_T_k_l_n(task_t, task_dist_m, 0, k, k, n)
+        print("Fitted TPareto: ET= {}".format(ET) )
+        ET_tpar += ET
         
         rv = TPareto(l, u, a)
         Pr_S_g_s_l = [rv.tail(s) for s in s_l]
         plot.plot(s_l, Pr_S_g_s_l, label='{}'.format(rv.to_latex() ), marker='None', color='goldenrod', ls='-.', lw=3)
         
-        ## Fitting Pareto
         l, a = fit_pareto(s_l)
         task_t = "Pareto"
         task_dist_m = {'loc': l, 'a': a}
-        E_T = E_T_k_l_n(task_t, task_dist_m, 0, k, k, n)
-        E_C = E_C_k_l_n(task_t, task_dist_m, 0, k, k, n, w_cancel=True)
-        print("Fitted Pareto: E_T= {}, E_C= {}".format(E_T, E_C) )
-        # E_T, E_C = 0, 0
-        E_T_par += E_T
-        E_C_par += E_C
+        ET = E_T_k_l_n(task_t, task_dist_m, 0, k, k, n)
+        print("Fitted Pareto: ET= {}".format(ET) )
+        ET_par += ET
         
         rv = Pareto(l, a)
         Pr_S_g_s_l = [rv.tail(s) for s in s_l]
         plot.plot(s_l, Pr_S_g_s_l, label='{}'.format(rv.to_latex() ), marker='None', color='red', ls='-.', lw=3)
         
-        ## Plotting the Tail
+        ### EC
+        s_l = ss_l
+        s_l = numpy.sort(s_l)[::-1]
+        taskt_rv = SimRV(s_l)
+        stat_id__trial_sampleavg_l_m = sim_arepeat_k_l_n(taskt_rv, 0, k, k, n, num_run=10000*10)
+        EC = sum(stat_id__trial_sampleavg_l_m['C_wc'] )/len(stat_id__trial_sampleavg_l_m['C_wc'] )
+        print("Sim: EC= {}".format(EC) )
+        EC_sim += EC
+        
+        ## Fitting
+        l, u, a = fit_tpareto(s_l)
+        task_t = "TPareto"
+        task_dist_m = {'l': l, 'u': u, 'a': a}
+        EC = E_C_k_l_n(task_t, task_dist_m, 0, k, k, n, w_cancel=True)
+        print("Fitted TPareto: EC= {}".format(EC) )
+        EC_tpar += EC
+        
+        l, a = fit_pareto(s_l)
+        task_t = "Pareto"
+        task_dist_m = {'loc': l, 'a': a}
+        EC = E_C_k_l_n(task_t, task_dist_m, 0, k, k, n, w_cancel=True)
+        print("Fitted TPareto: EC= {}".format(EC) )
+        EC_par += EC
+        # 
         plot.legend()
         plot.xscale('log')
         plot.yscale('log')
         plot.xlabel(r'$s$', fontsize=18)
         plot.ylabel(r'$\Pr\{S > s\}$', fontsize=18)
         plot.title(r'$r= {}$'.format(round(r, 2) ) )
-        plot.savefig("plot_tail_sim_vs_fitted_r{}.png".format(round(r, 1) ) )
+        plot.savefig("plot_tail_sim_vs_fitted_r{}.png".format(round(r, 2) ) )
         plot.gcf().clear()
       
       # if not done:
-      E_T_sim = E_T_sim/num_frun
+      ET_sim = ET_sim/num_frun
       if r == 1:
-        E_T_sim_0 = E_T_sim
-      elif E_T_sim > E_T_sim_0:
+        ET_sim_r1 = ET_sim
+      elif ET_sim > 1.2*ET_sim_r1:
         break
-      x_sim_l.append(E_T_sim)
-      y_sim_l.append(E_C_sim/num_frun)
-      x_tpar_l.append(E_T_tpar/num_frun)
-      y_tpar_l.append(E_C_tpar/num_frun)
-      x_par_l.append(E_T_par/num_frun)
-      y_par_l.append(E_C_par/num_frun)
+      x_sim_l.append(ET_sim)
+      y_sim_l.append(EC_sim/num_frun)
+      x_tpar_l.append(ET_tpar/num_frun)
+      y_tpar_l.append(EC_tpar/num_frun)
+      x_par_l.append(ET_par/num_frun)
+      y_par_l.append(EC_par/num_frun)
       r += 0.1
-    plot.plot(x_sim_l[0], y_sim_l[0], label=r'No redundancy', zorder=2, marker='x', color='red', mew=3, ms=9)
+    plot.plot(x_sim_l[0], y_sim_l[0], label=r'No redundancy', zorder=2, marker='x', color='red', mew=3, ms=9, ls='None')
     plot.plot(x_sim_l, y_sim_l, label=r'Simulation', zorder=1, marker=next(marker), color='green', ls=':', mew=mew, ms=ms)
     # plot.legend()
     # plot.xscale('log')
@@ -567,7 +592,7 @@ def plot_EC_vs_ET_wsim():
     # plot.gcf().clear()
     
     # plot.plot(x_tpar_l[0], y_tpar_l[0], zorder=2, marker='x', color='blue', mew=3, ms=9)
-    plot.plot(x_tpar_l, y_tpar_l, zorder=0, label=r'Model by fitted Truncated-Pareto', color='goldenrod', ls='-.', lw=2)
+    plot.plot(x_tpar_l, y_tpar_l, zorder=0, label=r'Model by fitted Truncated-Pareto', color='goldenrod', ls='-.', lw=3)
     # plot.plot(x_par_l[0], y_par_l[0], zorder=2, marker='x', color='blue', mew=3, ms=9)
     plot.plot(x_par_l, y_par_l, zorder=0, label=r'Model by fitted Pareto', color='blue', ls='-', lw=2)
     # plot.legend()
@@ -579,14 +604,14 @@ def plot_EC_vs_ET_wsim():
     # plot.savefig("plot_EC_vs_ET_model.png" )
     # plot.gcf().clear()
   
-  num_frun = 6 # 1 # 3
-  h = 4 # 8
+  num_frun = 3 # 10
+  h = 8 # 128
   k = 20 # 100
-  ro = 0.5
+  ro = 0.7 # 0.5
   plot_EC_vs_ET(num_frun, h, ro, k)
   
   prettify(plot.gca() )
-  plot.legend(loc='lower right', fontsize=14, framealpha=0.25)
+  plot.legend(loc='lower right', fontsize=14, framealpha=0.25, numpoints=1)
   plot.xscale('log')
   plot.yscale('log')
   plot.xlabel(r'Latency', fontsize=18)

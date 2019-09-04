@@ -36,7 +36,8 @@ elif [ $1 = 'm' ]; then
 elif [ $1 = 'mm' ]; then
   $PYTHON mds_models.py
 elif [ $1 = 'p' ]; then
-  $PYTHON procsharing.py
+  # $PYTHON procsharing.py
+  $PYTHON proofs_coding_vs_rep.py
 elif [ $1 = 's' ]; then
   # $PYTHON split_red.py
   $PYTHON simplex_models.py
@@ -59,13 +60,16 @@ elif [ $1 = 'sl' ]; then
 elif [ $1 = 'n' ]; then
   $PYTHON new.py
 elif [ $1 = 'g' ]; then
-  # $PYTHON google_data.py
-  $PYTHON googledata_job_events.py
+  $PYTHON google_data.py
+  # $PYTHON googledata_job_events.py
 elif [ $1 = 'f' ]; then
   $PYTHON fairness_sim.py
   # $PYTHON fj_heavytail.py
 elif [ $1 = 'fm' ]; then
   $PYTHON fairness_model.py
+elif [ $1 = 't' ]; then
+  # $PYTHON tompecs_plots.py
+  $PYTHON tompecs_exp.py
 elif [ $1 = 'me' ]; then
   rm *.log *.png
   NUM_Q_MIN=3

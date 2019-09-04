@@ -61,6 +61,12 @@ def prettify(ax):
   ax.spines['right'].set_visible(False)
   ax.spines['top'].set_visible(False)
 
+def add_tail_dist(ax, x_l, color='blue'):
+  plot.sca(ax)
+  x_l = numpy.sort(x_l)[::-1]
+  y_l = numpy.arange(x_l.size)/x_l.size
+  plot.step(x_l, y_l, color=color, marker='o', linestyle=':')
+
 def list_to_str(l):
   return ",".join("%s" % e for e in l)
 
@@ -194,7 +200,7 @@ def fit_tpareto(s_l):
     X_ip1 = s_l[i+1]
     r = X_ip1/u
     a = solve_a(lambda a: i/a + i*r**a*math.log(r)/(1-r**a) - sum([math.log(x) - math.log(X_ip1) for x in s_l[:i+1] ] ) )
-    l = 1 # i**(1/a) * X_ip1*(n - (n-i)*(X_ip1/u)**a)**(-1/a)
+    l = i**(1/a) * X_ip1*(n - (n-i)*(X_ip1/u)**a)**(-1/a) # 1
   log(WARNING, "done; l= {}, u= {}, a= {}".format(l, u, a) )
   return l, u, a
 
@@ -205,3 +211,10 @@ def fit_sexp(s_l):
   mu = n/(sum(s_l) - n*D)
   
   return D, mu
+
+if __name__ == "__main__":
+  a = 2
+  f = lambda k: G(1 - 1/a)**(-a/2)/math.sqrt(k+1)
+  
+  print("f(10)= {}".format(f(10) ) )
+  print("f(100)= {}".format(f(100) ) )

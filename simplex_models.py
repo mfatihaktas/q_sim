@@ -117,8 +117,8 @@ def ES2(r, t, mu):
     for j in range(t + 1):
       _s = 0
       for l in range(r*j + 1):
-        _s += (-1)**l * binomial(r*j, l)*(2/(mu**2 * (l+1)**2) )
-      s += binomial(t, j) * (-1)**j * _s
+        _s += (-1)**l * binom(r*j, l)*(2/(mu**2 * (l+1)**2) )
+      s += binom(t, j) * (-1)**j * _s
     return s
 
 def ESm_typei(m, t, i, sdist_m):
@@ -134,12 +134,12 @@ def ES_typei(t, i, sdist_m):
   if sdist == "Exp":
     mu = sdist_m['mu']
     gamma = mu
-    return sum([binomial(t-i,j)*2**j * (-1)**(t-i-j) / (gamma+(2*t-i-j)*mu) for j in range(t-i+1) ] )
+    return sum([binom(t-i,j)*2**j * (-1)**(t-i-j) / (gamma+(2*t-i-j)*mu) for j in range(t-i+1) ] )
   elif sdist == "Pareto":
     loc, a = sdist_m['loc'], sdist_m['a']
     if a*(t+1) < 1:
       return None
-    return sum([binomial(t-i,j)*2**j * (-1)**(t-i-j) * loc*(1 + 1/(a*(2*t+1-i-j)-1) ) for j in range(t-i+1) ] )
+    return sum([binom(t-i,j)*2**j * (-1)**(t-i-j) * loc*(1 + 1/(a*(2*t+1-i-j)-1) ) for j in range(t-i+1) ] )
   elif sdist == "Bern":
     U, L, p = sdist_m['U'], sdist_m['L'], sdist_m['p']
     ps = p**(i+1) * (1 - (1-p)**2)**(t-i)
@@ -156,12 +156,12 @@ def ES2_typei(t, i, sdist_m):
   if sdist == "Exp":
     mu = sdist_m['mu']
     gamma = mu
-    return sum([binomial(t-i,j)*2**j * (-1)**(t-i-j) * 2/(gamma+(2*t-i-j)*mu)**2 for j in range(t-i+1) ] )
+    return sum([binom(t-i,j)*2**j * (-1)**(t-i-j) * 2/(gamma+(2*t-i-j)*mu)**2 for j in range(t-i+1) ] )
   elif sdist == "Pareto":
     loc, a = sdist_m['loc'], sdist_m['a']
     if a*(t+1)/2 < 1:
       return None
-    return sum([binomial(t-i,j)*2**j * (-1)**(t-i-j) * loc**2*(1 + 1/(a*(2*t+1-i-j)/2-1) ) for j in range(t-i+1) ] )
+    return sum([binom(t-i,j)*2**j * (-1)**(t-i-j) * loc**2*(1 + 1/(a*(2*t+1-i-j)/2-1) ) for j in range(t-i+1) ] )
   elif sdist == "Bern":
     U, L, p = sdist_m['U'], sdist_m['L'], sdist_m['p']
     ps = p**(i+1) * (1 - (1-p)**2)**(t-i)
@@ -180,7 +180,7 @@ def reptoall_innerbound_on_ar(t, sdist_m):
   #   if w_sys:
   #     # E_S = 1/(mu*r)*B(t+1, 1/r)
   #     E_S = ES_typei(mu, t, i=0) #   else:
-  #     E_S = 1/mu * sum([binomial(t,i) * 2**i*(-1)**(t-i)/(2*t-i) for i in range(t+1) ] )
+  #     E_S = 1/mu * sum([binom(t,i) * 2**i*(-1)**(t-i)/(2*t-i) for i in range(t+1) ] )
   E_S = ES_typei(t, 0, sdist_m)
   return float(1/E_S)
 
@@ -585,8 +585,8 @@ def ET_simplex_sm(t, ar, sdist_m):
   return E_T
 
 def ET_simplex_splitmerge_wo_sys(t, ar, mu, c=None):
-  E_S = 1/mu * sum([binomial(t,i) * 2**i*(-1)**(t-i)/(2*t-i) for i in range(t+1) ] )
-  E_S_2 = 2/mu**2 * sum([binomial(t,i) * 2**i*(-1)**(t-i)/(2*t-i) for i in range(t+1) ] )
+  E_S = 1/mu * sum([binom(t,i) * 2**i*(-1)**(t-i)/(2*t-i) for i in range(t+1) ] )
+  E_S_2 = 2/mu**2 * sum([binom(t,i) * 2**i*(-1)**(t-i)/(2*t-i) for i in range(t+1) ] )
   return E_S + (ar/2)*E_S_2/(1 - ar*E_S)
 
 def plot_diminishing_return_as_t_incs():

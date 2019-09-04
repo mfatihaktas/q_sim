@@ -204,7 +204,7 @@ class SimRV(RV):
     return self.sample_l[math.floor(self.num_sample*random.random() ) ]
 
 class Dolly(RV):
-  # Kristen et al. A Better Model for Job Redundancy: Decoupling Server Slowdown and Job Size
+  ## Kristen et al. A Better Model for Job Redundancy: Decoupling Server Slowdown and Job Size
   def __init__(self):
     RV.__init__(self, l_l=1, u_l=12)
     

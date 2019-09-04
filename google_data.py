@@ -146,6 +146,7 @@ def write_jobs_w_num_task(num_task):
   log(WARNING, "done.")
 
 def write_task_lifetimes(num_task):
+  log(WARNING, "started; num_task= {}".format(num_task) )
   ji_l = []
   with open("jobs_w_num_task_{}.dat".format(num_task), mode="rt") as f:
     reader = csv.reader(f)
@@ -279,6 +280,7 @@ def plot_task_lifetime_hist(k):
   log(WARNING, "done; k= {}".format(k) )
 
 def pplot_task_lifetime_hist(k):
+  log(INFO, "started; k= {}".format(k) )
   lifetime_l = []
   # with open("filtered_task_lifetimes_for_jobs_w_num_task_{}.dat".format(k), mode="rt") as f:
   with open("task_lifetimes_for_jobs_w_num_task_{}.dat".format(k), mode="rt") as f:
@@ -295,7 +297,7 @@ def pplot_task_lifetime_hist(k):
   y_l = numpy.arange(lifetime_l.size)/lifetime_l.size
   # y_l = [math.log(y + 0.000001) for y in y_l]
   # m, b = numpy.polyfit(x_l, y_l, 1)
-  # plot.plot(x_l, m*x_l+b, 'r', lw=1, linestyle=':')
+  # plot.plot(x_l, m*x_l+b, 'r', lw=1, ls=':')
   
   # step_size = 10
   # num_rank = math.ceil(x_l[0]/step_size)
@@ -319,33 +321,40 @@ def pplot_task_lifetime_hist(k):
   # rank_freq_l = [n/sum(rank__num_lifetime_l) for n in rank__num_lifetime_l]
   # rank_tailprob_l = [sum(rank_freq_l[r-1:]) for r in range(1, num_rank+1) ]
   
-  # # plot.plot(range(1, num_rank+1), rank__avg_lifetime_l, 'bo', linestyle=':')
+  # # plot.plot(range(1, num_rank+1), rank__avg_lifetime_l, 'bo', ls=':')
   # # plot.xlabel(r'Rank', fontsize=13)
   # # plot.ylabel(r'Tail distribution', fontsize=13)
-  # # plot.step(range(1, num_rank+1), rank_tailprob_l, 'bo', linestyle=':')
+  # # plot.step(range(1, num_rank+1), rank_tailprob_l, 'bo', ls=':')
   # # plot.yscale('log')
   # # plot.xscale('log')
   
-  # plot.step(x_l, y_l, 'bo', lw=1, linestyle=':')
-  plot.step(x_l, y_l, 'bo', linestyle=':')
+  if k == 15:
+    plot.xlim(([10, 2*10**5] ) )
+    plot.ylim(([1/2*10**(-5), 1.3] ) )
+  elif k == 400:
+    plot.xlim(([10, 2*10**4] ) )
+    plot.ylim(([10**(-6), 1.3] ) )
+  elif k == 1050:
+    plot.xlim(([10, 2*10**4] ) )
+    plot.ylim(([10**(-6), 1.3] ) )
+  
+  # plot.step(x_l, y_l, 'bo', lw=1, ls=':')
+  plot.step(x_l, y_l, 'bo', ms=10, mew=0, ls=':')
   
   plot.xscale('log')
   plot.yscale('log')
-  plot.xlabel(r'Task lifetime', fontsize=13)
-  plot.ylabel(r'Tail distribution', fontsize=13)
+  plot.xlabel(r'Task lifetime', fontsize=18)
+  plot.ylabel(r'Tail distribution', fontsize=18)
   # plot.ylabel(r'Fraction of tasks completed in x')
   # plot.title(r'Jobs with {} tasks'.format(k), fontsize=13)
-  plot.title(r'k= {}'.format(k), fontsize=13)
+  # plot.title('k= {}, Mean= {}, Stdev= {}'.format(k, round(numpy.mean(x_l), 1), round(numpy.std(x_l), 1) ), fontsize=13)
+  plot.title('k= {}, Mean= {}'.format(k, round(numpy.mean(x_l), 1) ), fontsize=18)
   
-  fig = plot.gcf()
-  def_size = fig.get_size_inches()
-  print("def_size= {}".format(def_size) )
-  # fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.4)
-  fig.set_size_inches(4, 3)
-  fig.tight_layout()
+  plot.gcf().set_size_inches(4, 3)
+  prettify(plot.gca() )
   # plot.savefig("pplot_task_lifetime_hist_k_{}.pdf".format(k) )
-  plot.savefig("pplot_task_lifetime_hist_k_{}.png".format(k) )
-  fig.clear()
+  plot.savefig("pplot_task_lifetime_hist_k_{}.png".format(k), bbox_inches='tight')
+  plot.gcf().clear()
   log(WARNING, "done; k= {}".format(k) )
 
 def plot_qq_task_lifetimes(k):
@@ -394,7 +403,7 @@ if __name__ == "__main__":
   # pplot_task_lifetime_hist(k=15)
   # pplot_task_lifetime_hist(k=400)
   # pplot_task_lifetime_hist(k=1000)
-  # pplot_task_lifetime_hist(k=1050)
+  pplot_task_lifetime_hist(k=1050)
   
   # plot_qq_task_lifetimes(k=400)
   pass
