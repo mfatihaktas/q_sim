@@ -82,6 +82,7 @@ class MT_AV_JQ(object):
       for qid in rg:
         if qid not in recved_from_qid_l:
           success = False
+          break
       if success:
         break
     if success:
@@ -300,15 +301,14 @@ class AVQMonitor(object):
   
 # *******************************  Mixed-Traffic Availability Q  ******************************* #
 class MT_AVQ(object):
-  def __init__(self, _id, env, t, sym__rgroup_l_m, servdist_m, sching='rep-to-all', out=None):
+  def __init__(self, _id, env, n, sym__rgroup_l_m, servdist_m, sching='rep-to-all', out=None):
     self._id = _id
     self.env = env
     self.sym__rgroup_l_m = sym__rgroup_l_m
     self.sching = sching
     self.out = out
     
-    self.num_q = int(1 + t*2)
-    self.qid_l = [i for i in range(self.num_q) ]
+    self.qid_l = [i for i in range(n) ]
     
     self.jsink = JSink(_id, env)
     self.jsink.out = out

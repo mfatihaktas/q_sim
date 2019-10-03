@@ -12,7 +12,7 @@ for i in `seq $BEGIN_SIMNODE_ID $END_SIMNODE_ID`; do
 done
 # echo "SIM_NODES= $SIM_NODES"
 
-MATLAB=/cac/u01/mfa51/Desktop/matlab_2016/install_/bin/./matlab
+MATLAB=/opt/sw/packages/MATLAB/R2019a/bin/./matlab # /cac/u01/mfa51/Desktop/matlab_2016/install_/bin/./matlab
 PYTHON=python3 # ~/Desktop/Python-3.5.1/install/bin/python3
 MPIRUN=/cac/u01/mfa51/Desktop/openmpi-1.10.2/install/bin/mpirun
 PKILL=/usr/bin/pkill
@@ -23,6 +23,8 @@ if [ $1 = 'e' ]; then
   # $PYTHON exp.py < /dev/null 2>&1 | tee $LOG_F
   # rm *.png; $PYTHON exp.py
   $PYTHON simplex_exp.py
+elif [ $1 = 'ph' ]; then
+  $MATLAB -nojvm "run phil.m; quit"
 elif [ $1 = 'x' ]; then
   # $PYTHON mixed_exp.py
   $PYTHON randmix_exp.py

@@ -45,7 +45,7 @@ class Exp(RV):
   def var(self):
     return 1/self.mu**2
   
-  def gen_sample(self):
+  def sample(self):
     return self.D + random.expovariate(self.mu)
 
 class Pareto(RV):
@@ -95,7 +95,7 @@ class Pareto(RV):
     else:
       return self.a*self.loc**2 / (self.a-1)**2/(self.a-2)
   
-  def gen_sample(self):
+  def sample(self):
     return ((numpy.random.pareto(self.a, 1) + 1)*self.loc)[0]
     # return pareto.ppf(numpy.random.uniform(0, 1), b=self.a, scale=self.loc)
 
@@ -131,7 +131,7 @@ class TPareto(): # Truncated
       return self.a*self.l**k/(self.a-k) * \
              (1 - (self.l/self.u)**(self.a-k))/(1 - (self.l/self.u)**self.a)
   
-  def gen_sample(self):
+  def sample(self):
     u = random.uniform(0, 1)
     return self.l*(1 - u*(1-(self.l/self.u)**self.a) )**(-1/self.a)
 
@@ -141,7 +141,7 @@ def plot_gensample_check():
   
   x_l = []
   for i in range(10**5):
-    x_l.append(rv.gen_sample() )
+    x_l.append(rv.sample() )
   x_l = numpy.sort(x_l)
   x_l = x_l[::-1]
   # i_ = None
@@ -184,7 +184,7 @@ class Google(RV):
   def mean(self):
     return sum(self.sample_l)/self.num_sample
   
-  def gen_sample(self):
+  def sample(self):
     return self.sample_l[math.floor(self.num_sample*random.random() ) ]
 
 class SimRV(RV):
@@ -200,8 +200,22 @@ class SimRV(RV):
   def mean(self):
     return sum(self.sample_l)/self.num_sample
   
-  def gen_sample(self):
+  def sample(self):
     return self.sample_l[math.floor(self.num_sample*random.random() ) ]
+
+class ExplicitRV(RV):
+  def __init__(self, v_l, p_l):
+    RV.__init__(self, l_l=min(v_l), u_l=max(v_l) )
+    
+    self.v_l = v_l
+    self.p_l = p_l
+    self.dist = scipy.stats.rv_discrete(name='dolly', values=(v_l, p_l) )
+  
+  def __repr__(self):
+    return "ExplicitRV[\n\tv_l= {}, \n\tp_l= {}]".format(self.v_l, self.p_l)
+  
+  def sample(self):
+    return self.dist.rvs()
 
 class Dolly(RV):
   ## Kristen et al. A Better Model for Job Redundancy: Decoupling Server Slowdown and Job Size
@@ -225,7 +239,7 @@ class Dolly(RV):
       return 1
     return float(self.dist.cdf(x) )
   
-  def gen_sample(self):
+  def sample(self):
     u = random.uniform(0, 1)
     # if u <= 0.23: return 1 + u/100
     # u -= 0.23
@@ -265,7 +279,7 @@ class Bern(RV):
   def mean(self):
     return (1 - self.p)*self.l_l + self.p*self.u_l
   
-  def gen_sample(self):
+  def sample(self):
     u = random.uniform(0, 1)
     return self.u_l + u/100 if u <= self.p else self.l_l + u/100
 
@@ -282,8 +296,8 @@ class Bern(RV):
 #   def mean(self):
 #     return self.bern.mean()*self.pareto.mean()
   
-#   def gen_sample(self):
-#     return self.bern.gen_sample()*self.pareto.gen_sample()
+#   def sample(self):
+#     return self.bern.sample()*self.pareto.sample()
 
 class DUniform(): # Discrete
   def __init__(self, lb, ub):
@@ -298,7 +312,7 @@ class DUniform(): # Discrete
   def pdf(self, x):
     return float(1/(self.u_l - self.l_l + 1) )
   
-  def gen_sample(self):
+  def sample(self):
     return random.randint(self.l_l, self.u_l)
 
 class BoundedZipf():
@@ -334,7 +348,7 @@ class BoundedZipf():
     # return sum([v*self.p(i) for i,v in enumerate(self.v) ] )
     return self.dist.mean()
   
-  def gen_sample(self):
+  def sample(self):
     return self.dist.rvs(size=1)
 
 class Binomial():
@@ -357,7 +371,7 @@ class Binomial():
   def tail(self, x):
     return 1 - self.cdf(x)
   
-  def gen_sample(self):
+  def sample(self):
     return self.dist.rvs(size=1)
 
 class NegBinomial():
@@ -376,7 +390,7 @@ class NegBinomial():
   def tail(self, x):
     return 1 - self.cdf(x)
   
-  def gen_sample(self):
+  def sample(self):
     return self.dist.rvs(size=1)
 
 class Gamma():
@@ -396,7 +410,7 @@ class Gamma():
   def tail(self, x):
     return 1 - self.cdf(x)
   
-  def gen_sample(self):
+  def sample(self):
     return self.dist.rvs(size=1)
 
 class X_n_k():
@@ -420,7 +434,7 @@ class X_n_k():
   def tail(self, x):
     return 1 - self.cdf(x)
   
-  def gen_sample(self):
+  def sample(self):
     return gen_orderstat_sample(self.X, self.n, self.k)
 
 def moment_ith(i, X):

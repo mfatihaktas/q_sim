@@ -760,12 +760,12 @@ def plot_reptoall():
       plot.plot(ar_l, ET_sm_l, label=r'Split-Merge upper bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
       # plot.plot(ar_l, ET_bestapprox_l, label=r'$M/G/1$ approximation', zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
       plot.plot(ar_l, ET_lb_l, label=r'Fast-Split-Merge lower bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      # if t == 1:
-      #   #   plot.plot(ar_l, ET_matrixanalytic_l, label=r'Matrix-analytic upper-bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      #   plot.plot(ar_l, ET_l, label=r'High-traffic approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      plot.plot(ar_l, ET_naiveapprox_l, label=r'Naive approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      plot.plot(ar_l, ET_betterapprox_l, label=r'Better approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      plot.plot(ar_l, ET_bestapprox_l, label=r'Best approximation', zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
+      if t == 1:
+        plot.plot(ar_l, ET_matrixanalytic_l, label=r'Matrix-analytic upper-bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+        plot.plot(ar_l, ET_l, label=r'High-traffic approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+      # plot.plot(ar_l, ET_naiveapprox_l, label=r'Naive approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+      # plot.plot(ar_l, ET_betterapprox_l, label=r'Better approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+      # plot.plot(ar_l, ET_bestapprox_l, label=r'Best approximation', zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
       # plot.plot(ar_l, ET_varkigauri_lb_l, label=r'$E[\hat{T}_{fast-serial}]$', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew)
     # stab_lim = ET_simplex_approx(t, ar, servdist_m, incremental=True, ar_ub=True)
     # plot.axvline(stab_lim, label="Stability limit", color='black', linestyle='--')

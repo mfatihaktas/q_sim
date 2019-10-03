@@ -3,6 +3,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plot
 import matplotlib.cm as cm # cm.rainbow
 import sys, pprint, math, numpy
+import itertools
+
 from math import factorial
 from numpy import linalg
 from rvs import *
@@ -40,7 +42,7 @@ def simplex_sym_l__sym__rgroup_l_m(t):
         rgroup_l.append([0, 4] )
         rgroup_l.append([1, 5] )
         rgroup_l.append([2, 6] )
-    elif t == 3:
+    elif t == 7:
       if sym == 'a':
         rgroup_l.append([0] )
         rgroup_l.append([1, 2] )
@@ -79,6 +81,51 @@ def simplex_sym_l__sym__rgroup_l_m(t):
         rgroup_l.append([6, 14] )
     sym__rgroup_l_m[sym] = rgroup_l
   return (sym_l, sym__rgroup_l_m)
+
+def tompecs_sym_l__sym__rgroup_l_m(scheme):
+  sym_l = []
+  sym__rgroup_l_m = {}
+  
+  if scheme == 'lrc':
+    sym_l = ['a', 'b', 'c', 'd', 'e', 'f']
+    for sym in sym_l:
+      rgroup_l = []
+      if sym == 'a':
+        rgroup_l.append([0] )
+        rgroup_l.append([1, 2, 6] )
+        for c in itertools.combinations([1, 2, 3, 4, 5, 8, 9], 6):
+          rgroup_l.append(c)
+      elif sym == 'b':
+        rgroup_l.append([1] )
+        rgroup_l.append([0, 2, 6] )
+        for c in itertools.combinations([0, 2, 3, 4, 5, 8, 9], 6):
+          rgroup_l.append(c)
+      elif sym == 'c':
+        rgroup_l.append([2] )
+        rgroup_l.append([0, 1, 6] )
+        for c in itertools.combinations([0, 1, 3, 4, 5, 8, 9], 6):
+          rgroup_l.append(c)
+      elif sym == 'd':
+        rgroup_l.append([3] )
+        rgroup_l.append([4, 5, 7] )
+        for c in itertools.combinations([0, 1, 2, 4, 5, 8, 9], 6):
+          rgroup_l.append(c)
+      elif sym == 'e':
+        rgroup_l.append([4] )
+        rgroup_l.append([3, 5, 7] )
+        for c in itertools.combinations([0, 1, 2, 3, 5, 8, 9], 6):
+          rgroup_l.append(c)
+      elif sym == 'f':
+        rgroup_l.append([5] )
+        rgroup_l.append([3, 4, 7] )
+        for c in itertools.combinations([0, 1, 2, 3, 4, 8, 9], 6):
+          rgroup_l.append(c)
+      sym__rgroup_l_m[sym] = rgroup_l
+  else:
+    log(ERROR, "Unrecognized scheme= {}".format(scheme) )
+    return
+  
+  return sym_l, sym__rgroup_l_m
 
 MAX_ET = 55 # 35 # 70
 

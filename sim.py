@@ -85,7 +85,7 @@ class PG(object): # Packet Generator
       yield self.env.timeout(random.expovariate(self.ar) )
       self.n_sent += 1
       
-      psize = 1 if self.psize_dist is None else self.psize_dist.gen_sample()
+      psize = 1 if self.psize_dist is None else self.psize_dist.sample()
       p = Packet(time=self.env.now, _id=self.n_sent, flow_id=self.flow_id, size=psize)
       self.out.put(p)
 
@@ -275,7 +275,7 @@ class FCFS(Q): # First Come First Serve
       self.preempt = self.env.event()
       
       clk_start_time = self.env.now
-      t = self.p_inserv.size*self.stime.gen_sample()
+      t = self.p_inserv.size*self.stime.sample()
       sim_log(DEBUG, self.env, self, "starting {}-clock! on ".format(self.servdist), self.p_inserv)
       yield (self.cancel | self.preempt | self.env.timeout(t) )
       
