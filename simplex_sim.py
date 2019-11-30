@@ -1,4 +1,5 @@
 import simpy, random, copy, pprint
+import numpy as np
 # from simpy.core import BoundClass
 # from simpy.resources import base
 
@@ -8,12 +9,14 @@ from mds_sim import MDSQ
 from patch import *
 
 class MT_PG(PG):
-  def __init__(self, env, _id, ar, sym_l, hot_sym=None, hot_ar=None, flow_id=0, fixed=False):
+  def __init__(self, env, _id, ar, sym_l, p_l=None, hot_sym=None, hot_ar=None, flow_id=0, fixed=False):
     super().__init__(env, _id, ar, flow_id)
     self.sym_l = sym_l
     self.hot_sym = hot_sym
     self.hot_ar = hot_ar
     self.fixed = fixed
+    
+    self.symi_gen = ExplicitRV(list(range(len(sym_l) ) ), p_l) if p_l is not None else None
     
     self.sym__n_sent = {}
   
@@ -38,7 +41,10 @@ class MT_PG(PG):
     while 1:
       yield self.env.timeout(random.expovariate(self.ar) )
       if not self.fixed:
-        s = sym_l_[random.randint(0, len(sym_l_)-1) ]
+        if self.symi_gen is None:
+          s = sym_l_[random.randint(0, len(sym_l_)-1) ]
+        else:
+          s = sym_l_[self.symi_gen.sample() ]
       else:
         s = sym_l_[0]
       
@@ -127,7 +133,7 @@ class MT_AV_JQ(object):
   [When do the Availability Codes Make the Stored Data More Available?]
 """
 class AVQ(object): # Availability
-  def __init__(self, _id, env, t, r, k, servdist_m, sching, w_sys=True, out=None):
+  def __init__(self, _id, env, t, r, k, servdist_m, sching='rep-to-all', w_sys=True, out=None):
     self._id = _id
     self.env = env
     self.t = t
@@ -187,7 +193,7 @@ class AVQ(object): # Availability
     self.action = env.process(self.run_c() )
     
     self.job_id_counter = 0
-    self.servtype__num_m = (t+1)*[0]
+    self.servtype_num_l = (t+1)*[0]
   
   def __repr__(self):
     return "AVQ[k= {}, r= {}, t= {}]".format(self.k, self.r, self.t)
@@ -199,6 +205,9 @@ class AVQ(object): # Availability
       state += q.state(job_id_to_exclude)
     
     return state
+  
+  def busystate(self):
+    return np.mean([q.busystate() for _, q in self.id_q_map.items() ] )
   
   def run(self):
     while True:
@@ -229,7 +238,7 @@ class AVQ(object): # Availability
           if not q._in(next_job_id): break
         else:
           if q.n_servers_in(next_job_id) < self.r: type_ += 1
-      self.servtype__num_m[type_] += 1
+      self.servtype_num_l[type_] += 1
       #
       for g, q in self.id_q_map.items():
         if q._id not in cp.departed_qid_l:
@@ -239,7 +248,7 @@ class AVQ(object): # Availability
     sim_log(DEBUG, self.env, self, "recved", cp)
     return self.store_c.put(cp)
 
-class AVQMonitor(object):
+class _AVQMonitor(object):
   def __init__(self, env, q, poll_rate):
     self.q = q
     self.env = env
@@ -380,7 +389,8 @@ class AVQMonitor(object):
     
     self.t_l = [] # Time steps that the numbers polled from the q
     # self.n_l = [] # Num of jobs in the q
-    self.polled_state__counter_map = {}
+    self.polled_state__counter_map = collections.defaultdict(int)
+    self.polled_busystate_l = []
     self.state__num_found_by_job_departed_map = {}
     self.start_setup__num_found_by_job_departed_map = {}
     
@@ -390,22 +400,28 @@ class AVQMonitor(object):
   
   def run(self):
     while True:
-      yield self.env.timeout(self.poll_rate() )
-      # self.t_l.append(self.env.now)
-      q_state = self.q.state()
-      # print("q_state= {}".format(pprint.pformat(q_state) ) )
-      sub_qs_state = [max(q_state) for i in range(len(q_state) ) ]
-      num_jobs = max(sub_qs_state)
-      for i, s in enumerate(sub_qs_state):
-        sub_qs_state[i] -= q_state[i]
+      yield self.env.timeout(1/self.poll_rate)
+      # # self.t_l.append(self.env.now)
+      # q_state = self.q.state()
+      # # print("q_state= {}".format(pprint.pformat(q_state) ) )
+      # sub_qs_state = [max(q_state) for i in range(len(q_state) ) ]
+      # num_jobs = max(sub_qs_state)
+      # for i, s in enumerate(sub_qs_state):
+      #   sub_qs_state[i] -= q_state[i]
       
-      # num_job = max(state)
-      # self.n_l.append(num_job)
-      # rel_state = list_to_str(sub_qs_state)
-      rel_state = "{},({},{})".format(num_jobs, sub_qs_state[1], sub_qs_state[2] )
-      if rel_state not in self.polled_state__counter_map:
-        self.polled_state__counter_map[rel_state] = 0
-      self.polled_state__counter_map[rel_state] += 1
+      # # num_job = max(state)
+      # # self.n_l.append(num_job)
+      # # rel_state = list_to_str(sub_qs_state)
+      # rel_state = "{},({},{})".format(num_jobs, sub_qs_state[1], sub_qs_state[2] )
+      # if rel_state not in self.polled_state__counter_map:
+      #   self.polled_state__counter_map[rel_state] = 0
+      # self.polled_state__counter_map[rel_state] += 1
+      
+      # s = self.q.state()
+      # self.polled_state__counter_map[s] += 1
+      
+      bs = self.q.busystate()
+      self.polled_busystate_l.append(bs)
   
   def run_m(self):
     while True:

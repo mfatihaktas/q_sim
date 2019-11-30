@@ -1,4 +1,5 @@
 import simpy, random, copy, pprint
+import numpy as np
 
 from sim import *
 from patch import *
@@ -68,6 +69,9 @@ class MDSQ(object):
     for i, q in self.id_q_map.items():
       state += q.state(job_id_to_exclude)
     return state
+  
+  def busystate(self):
+    return np.mean([q.busystate() for _, q in self.id_q_map.items() ] )
   
   def n_servers_in(self, _id):
     n = 0

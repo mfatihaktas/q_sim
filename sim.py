@@ -248,6 +248,9 @@ class FCFS(Q): # First Come First Serve
       state += 1
     return [state]
   
+  def busystate(self):
+    return self.busy()
+  
   def _in(self, job_id):
     if self.p_inserv is None:
       return False

@@ -116,7 +116,7 @@ def test_avq(nf, ar, t, r, k, serv="Exp", servdist_m=None,
     print("qid_winfreq_map= {}".format(pprint.pformat(qid_winfreq_map) ) )
     if not mixed_traff:
       total_n_types = sum(avq.servtype__num_m)
-      p_i_l[:] = [n/total_n_types for t,n in enumerate(avq.servtype__num_m) ]
+      p_i_l[:] = [n/total_n_types for t, n in enumerate(avq.servtype__num_m) ]
       print("p_i_l= {}".format(p_i_l) )
     """
     print("\n")

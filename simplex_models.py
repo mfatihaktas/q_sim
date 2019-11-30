@@ -83,11 +83,10 @@ def simplex_sym_l__sym__rgroup_l_m(t):
   return (sym_l, sym__rgroup_l_m)
 
 def tompecs_sym_l__sym__rgroup_l_m(scheme):
-  sym_l = []
+  sym_l = ['a', 'b', 'c', 'd', 'e', 'f']
   sym__rgroup_l_m = {}
   
   if scheme == 'lrc':
-    sym_l = ['a', 'b', 'c', 'd', 'e', 'f']
     for sym in sym_l:
       rgroup_l = []
       if sym == 'a':
@@ -121,6 +120,61 @@ def tompecs_sym_l__sym__rgroup_l_m(scheme):
         for c in itertools.combinations([0, 1, 2, 3, 4, 8, 9], 6):
           rgroup_l.append(c)
       sym__rgroup_l_m[sym] = rgroup_l
+  elif scheme == 'mds':
+    for sym in sym_l:
+      rgroup_l = []
+      if sym == 'a':
+        rgroup_l.append([0] )
+        for c in itertools.combinations([1, 2, 3, 4, 5, 6, 7, 8], 6):
+          rgroup_l.append(c)
+      elif sym == 'b':
+        rgroup_l.append([1] )
+        for c in itertools.combinations([0, 2, 3, 4, 5, 6, 7, 8], 6):
+          rgroup_l.append(c)
+      elif sym == 'c':
+        rgroup_l.append([2] )
+        for c in itertools.combinations([0, 1, 3, 4, 5, 6, 7, 8], 6):
+          rgroup_l.append(c)
+      elif sym == 'd':
+        rgroup_l.append([3] )
+        for c in itertools.combinations([0, 1, 2, 4, 5, 6, 7, 8], 6):
+          rgroup_l.append(c)
+      elif sym == 'e':
+        rgroup_l.append([4] )
+        for c in itertools.combinations([0, 1, 2, 3, 5, 6, 7, 8], 6):
+          rgroup_l.append(c)
+      elif sym == 'f':
+        rgroup_l.append([5] )
+        for c in itertools.combinations([0, 1, 2, 3, 4, 6, 7, 8], 6):
+          rgroup_l.append(c)
+      sym__rgroup_l_m[sym] = rgroup_l
+  elif scheme == 'rep':
+    rgroup_l = []
+    if sym == 'a':
+      rgroup_l.append([0] )
+      rgroup_l.append([1] )
+      rgroup_l.append([2] )
+    elif sym == 'b':
+      rgroup_l.append([3] )
+      rgroup_l.append([4] )
+      rgroup_l.append([5] )
+    elif sym == 'c':
+      rgroup_l.append([6] )
+      rgroup_l.append([7] )
+      rgroup_l.append([8] )
+    elif sym == 'd':
+      rgroup_l.append([9] )
+      rgroup_l.append([10] )
+      rgroup_l.append([11] )
+    elif sym == 'e':
+      rgroup_l.append([12] )
+      rgroup_l.append([13] )
+      rgroup_l.append([14] )
+    elif sym == 'f':
+      rgroup_l.append([15] )
+      rgroup_l.append([16] )
+      rgroup_l.append([17] )
+    sym__rgroup_l_m[sym] = rgroup_l
   else:
     log(ERROR, "Unrecognized scheme= {}".format(scheme) )
     return
@@ -696,7 +750,7 @@ def ET_simplex_approx(t, ar, sdist_m, p_i_l=[], naive=False, incremental=False, 
         E_Y = E_X - E_S_min
         B = (t-i)*numpy.prod(ro_i_l[:i] )
         # print("A= {}, B= {}, (E_X-E_Y*A)/B/E_Y= {}".format(A, B, (E_X-E_Y*A)/B/E_Y) )
-        ro_i = min((E_X-E_Y*A)/B/E_Y, 1)/2
+        ro_i = min((E_X-E_Y*A)/B/E_Y, 1) # /2
         ro_i_l.append(ro_i)
         p_0 = 1/(sum([numpy.prod(ro_i_l[:j] ) for j in range(i+1) ] ) + numpy.prod(ro_i_l[:i+1] )*(t-i) )
         for i_ in range(t+1):
@@ -708,7 +762,7 @@ def ET_simplex_approx(t, ar, sdist_m, p_i_l=[], naive=False, incremental=False, 
   E_S_2 = sum([ES2_simplex_typei_l[i]*p_i for i,p_i in enumerate(p_i_l) ] )
   E_T = E_S + ar*E_S_2/2/(1-ar*E_S)
   if E_T < 0 or E_T > MAX_ET: return None
-  return E_T
+  return E_T, p_i_l
 
 def E_T_simplex_varki_gauri_lb(t, ar, gamma, mu):
   def P_i_next(i):
