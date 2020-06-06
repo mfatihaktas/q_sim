@@ -72,6 +72,8 @@ elif [ $1 = 'fm' ]; then
 elif [ $1 = 't' ]; then
   # $PYTHON tompecs_plots.py
   $PYTHON tompecs_exp.py
+elif [ $1 = 'pt' ]; then
+  $PYTHON plot_tcom.py
 elif [ $1 = 'me' ]; then
   rm *.log *.png
   NUM_Q_MIN=3
