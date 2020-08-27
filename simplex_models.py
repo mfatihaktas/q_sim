@@ -181,7 +181,7 @@ def tompecs_sym_l__sym__rgroup_l_m(scheme):
   
   return sym_l, sym__rgroup_l_m
 
-MAX_ET = 55 # 35 # 70
+MAX_ET = 100 # 35 # 70
 
 def E_T_rep_n_1(ar, mu, n):
   E_S = 1/n/mu
@@ -744,24 +744,24 @@ def ET_simplex_approx(t, ar, sdist_m, p_i_l=[], naive=False, incremental=False, 
     if incremental:
       ro_i_l = []
       for i in range(t+1):
-        # print("i= {}".format(i) )
+        print(">> i= {}".format(i) )
         A = sum([numpy.prod(ro_i_l[:j] ) for j in range(i+1) ] )
         
         E_Y = E_X - E_S_min
         B = (t-i)*numpy.prod(ro_i_l[:i] )
-        # print("A= {}, B= {}, (E_X-E_Y*A)/B/E_Y= {}".format(A, B, (E_X-E_Y*A)/B/E_Y) )
-        ro_i = min((E_X-E_Y*A)/B/E_Y, 1) # /2
+        print("A= {}, B= {}, (E_X-E_Y*A)/B/E_Y= {}".format(A, B, (E_X-E_Y*A)/B/E_Y) )
+        ro_i = min((E_X-E_Y*A)/B/E_Y, 1)/2 # !!! /2 is necessary while comparing Straightforward vs Better vs Fine-grained
         ro_i_l.append(ro_i)
         p_0 = 1/(sum([numpy.prod(ro_i_l[:j] ) for j in range(i+1) ] ) + numpy.prod(ro_i_l[:i+1] )*(t-i) )
         for i_ in range(t+1):
           p_i_l[i_] = numpy.prod(ro_i_l[:i_] )*p_0
-        # print("p_0= {}, ro_i_l= {}, p_i_l= {}".format(p_0, ro_i_l, p_i_l) )
+        print("p_0= {}, ro_i_l= {}, p_i_l= {}".format(p_0, ro_i_l, p_i_l) )
   E_S = sum([ES_simplex_typei_l[i]*p_i for i,p_i in enumerate(p_i_l) ] )
   if ar_ub:
     return 1/E_S
   E_S_2 = sum([ES2_simplex_typei_l[i]*p_i for i,p_i in enumerate(p_i_l) ] )
   E_T = E_S + ar*E_S_2/2/(1-ar*E_S)
-  if E_T < 0 or E_T > MAX_ET: return None
+  if E_T < 0 or E_T > MAX_ET: return None, None
   return E_T, p_i_l
 
 def E_T_simplex_varki_gauri_lb(t, ar, gamma, mu):

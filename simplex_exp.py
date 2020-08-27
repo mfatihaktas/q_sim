@@ -708,7 +708,7 @@ def plot_reptoall():
       ET_sim_l.append(test_avq(nf, ar, t, r, k, serv, servdist_m, w_sys=w_sys, p_i_l=p_i_l) )
       # ET_sim_l.append(None)
     
-    # ET_simbasedapprox_l.append(ET_simplex_approx(t, ar, servdist_m, p_i_l=p_i_l) )
+    # ET_simbasedapprox_l.append(ET_simplex_approx(t, ar, servdist_m, p_i_l=p_i_l)[0] )
     # if sim_simplex_mixed_traff:
     #   ET_sim_mixedtraff_l.append(test_avq(nf, ar, t, r, k, serv, servdist_m, w_sys=w_sys, p_i_l=p_i_l, mixed_traff=True) )
     
@@ -724,10 +724,10 @@ def plot_reptoall():
           ET_l.append(simplex_w_two_repair__E_T(ar, mu, M=5) )
         else:
           ET_l.append(simplex_wo_sys_w_two_repair__E_T(ar, mu) )
-    ET_naiveapprox_l.append(ET_simplex_approx(t, ar, servdist_m, naive=True) )
-    ET_betterapprox_l.append(ET_simplex_approx(t, ar, servdist_m) )
-    ET_bestapprox_l.append(0.9*ET_simplex_approx(t, ar, servdist_m, incremental=True) )
-    # ET_varkigauri_lb_l.append(E_T_simplex_varki_gauri_lb(t, ar, gamma, mu) )
+    ET_naiveapprox_l.append(ET_simplex_approx(t, ar, servdist_m, naive=True)[0] )
+    ET_betterapprox_l.append(ET_simplex_approx(t, ar, servdist_m)[0] )
+    ET_bestapprox_l.append(ET_simplex_approx(t, ar, servdist_m, incremental=True)[0] )
+    # ET_varkigauri_lb_l.append(E_T_simplex_varki_gauri_lb(t, ar, gamma, mu)[0] )
   
   ar_mixed_traff_l = []
   # for ar in numpy.linspace(0.2, 0.2, 1):
@@ -760,12 +760,12 @@ def plot_reptoall():
       plot.plot(ar_l, ET_sm_l, label=r'Split-Merge upper bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
       # plot.plot(ar_l, ET_bestapprox_l, label=r'$M/G/1$ approximation', zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
       plot.plot(ar_l, ET_lb_l, label=r'Fast-Split-Merge lower bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      if t == 1:
-        plot.plot(ar_l, ET_matrixanalytic_l, label=r'Matrix-analytic upper-bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-        plot.plot(ar_l, ET_l, label=r'High-traffic approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      # plot.plot(ar_l, ET_naiveapprox_l, label=r'Naive approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      # plot.plot(ar_l, ET_betterapprox_l, label=r'Better approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
-      # plot.plot(ar_l, ET_bestapprox_l, label=r'Best approximation', zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
+      # if t == 1:
+      #   plot.plot(ar_l, ET_matrixanalytic_l, label=r'Matrix-analytic upper-bound', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+      #   plot.plot(ar_l, ET_l, label=r'High-traffic approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+      plot.plot(ar_l, ET_naiveapprox_l, label=r'Straightforward approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+      plot.plot(ar_l, ET_betterapprox_l, label=r'Better approximation', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew, ms=ms)
+      plot.plot(ar_l, ET_bestapprox_l, label=r'Fine-grained approximation', zorder=2, marker=next(marker), color='black', linestyle=':', mew=mew, ms=ms)
       # plot.plot(ar_l, ET_varkigauri_lb_l, label=r'$E[\hat{T}_{fast-serial}]$', color=next(dark_color), marker=next(marker), linestyle=':', mew=mew)
     # stab_lim = ET_simplex_approx(t, ar, servdist_m, incremental=True, ar_ub=True)
     # plot.axvline(stab_lim, label="Stability limit", color='black', linestyle='--')
