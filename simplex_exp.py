@@ -114,10 +114,10 @@ def test_avq(nf, ar, t, r, k, serv="Exp", servdist_m=None,
     print("pg.n_sent= {}, total_n_wins= {}".format(pg.n_sent, total_n_wins) )
     qid_winfreq_map = {i:float(n)/total_n_wins for i, n in avq.jsink.qid__num_win_map.items() }
     print("qid_winfreq_map= {}".format(pprint.pformat(qid_winfreq_map) ) )
-    if not mixed_traff:
-      total_n_types = sum(avq.servtype__num_m)
-      p_i_l[:] = [n/total_n_types for t, n in enumerate(avq.servtype__num_m) ]
-      print("p_i_l= {}".format(p_i_l) )
+    # if not mixed_traff:
+    #   total_n_types = sum(avq.servtype__num_m)
+    #   p_i_l[:] = [n/total_n_types for t, n in enumerate(avq.servtype__num_m) ]
+    #   print("p_i_l= {}".format(p_i_l) )
     """
     print("\n")
     # print("avq.join_q.state__num_found_map= {}".format(pprint.pformat(avq.join_q.state__num_found_map) ) )
@@ -461,7 +461,7 @@ def plot_simplex_vs_rep():
 
 def plot_reptoall():
   mixed_traff, w_sys = False, True
-  t, r, k = 1, 2, 2
+  t, r, k = 3, 2, 2
   serv = "Exp" # "Bern" # "Bern*Pareto" # "Pareto" # "Dolly"
   mu = 1
   # loc, a = 1, 2
@@ -499,7 +499,7 @@ def plot_reptoall():
   nf = 3
   sim_simplex = False
   if serv == "Exp":
-    if t == 1:
+    if t == 11:
       ET_sim_l= [
         0.6775872854372559,
         0.7909557937247363,
@@ -516,7 +516,7 @@ def plot_reptoall():
         5.896928018871929,
         8.099664758903687,
         12.74155958739236]
-    elif t == 3:
+    elif t == 33:
       ET_sim_l= [
         0.4676519075931255,
         0.5247256264186801,
@@ -705,7 +705,9 @@ def plot_reptoall():
     
     p_i_l = []
     if sim_simplex:
-      ET_sim_l.append(test_avq(nf, ar, t, r, k, serv, servdist_m, w_sys=w_sys, p_i_l=p_i_l) )
+      ET_sim = test_avq(nf, ar, t, r, k, serv, servdist_m, w_sys=w_sys, p_i_l=p_i_l)
+      print("*** ET_sim= {}".format(ET_sim) )
+      ET_sim_l.append(ET_sim)
       # ET_sim_l.append(None)
     
     # ET_simbasedapprox_l.append(ET_simplex_approx(t, ar, servdist_m, p_i_l=p_i_l)[0] )

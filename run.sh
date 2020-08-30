@@ -72,8 +72,7 @@ elif [ $1 = 'fm' ]; then
 elif [ $1 = 't' ]; then
   # $PYTHON tompecs_plots.py
   # $PYTHON tompecs_exp.py
-  # $PYTHON tcom_plots.py
-  $PYTHON plot_tcom.py
+  $PYTHON tcom_plots.py
 elif [ $1 = 'pt' ]; then
   $PYTHON plot_tcom.py
 elif [ $1 = 'me' ]; then

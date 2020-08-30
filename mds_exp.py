@@ -223,10 +223,10 @@ def plot_mds_n2_wrtn():
   log(WARNING, "done; N= {}, k= {}".format(N, k) )
 
 def plot_mds_n2():
-  n = 3 # 10 # 5
+  n = 2 # 3 # 10 # 5
   k = 2 # 6 # 4
-  # dist_m = {'dist': 'Exp', 'mu': 1}
-  dist_m = {'dist': 'SExp', 'D': 1, 'mu': 0.5}
+  dist_m = {'dist': 'Exp', 'mu': 1}
+  # dist_m = {'dist': 'SExp', 'D': 1, 'mu': 0.5}
   # dist_m = {'dist': 'Pareto', 'l': 1, 'a': 2}
   
   if dist_m['dist'] == 'Exp':

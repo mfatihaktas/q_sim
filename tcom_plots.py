@@ -1,6 +1,9 @@
 from patch import *
 from log_utils import *
 
+import numpy as np
+from scipy.interpolate import UnivariateSpline
+
 def tcom_sim(conf='fixed_mu', pop='uniform'):
   num_sim_secs = 50000 # 500
   log(INFO, "", conf=conf, pop=pop, num_sim_secs=num_sim_secs)
@@ -188,7 +191,7 @@ def tcom_plots():
   conf = 'fixed_cum_mu' # 'fixed_mu'
   pop = 'uniform' # 'skewed'
   scheme_conf_data_m = tcom_sim(conf, pop)
-  
+  mew, ms = 2, 5
   def plot_(code_type):
     data = scheme_conf_data_m[code_type][conf][pop]
     legend = scheme_conf_data_m[code_type]['legend']
@@ -200,21 +203,26 @@ def tcom_plots():
     # elif code_type == 'avail':
     #   coeff = 2
     # ar_l = [ar*coeff for ar in data['ar_l']]
-    plot.plot(data['ar_l'], data['ET_l'], label=legend, color=next(dark_color), marker=next(marker), ms=ms, mew=mew, ls=':')
+    x_l, y_l = data['ar_l'], data['ET_l']
+    s = UnivariateSpline(x_l, y_l, s=0.001)
+    xs_l = np.linspace(min(x_l), max(x_l), 20)
+    ys_l = s(xs_l)
+    plot.plot(xs_l, ys_l, label=legend, color=next(dark_color), marker=next(marker), ms=ms, mew=mew, ls=':')
     
   plot_('rep')
   plot_('mds')
   plot_('avail')
   plot_('lrc')
   
-  plot.legend(loc='upper left', fontsize=12, framealpha=0.25, numpoints=1) # loc='best' # loc='upper left'
-  # plot.xscale('log')
-  plot.xlabel(r'Arrival rate $\lambda$', fontsize=18)
-  plot.ylabel('Average download time', fontsize=18)
+  plot.legend(loc='upper left', fontsize=11, framealpha=0.25, numpoints=1) # loc='best' # loc='upper left'
+  plot.yscale('log')
+  plot.ylim(top=30)
+  plot.xlabel(r'Arrival rate $\lambda$', fontsize=12)
+  plot.ylabel('Average download time', fontsize=12)
   # title = 'Cumulative service rate is fixed to 10' if conf == 'fixed_cum_mu' else "Each server's service rate is fixed to 1"
   # title += '\nUniform object popularity' if pop == 'uniform' else '\nSkewed object popularity'
-  title = 'Uniform object popularity' if pop == 'uniform' else 'Skewed object popularity'  
-  plot.title(title, fontsize=16)
+  title = 'Uniform object popularity' if pop == 'uniform' else 'Skewed object popularity'
+  plot.title(title, fontsize=12)
   fig = plot.gcf()
   fig.set_size_inches(6, 4)
   fig.tight_layout()
