@@ -189,7 +189,7 @@ def tcom_sim(conf='fixed_mu', pop='uniform'):
 
 def tcom_plots():
   conf = 'fixed_cum_mu' # 'fixed_mu'
-  pop = 'uniform' # 'skewed'
+  pop = 'skewed' # 'uniform'
   scheme_conf_data_m = tcom_sim(conf, pop)
   mew, ms = 2, 5
   def plot_(code_type):
@@ -213,16 +213,17 @@ def tcom_plots():
   plot_('mds')
   plot_('avail')
   plot_('lrc')
-  
-  plot.legend(loc='upper left', fontsize=11, framealpha=0.25, numpoints=1) # loc='best' # loc='upper left'
+
+  fontsize = 16
+  plot.legend(loc='upper left', fontsize=13, framealpha=0.25, numpoints=1) # loc='best' # loc='upper left'
   plot.yscale('log')
   plot.ylim(top=30)
-  plot.xlabel(r'Arrival rate $\lambda$', fontsize=12)
-  plot.ylabel('Average download time', fontsize=12)
+  plot.xlabel(r'Arrival rate $\lambda$', fontsize=fontsize)
+  plot.ylabel('Average download time', fontsize=fontsize)
   # title = 'Cumulative service rate is fixed to 10' if conf == 'fixed_cum_mu' else "Each server's service rate is fixed to 1"
   # title += '\nUniform object popularity' if pop == 'uniform' else '\nSkewed object popularity'
   title = 'Uniform object popularity' if pop == 'uniform' else 'Skewed object popularity'
-  plot.title(title, fontsize=12)
+  plot.title(title, fontsize=fontsize)
   fig = plot.gcf()
   fig.set_size_inches(6, 4)
   fig.tight_layout()

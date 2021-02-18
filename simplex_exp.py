@@ -186,13 +186,16 @@ def plot_winning_freqs():
     else:
       plot.plot(ar_l, win_freq_l, label=r'Simulation, $w_r$', color=next(dark_color), marker=next(marker), ms=8, mew=2, ls=':')
     counter += 1
-  plot.legend()
-  plot.xlabel(r'Arrival rate $\lambda$', fontsize=12)
-  plot.ylabel("Fraction of request completions", fontsize=12)
-  plot.title(r'Replicate-to-all $t=1$, $\gamma=\alpha=\beta= {}$'.format(mu) )
+
+  fontsize = 16
+  plot.legend(fontsize=13)
+  plot.xlabel(r'Arrival rate $\lambda$', fontsize=fontsize)
+  plot.ylabel("Fraction of request completions", fontsize=fontsize)
+  plot.title(r'Replicate-to-all $t=1$, $\gamma=\alpha=\beta= {}$'.format(mu), fontsize=fontsize)
   fig = plot.gcf()
-  def_size = fig.get_size_inches()
-  fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.4)
+  # def_size = fig.get_size_inches()
+  # fig.set_size_inches(def_size[0]/1.4, def_size[1]/1.4)
+  fig.set_size_inches(6, 4)
   fig.tight_layout()
   # plot.savefig("plot_winning_freqs.png", bbox_inches='tight')
   plot.savefig("plot_winning_freqs.pdf", dpi=fig.dpi)
@@ -819,10 +822,11 @@ def plot_reptoall():
   
   # plot.plot(ar_l, ET_sim_l, 'k', label=r'Replicate-to-all', linestyle='-', lw=3)
   # plot_selectone()
+  fontsize = 16
   plot.yscale('log')
-  plot.legend(loc='upper left', fontsize=11, framealpha=0.25)
-  plot.xlabel(r'Arrival rate $\lambda$', fontsize=12)
-  plot.ylabel(r'Average download time', fontsize=12)
+  plot.legend(loc='upper left', fontsize=13, framealpha=0.25)
+  plot.xlabel(r'Arrival rate $\lambda$', fontsize=fontsize)
+  plot.ylabel(r'Average download time', fontsize=fontsize)
   serv_in_latex = None
   if serv == "Exp":
     serv_in_latex = '\mathrm{Exp}' + r'(\mu={})'.format(mu)
@@ -832,10 +836,10 @@ def plot_reptoall():
     serv_in_latex = r'Bernoulli(U={}, L={}, p={})'.format(U, L, p)
   elif serv == "Dolly":
     serv_in_latex = r'Dolly'
-  plot.title(r'FJ-FA with $r= {}$, $t= {}$, $\mu= {}$'.format(r, t, mu), fontsize=12)
+  plot.title(r'FJ-FA with $r= {}$, $t= {}$, $\mu= {}$'.format(r, t, mu), fontsize=fontsize)
   # plot.title(r'$t={}$, Servers $\sim {}$'.format(t, serv_in_latex) )
   fig = plot.gcf()
-  fig.set_size_inches(5.5, 4)
+  fig.set_size_inches(6, 4)
   fig.tight_layout()
   plot.savefig("plot_FJFA_r{}_t{}.pdf".format(r, t) )
   log(WARNING, "done; t= {}, r= {}, k= {}".format(t, r, k) )

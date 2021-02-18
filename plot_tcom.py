@@ -122,11 +122,12 @@ def plot_ET_bounds():
   plot_t(3)
   # plot_t(7)
 
+  fontsize = 16
   plot.yscale('log')
-  plot.legend(prop={'size':11} )
-  plot.xlabel(r'Arrival rate', fontsize=12)
-  plot.ylabel(r'Average download time', fontsize=12)
-  plot.title(r'Server service rate $\mu = 1$, Locality $r=2$, Availability $t$', fontsize=12)
+  plot.legend(prop={'size':12} )
+  plot.xlabel(r'Arrival rate', fontsize=fontsize)
+  plot.ylabel(r'Average download time', fontsize=fontsize)
+  plot.title(r'Server service rate $\mu = 1$, Locality $r=2$, Availability $t$', fontsize=fontsize)
   fig = plot.gcf()
   fig.set_size_inches(7, 5) # 2*5, 2*4
   plot.savefig("plot_ET_bounds.pdf", bbox_inches='tight')

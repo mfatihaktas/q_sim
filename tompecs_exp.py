@@ -305,7 +305,7 @@ def tompecs_exp():
   log(INFO, "done.")
 
 def plot_servtype_prob():
-  t, r, k = 3, 2, 2
+  t, r, k = 1, 2, 2
   mu = 1
   servdist_m = {'dist': 'Exp', 'mu': mu}
   log(INFO, "", t=t, r=r, k=k, servdist_m=servdist_m)
@@ -318,7 +318,7 @@ def plot_servtype_prob():
     avq.join_q.out_m = monitor
     pg.out = avq
     pg.init()
-    env.run(until=500) # 50000
+    env.run(until=50000) # 50000
     ET = np.mean(avq.jsink.st_l)
     if ET > 100:
       log(ERROR, "ET= {} > 100!".format(ET) )
@@ -340,7 +340,8 @@ def plot_servtype_prob():
   ar_l = [ar_ub*0.3, ar_ub*0.6, ar_ub*0.9]
   barwidth = 0.1
   fig, ax = plot.subplots()
-  ax.set_xticks(np.arange(t+1) + len(ar_l)*barwidth/2)
+  ax.set_xticks(np.arange(t+1) + barwidth)
+  # ax.set_xticks(np.arange(t+1))
   ax.set_xticklabels([str(i) for i in range(t+1) ] )
   
   plot.plot(np.NaN, np.NaN, label=r'Approximate', marker='D', markerfacecolor='None', markeredgecolor='black', ms=6, mew=1, ls='None')
@@ -354,13 +355,14 @@ def plot_servtype_prob():
     plot.bar(np.arange(t+1)+i*barwidth, fi_l, label=r'$\rho= {}$'.format(round(load, 2) ), color=c, width=barwidth, alpha=0.5)
     # bins_labels(range(t+1), fontsize=16)
     # plot.bar(np.arange(t+1)+i*barwidth, pi_l, label=r'$\rho= {}$, approx'.format(round(load, 2) ), color=c, width=barwidth, alpha=1)
-    plot.plot(np.arange(t+1)+i*barwidth + barwidth/2, pi_l, color=c, marker='D', markeredgecolor='black', ms=6, mew=1, ls='None')
-  
-  plot.legend(fontsize=18, framealpha=0.25, numpoints=1)
-  plot.xlabel('Request service type', fontsize=18)
-  plot.ylabel(r'$f_i$', fontsize=20)
+    plot.plot(np.arange(t+1)+i*barwidth, pi_l, color=c, marker='D', markeredgecolor='black', ms=6, mew=1, ls='None')
+
+  fontsize = 16
+  plot.legend(fontsize=13, framealpha=0.25, numpoints=1)
+  plot.xlabel('Request service type', fontsize=fontsize)
+  plot.ylabel(r'$f_i$', fontsize=fontsize)
   k = int(math.log2(t+1))+1
-  plot.title(r'$n= {}$, $k= {}$, $r= {}$, $t= {}$, $\mu= {}$'.format(2**k-1, k, r, t, mu), fontsize=20)
+  plot.title(r'$n= {}$, $k= {}$, $r= {}$, $t= {}$, $\mu= {}$'.format(2**k-1, k, r, t, mu), fontsize=fontsize)
   fig = plot.gcf()
   fig.set_size_inches(6, 4)
   fig.tight_layout()
@@ -372,5 +374,5 @@ if __name__ == "__main__":
   # plot_select_one_w_mixed_fixed()
   # exp_MixedFJQ()
   
-  tompecs_exp()
-  # plot_servtype_prob()
+  # tompecs_exp()
+  plot_servtype_prob()
