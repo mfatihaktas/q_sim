@@ -130,7 +130,7 @@ def plot_ET_bounds():
   plot.title(r'Server service rate $\mu = 1$, Locality $r=2$, Availability $t$', fontsize=fontsize)
   fig = plot.gcf()
   fig.set_size_inches(7, 5) # 2*5, 2*4
-  plot.savefig("plot_ET_bounds.pdf", bbox_inches='tight')
+  plot.savefig("plot_FJFA_r2_t.pdf", bbox_inches='tight')
   fig.clear()
   log(INFO, "done.")
 
